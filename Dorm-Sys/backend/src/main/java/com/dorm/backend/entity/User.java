@@ -15,4 +15,11 @@ public class User {
     private String role; // student, dormmanager, admin
     private String name;
     private String avatar;
+    private String className;
+    private String email;
+    private String phone;
+    private Boolean enabled;
+    
+    private java.time.LocalDateTime createTime;
+    private java.time.LocalDateTime updateTime;
 }

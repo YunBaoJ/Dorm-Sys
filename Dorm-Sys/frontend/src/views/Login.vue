@@ -148,7 +148,7 @@ const handleLogin = async () => {
     
     // 登录成功，将 Token 和身份存入 Pinia (它会自动存入 localStorage)
     userStore.setToken(res.token)
-    userStore.setRole(res.role)
+    userStore.setRole(res.user.role)
     userStore.setUserInfo(res.user)
 
     ElMessage.success({

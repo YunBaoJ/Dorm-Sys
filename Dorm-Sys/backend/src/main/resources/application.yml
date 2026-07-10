@@ -1,9 +1,14 @@
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/dormitory?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://localhost:3306/dormitory?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
     username: root
     password: 123456
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+      encoding: utf-8
   
 mybatis-plus:
   configuration:
@@ -14,4 +19,4 @@ mybatis-plus:
       id-type: auto # 主键自增
 
 server:
-  port: 8081
+  port: 8088

@@ -28,7 +28,12 @@ service.interceptors.request.use(
 service.interceptors.response.use(
   (response) => {
     const res = response.data
-    // 假设后端返回的数据结构是 { code: 200, message: '成功', data: {...} }
+    // 如果后端直接返回数据（没有 code 包装）
+    if (res.code === undefined) {
+      return res;
+    }
+    
+    // 如果有 code 包装且不为 200
     if (res.code !== 200) {
       ElMessage.error(res.message || 'Error')
       return Promise.reject(new Error(res.message || 'Error'))

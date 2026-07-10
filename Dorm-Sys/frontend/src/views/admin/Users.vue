@@ -13,7 +13,7 @@
                 <p>权限分配 · 账号审计</p>
               </div>
             </div>
-            <el-button type="primary"><el-icon class="el-icon--left"><component :is="Plus" /></el-icon>新增用户账户</el-button>
+            <el-button type="primary" @click="handleAdd"><el-icon class="el-icon--left"><component :is="Plus" /></el-icon>新增用户账户</el-button>
           </div>
         </el-card>
 
@@ -26,40 +26,41 @@
               <el-select v-model="roleFilter" placeholder="所有角色" style="width: 120px; margin-left: 12px">
                 <el-option label="所有角色" value="" />
                 <el-option label="学生" value="student" />
-                <el-option label="宿管" value="manager" />
+                <el-option label="宿管" value="dormmanager" />
+                <el-option label="管理员" value="admin" />
               </el-select>
-              <el-button icon="Refresh" circle style="margin-left: 12px" />
+              <el-button icon="Refresh" circle style="margin-left: 12px" @click="fetchUsers" />
             </div>
           </div>
 
-          <div class="user-list">
+          <div class="user-list" v-loading="loading">
             <div v-for="user in users" :key="user.id" class="user-item">
-              <el-avatar :size="48" :src="user.avatar">{{ user.name[0] }}</el-avatar>
+              <el-avatar :size="48" :src="user.avatar">{{ user.name?.[0] }}</el-avatar>
               
               <div class="user-info">
                 <div class="user-main">
                   <span class="user-name">{{ user.name }}</span>
-                  <span class="user-account">@{{ user.account }}</span>
-                  <el-tag size="small" :type="user.role === '学生' ? 'primary' : 'warning'" effect="plain" round>{{ user.role }}</el-tag>
+                  <span class="user-account">@{{ user.username }}</span>
+                  <el-tag size="small" :type="user.role === 'student' ? 'primary' : 'warning'" effect="plain" round>{{ user.role }}</el-tag>
                 </div>
                 <div class="user-meta">
                   <span class="meta-item"><el-icon><component :is="CreditCard" /></el-icon> {{ user.id }}</span>
-                  <span class="meta-item"><el-icon><component :is="MapPin" /></el-icon> {{ user.class }}</span>
+                  <span class="meta-item"><el-icon><component :is="MapPin" /></el-icon> {{ user.className || '无班级信息' }}</span>
                 </div>
                 <div class="user-meta">
-                  <span class="meta-item"><el-icon><component :is="Mail" /></el-icon> {{ user.email }}</span>
-                  <span class="meta-item"><el-icon><component :is="Phone" /></el-icon> {{ user.phone }}</span>
+                  <span class="meta-item"><el-icon><component :is="Mail" /></el-icon> {{ user.email || '未绑定邮箱' }}</span>
+                  <span class="meta-item"><el-icon><component :is="Phone" /></el-icon> {{ user.phone || '未绑定手机' }}</span>
                 </div>
               </div>
 
               <div class="user-actions">
                 <div class="status-toggle">
-                  <span class="status-label">已启用</span>
-                  <el-switch v-model="user.enabled" />
+                  <span class="status-label">{{ user.enabled ? '已启用' : '已停用' }}</span>
+                  <el-switch v-model="user.enabled" @change="saveUser(user)" />
                 </div>
                 <div class="btn-group">
-                  <el-button type="primary" link>编辑</el-button>
-                  <el-button type="danger" link>删除</el-button>
+                  <el-button type="primary" link @click="handleEdit(user)">编辑</el-button>
+                  <el-button type="danger" link @click="handleDelete(user.id)">删除</el-button>
                 </div>
               </div>
             </div>
@@ -142,23 +143,141 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <!-- User Edit/Add Dialog -->
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
+      <el-form :model="form" label-width="80px">
+        <el-form-item label="账号" required>
+          <el-input v-model="form.username" placeholder="请输入学号/工号作为账号" />
+        </el-form-item>
+        <el-form-item label="姓名" required>
+          <el-input v-model="form.name" placeholder="请输入真实姓名" />
+        </el-form-item>
+        <el-form-item label="角色">
+          <el-select v-model="form.role" placeholder="请选择角色" style="width: 100%">
+            <el-option label="学生" value="student" />
+            <el-option label="宿管" value="dormmanager" />
+            <el-option label="管理员" value="admin" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="班级" v-if="form.role === 'student'">
+          <el-input v-model="form.className" placeholder="例如：计科2201" />
+        </el-form-item>
+        <el-form-item label="邮箱">
+          <el-input v-model="form.email" placeholder="可选" />
+        </el-form-item>
+        <el-form-item label="电话">
+          <el-input v-model="form.phone" placeholder="可选" />
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-switch v-model="form.enabled" active-text="启用" inactive-text="停用" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleSubmit">确认</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { User, Plus, Search, RefreshCw as Refresh, CreditCard, MapPin, Mail, Phone, Users, Lock, UploadCloud, ShieldAlert } from '@lucide/vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getUserList, saveUser, deleteUser } from '../../api/user'
 
 const search = ref('')
 const roleFilter = ref('')
+const users = ref([])
+const loading = ref(false)
 
-const users = ref([
-  { id: '2022010001', name: '张伟', account: 'zhangwei', role: '学生', class: '计科2201', email: 'stu001@stu.edu.cn', phone: '13912345001', enabled: true, avatar: '/images/avatar.jpg' },
-  { id: '2022010002', name: '李明', account: 'liming', role: '学生', class: '计科2201', email: 'stu002@stu.edu.cn', phone: '13912345002', enabled: true, avatar: '' },
-  { id: '2022010003', name: '王芳', account: 'wangfang', role: '学生', class: '计科2201', email: 'stu003@stu.edu.cn', phone: '13912345003', enabled: true, avatar: '' },
-  { id: '2022010004', name: '刘洋', account: 'liuyang', role: '学生', class: '计科2201', email: 'stu004@stu.edu.cn', phone: '13912345004', enabled: true, avatar: '' },
-  { id: '2023020001', name: '陈欣', account: 'chenxin', role: '学生', class: '软工2301', email: 'stu005@stu.edu.cn', phone: '13912345005', enabled: true, avatar: '' },
-])
+// Dialog states
+const dialogVisible = ref(false)
+const dialogTitle = ref('新增用户')
+const form = ref({
+  id: null,
+  name: '',
+  username: '',
+  role: 'student',
+  className: '',
+  email: '',
+  phone: '',
+  enabled: true,
+  avatar: ''
+})
+
+const fetchUsers = async () => {
+  loading.value = true
+  try {
+    const res = await getUserList()
+    users.value = res
+  } catch (error) {
+    ElMessage.error('获取用户列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchUsers()
+})
+
+const handleAdd = () => {
+  dialogTitle.value = '新增用户'
+  form.value = {
+    id: null,
+    name: '',
+    username: '',
+    role: 'student',
+    className: '',
+    email: '',
+    phone: '',
+    enabled: true,
+    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}`
+  }
+  dialogVisible.value = true
+}
+
+const handleEdit = (row) => {
+  dialogTitle.value = '编辑用户'
+  form.value = { ...row }
+  dialogVisible.value = true
+}
+
+const handleSubmit = async () => {
+  if (!form.value.name || !form.value.username) {
+    ElMessage.warning('请填写必填字段')
+    return
+  }
+  try {
+    await saveUser(form.value)
+    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    fetchUsers()
+  } catch (error) {
+    ElMessage.error('保存失败')
+  }
+}
+
+const handleDelete = async (id) => {
+  try {
+    await ElMessageBox.confirm('确定要删除该用户吗？删除后无法恢复！', '警告', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await deleteUser(id)
+    ElMessage.success('删除成功')
+    fetchUsers()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
+  }
+}
 </script>
 
 <style scoped>
