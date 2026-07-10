@@ -2,6 +2,8 @@ CREATE DATABASE IF NOT EXISTS dormitory DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_
 
 USE dormitory;
 
+DROP TABLE IF EXISTS `sys_user`;
+
 CREATE TABLE `sys_user` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `username` varchar(50) NOT NULL COMMENT '账号',
