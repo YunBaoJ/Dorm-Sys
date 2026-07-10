@@ -11,7 +11,14 @@ import java.time.LocalDateTime;
 public class Bed {
     @TableId(type = IdType.AUTO)
     private Long id;
+    private Long roomId;
+    private String bedNumber;
+    private String status; // EMPTY, OCCUPIED, BROKEN
+    private Long studentId;
     
+    // Virtual fields
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String studentName;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

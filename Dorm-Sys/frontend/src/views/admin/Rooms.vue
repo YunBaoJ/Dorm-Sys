@@ -14,7 +14,7 @@
               </div>
             </div>
             <div class="hero-actions">
-              <el-button type="primary"><el-icon class="el-icon--left"><component :is="Plus" /></el-icon>新增单间</el-button>
+              <el-button type="primary" @click="handleAdd"><el-icon class="el-icon--left"><component :is="Plus" /></el-icon>新增单间</el-button>
               <el-button plain type="warning"><el-icon class="el-icon--left"><component :is="Files" /></el-icon>批量创建</el-button>
             </div>
           </div>
@@ -25,28 +25,26 @@
           <div class="list-header">
             <div class="header-left">
               <span class="list-title">房间名录</span>
-              <el-select v-model="buildingFilter" placeholder="所属楼栋" style="width: 140px; margin-left: 16px;">
-                <el-option label="全部楼栋" value="all" />
-                <el-option label="明德楼" value="mingde" />
-                <el-option label="至善楼" value="zhishan" />
+              <el-select v-model="buildingFilter" placeholder="所属楼栋" style="width: 140px; margin-left: 16px;" clearable @change="fetchRooms">
+                <el-option v-for="b in buildings" :key="b.id" :label="b.name" :value="b.id" />
               </el-select>
               <el-input v-model="search" placeholder="房间号搜索" prefix-icon="Search" style="width: 180px; margin-left: 12px;" />
             </div>
             <div class="list-actions">
-              <el-button circle><el-icon><component :is="Refresh" /></el-icon></el-button>
+              <el-button circle @click="fetchRooms"><el-icon><component :is="Refresh" /></el-icon></el-button>
             </div>
           </div>
 
-          <div class="room-list">
+          <div class="room-list" v-loading="loading">
             <div v-for="room in rooms" :key="room.id" class="room-item">
               <div class="room-badge bg-light-blue">
-                <span class="room-no">{{ room.number }}</span>
+                <span class="room-no">{{ room.roomNumber }}</span>
                 <span class="room-type">{{ room.capacity }}人间</span>
               </div>
               
               <div class="room-info">
                 <div class="room-main">
-                  <span class="room-bldg"><el-icon><component :is="Building" /></el-icon> {{ room.building }}</span>
+                  <span class="room-bldg"><el-icon><component :is="Building" /></el-icon> {{ room.buildingName }}</span>
                   <span class="room-floor">{{ room.floor }}层</span>
                 </div>
                 
@@ -56,7 +54,7 @@
                     <span class="progress-val">{{ room.occupied }}/{{ room.capacity }}</span>
                   </div>
                   <el-progress 
-                    :percentage="(room.occupied / room.capacity) * 100" 
+                    :percentage="room.capacity ? (room.occupied / room.capacity) * 100 : 0" 
                     :stroke-width="8" 
                     :color="room.occupied === room.capacity ? '#f59e0b' : 'var(--line)'"
                     :show-text="false"
@@ -65,19 +63,18 @@
                 
                 <div class="room-tags">
                   <el-tag v-if="room.occupied === room.capacity" size="small" type="warning" effect="plain">全部满员</el-tag>
-                  <el-tag v-else size="small" type="info" effect="plain">整间空闲</el-tag>
-                  <el-tag v-if="room.status === '维护中'" size="small" type="warning" effect="plain">维护中</el-tag>
+                  <el-tag v-else size="small" type="info" effect="plain">未满员</el-tag>
+                  <el-tag v-if="room.status === 'MAINTENANCE'" size="small" type="warning" effect="plain">维护中</el-tag>
                   <el-tag v-else size="small" type="primary" effect="plain">可用</el-tag>
                 </div>
               </div>
 
               <div class="room-actions-col">
                 <div class="action-buttons">
-                  <el-button type="primary" link><el-icon class="el-icon--left"><component :is="Edit" /></el-icon>编辑</el-button>
-                  <el-button type="primary" link><el-icon class="el-icon--left"><component :is="Eye" /></el-icon>床位</el-button>
-                  <el-button type="danger" link><el-icon class="el-icon--left"><component :is="Trash2" /></el-icon>删除</el-button>
+                  <el-button type="primary" link @click="handleEdit(room)"><el-icon class="el-icon--left"><component :is="Edit" /></el-icon>编辑</el-button>
+                  <el-button type="primary" link @click="handleViewBeds(room)"><el-icon class="el-icon--left"><component :is="Eye" /></el-icon>床位</el-button>
+                  <el-button type="danger" link @click="handleDelete(room.id)"><el-icon class="el-icon--left"><component :is="Trash2" /></el-icon>删除</el-button>
                 </div>
-                <div class="room-time"><el-icon><component :is="Clock" /></el-icon> 09/01</div>
               </div>
             </div>
           </div>
@@ -155,24 +152,176 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <!-- Room Form Dialog -->
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
+      <el-form :model="form" label-width="100px">
+        <el-form-item label="所属楼栋" required>
+          <el-select v-model="form.buildingId" placeholder="请选择楼栋" style="width: 100%">
+            <el-option v-for="b in buildings" :key="b.id" :label="b.name" :value="b.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="房间号" required>
+          <el-input v-model="form.roomNumber" placeholder="如：101" />
+        </el-form-item>
+        <el-form-item label="所在楼层" required>
+          <el-input-number v-model="form.floor" :min="1" />
+        </el-form-item>
+        <el-form-item label="可容纳人数" required>
+          <el-input-number v-model="form.capacity" :min="1" />
+        </el-form-item>
+        <el-form-item label="房间状态">
+          <el-select v-model="form.status" style="width: 100%">
+            <el-option label="正常可用" value="NORMAL" />
+            <el-option label="已满员" value="FULL" />
+            <el-option label="维护中" value="MAINTENANCE" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleSubmit">保存</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- Beds Drawer -->
+    <el-drawer v-model="bedDrawerVisible" :title="`床位管理 - ${currentRoom?.buildingName} ${currentRoom?.roomNumber}`" size="500px">
+      <div class="beds-container" v-loading="bedLoading">
+        <el-table :data="beds" style="width: 100%" border>
+          <el-table-column prop="bedNumber" label="床位编号" width="120" />
+          <el-table-column label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="row.status === 'EMPTY' ? 'success' : row.status === 'OCCUPIED' ? 'danger' : 'warning'" size="small">
+                {{ row.status === 'EMPTY' ? '空闲' : row.status === 'OCCUPIED' ? '已入住' : '损坏' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="当前住客">
+            <template #default="{ row }">
+              {{ row.studentName || '-' }}
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Home, Plus, Files, Search, RefreshCw as Refresh, Building, Edit, Eye, Trash2, Clock, Check, AlertCircle, Settings, Info } from '@lucide/vue'
+import { getRooms, saveRoom, deleteRoom, getBeds } from '../../api/room'
+import { getBuildings } from '../../api/building'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const buildingFilter = ref('')
 const search = ref('')
+const rooms = ref([])
+const buildings = ref([])
+const loading = ref(false)
 
-const rooms = ref([
-  { id: 1, number: '101', capacity: 4, building: '明德楼', floor: 1, occupied: 4, status: '维护中' },
-  { id: 2, number: '102', capacity: 4, building: '明德楼', floor: 1, occupied: 4, status: '正常' },
-  { id: 3, number: '103', capacity: 4, building: '明德楼', floor: 1, occupied: 0, status: '正常' },
-  { id: 4, number: '104', capacity: 4, building: '明德楼', floor: 1, occupied: 0, status: '正常' },
-  { id: 5, number: '105', capacity: 4, building: '明德楼', floor: 1, occupied: 0, status: '正常' },
-  { id: 6, number: '201', capacity: 4, building: '明德楼', floor: 2, occupied: 0, status: '正常' },
-])
+const dialogVisible = ref(false)
+const dialogTitle = ref('新增房间')
+const form = ref({
+  id: null,
+  buildingId: null,
+  roomNumber: '',
+  floor: 1,
+  capacity: 4,
+  status: 'NORMAL'
+})
+
+const bedDrawerVisible = ref(false)
+const bedLoading = ref(false)
+const beds = ref([])
+const currentRoom = ref(null)
+
+onMounted(async () => {
+  await fetchBuildings()
+  fetchRooms()
+})
+
+const fetchBuildings = async () => {
+  try {
+    const res = await getBuildings()
+    buildings.value = res.data || []
+  } catch (error) {
+    console.error('Failed to fetch buildings', error)
+  }
+}
+
+const fetchRooms = async () => {
+  loading.value = true
+  try {
+    const res = await getRooms(buildingFilter.value || null)
+    rooms.value = res.data || []
+  } catch (error) {
+    ElMessage.error('获取房间列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleAdd = () => {
+  dialogTitle.value = '新增房间'
+  form.value = {
+    id: null,
+    buildingId: null,
+    roomNumber: '',
+    floor: 1,
+    capacity: 4,
+    status: 'NORMAL'
+  }
+  dialogVisible.value = true
+}
+
+const handleEdit = (row) => {
+  dialogTitle.value = '编辑房间'
+  form.value = { ...row }
+  dialogVisible.value = true
+}
+
+const handleSubmit = async () => {
+  if (!form.value.buildingId || !form.value.roomNumber) {
+    ElMessage.warning('请填写楼栋和房间号')
+    return
+  }
+  try {
+    await saveRoom(form.value)
+    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    fetchRooms()
+  } catch (error) {
+    ElMessage.error('保存失败')
+  }
+}
+
+const handleDelete = async (id) => {
+  try {
+    await ElMessageBox.confirm('确定要删除该房间及其所有关联床位吗？', '警告', { type: 'warning' })
+    await deleteRoom(id)
+    ElMessage.success('删除成功')
+    fetchRooms()
+  } catch (error) {
+    if (error !== 'cancel') ElMessage.error('删除失败')
+  }
+}
+
+const handleViewBeds = async (room) => {
+  currentRoom.value = room
+  bedDrawerVisible.value = true
+  bedLoading.value = true
+  try {
+    const res = await getBeds(room.id)
+    beds.value = res.data || []
+  } catch (error) {
+    ElMessage.error('获取床位信息失败')
+  } finally {
+    bedLoading.value = false
+  }
+}
 </script>
 
 <style scoped>
