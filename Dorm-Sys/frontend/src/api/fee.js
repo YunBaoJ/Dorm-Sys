@@ -5,7 +5,7 @@ export const getFeeBills = (roomId, status) => {
     url: '/feeBill/list',
     method: 'get',
     params: { roomId, status }
-  }).then(res => Array.isArray(res) ? res : res.data)
+  })
 }
 
 export const saveFeeBill = (data) => {

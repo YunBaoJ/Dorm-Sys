@@ -149,10 +149,10 @@ const fetchResidents = async () => {
     const [bedsRes, usersRes, roomsRes, buildingsRes] = await Promise.all([
       getBeds(), getUsers(), getRooms(), getBuildings()
     ])
-    const beds = (Array.isArray(bedsRes) ? bedsRes : bedsRes.data) || []
-    const users = (Array.isArray(usersRes) ? usersRes : usersRes.data) || []
-    const rooms = (Array.isArray(roomsRes) ? roomsRes : roomsRes.data) || []
-    const buildings = (Array.isArray(buildingsRes) ? buildingsRes : buildingsRes.data) || []
+    const beds = bedsRes || []
+    const users = usersRes || []
+    const rooms = roomsRes || []
+    const buildings = buildingsRes || []
     
     const userMap = Object.fromEntries(users.map(u => [u.id, u]))
     const roomMap = Object.fromEntries(rooms.map(r => [r.id, r]))

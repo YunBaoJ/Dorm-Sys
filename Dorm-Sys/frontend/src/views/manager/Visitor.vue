@@ -13,7 +13,7 @@
                 <p>安全登记 · 实时管控</p>
               </div>
             </div>
-            <el-button type="primary"><el-icon class="el-icon--left"><component :is="Refresh" /></el-icon>刷新数据</el-button>
+            <el-button type="primary" @click="fetchVisitors"><el-icon class="el-icon--left"><component :is="Refresh" /></el-icon>刷新记录</el-button>
           </div>
         </el-card>
 
@@ -33,17 +33,19 @@
             </div>
           </div>
 
-          <div class="visitor-list">
+          <div class="visitor-list" v-loading="loading">
+            <el-empty v-if="visitors.length === 0" description="暂无访客记录" />
             <div v-for="v in visitors" :key="v.id" class="visitor-item">
               <div class="visitor-avatar" :class="v.avatarClass">
-                <span>{{ v.name[0] }}<br/>{{ v.name[1] || '' }}</span>
+                {{ v.name?.[0] }}
               </div>
               
               <div class="visitor-info">
                 <div class="visitor-main">
                   <span class="visitor-name">{{ v.name }}</span>
-                  <span class="visitor-phone">{{ v.phone }}</span>
-                  <el-tag size="small" :type="v.statusType" effect="plain" round>{{ v.status }}</el-tag>
+                  <el-tag size="small" :type="v.status === 'APPROVED' ? 'success' : v.status === 'LEFT' ? 'info' : 'warning'" effect="plain" round>
+                    {{ v.status === 'APPROVED' ? '已批准' : v.status === 'LEFT' ? '已离开' : '待审批' }}
+                  </el-tag>
                 </div>
                 <div class="visitor-desc">
                   <span class="relation-tag text-blue">{{ v.relation }}</span>
@@ -55,11 +57,8 @@
               </div>
 
               <div class="visitor-actions">
-                <el-button v-if="v.status === '已批准'" type="primary">签到进入</el-button>
-                <template v-if="v.status === '待审批'">
-                  <el-button type="primary">批准</el-button>
-                  <el-button type="danger" plain>拒绝</el-button>
-                </template>
+                <el-button v-if="v.status === 'PENDING'" type="primary" size="small" @click="handleApprove(v)">批准进入</el-button>
+                <el-button v-if="v.status === 'APPROVED'" type="success" size="small" @click="handleLeave(v)">登记离开</el-button>
                 <el-button type="primary" link>详情</el-button>
               </div>
             </div>
@@ -83,8 +82,8 @@
             <div class="dash-item">
               <div class="dash-icon bg-light-orange"><el-icon><component :is="Clock" /></el-icon></div>
               <div class="dash-info">
-                <div class="dash-label">待审批预约</div>
-                <div class="dash-value">1 <span>位</span></div>
+                <div class="dash-label">待审批</div>
+                <div class="dash-value">{{ pendingCount }} <span>人</span></div>
               </div>
             </div>
             <div class="dash-item">
@@ -97,8 +96,8 @@
             <div class="dash-item">
               <div class="dash-icon bg-gray"><el-icon><component :is="Check" /></el-icon></div>
               <div class="dash-info">
-                <div class="dash-label">今日累计已访</div>
-                <div class="dash-value">2 <span>位</span></div>
+                <div class="dash-label">今日访客</div>
+                <div class="dash-value">{{ todayCount }} <span>位</span></div>
               </div>
             </div>
           </div>
@@ -133,17 +132,59 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { UserCheck, RefreshCw as Refresh, Search, Clock, User, Check, Info } from '@lucide/vue'
+import { getVisitorRecords, saveVisitorRecord } from '../../api/visitor'
+import { ElMessage } from 'element-plus'
 
 const search = ref('')
 const statusFilter = ref('all')
 
-const visitors = ref([
-  { id: 1, name: '李同学', avatarClass: 'av-yellow', phone: '13900003333', status: '已批准', statusType: 'primary', relation: '同学', target: '李明 (明德楼 101)', time: '01/20 09:00' },
-  { id: 2, name: '王父', avatarClass: 'av-green', phone: '13800001111', status: '待审批', statusType: 'warning', relation: '父亲', target: '张伟 (明德楼 101)', time: '01/15 10:00' },
-  { id: 3, name: '陈母', avatarClass: 'av-red', phone: '13800002222', status: '未知', statusType: 'info', relation: '母亲', target: '陈欣 (至善楼 101)', time: '12/20 14:00' },
-])
+const visitors = ref([])
+const loading = ref(false)
+
+const fetchVisitors = async () => {
+  loading.value = true
+  try {
+    const res = await getVisitorRecords()
+    visitors.value = (Array.isArray(res) ? res : (res.data || [])).map(v => ({
+      ...v,
+      name: v.visitorName,
+      target: v.studentName || '未知学生',
+      time: v.visitTime ? v.visitTime.replace('T', ' ').substring(0, 16) : '',
+      avatarClass: ['av-blue', 'av-green', 'av-yellow', 'av-red'][v.id % 4]
+    }))
+  } catch (e) {
+    ElMessage.error('获取访客记录失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => fetchVisitors())
+
+const handleApprove = async (v) => {
+  try {
+    await saveVisitorRecord({ id: v.id, status: 'APPROVED' })
+    ElMessage.success('已批准进入')
+    fetchVisitors()
+  } catch (e) {
+    ElMessage.error('操作失败')
+  }
+}
+
+const handleLeave = async (v) => {
+  try {
+    await saveVisitorRecord({ id: v.id, status: 'LEFT', leaveTime: new Date().toISOString() })
+    ElMessage.success('已登记离开')
+    fetchVisitors()
+  } catch (e) {
+    ElMessage.error('操作失败')
+  }
+}
+
+const pendingCount = computed(() => visitors.value.filter(v => v.status === 'PENDING').length)
+const todayCount = computed(() => visitors.value.filter(v => new Date(v.createTime).toDateString() === new Date().toDateString()).length)
 </script>
 
 <style scoped>

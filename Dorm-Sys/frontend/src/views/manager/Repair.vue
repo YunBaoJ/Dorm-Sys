@@ -177,7 +177,7 @@ const fetchTickets = async () => {
   try {
     const statusParam = statusFilter.value === 'all' ? '' : statusFilter.value.toUpperCase()
     const res = await getRepairs(null, statusParam)
-    tickets.value = ((Array.isArray(res) ? res : res.data) || []).map(t => ({
+    tickets.value = (res || []).map(t => ({
       ...t,
       categoryIcon: iconMap[t.type] || '修',
       category: t.type,

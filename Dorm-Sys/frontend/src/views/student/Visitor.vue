@@ -95,7 +95,7 @@ const fetchMyVisitors = async () => {
   loading.value = true
   try {
     const res = await request({ url: '/api/visitorRecord/list', method: 'get', params: { studentId: userStore.userInfo?.id } })
-    myVisitors.value = (Array.isArray(res) ? res : res.data) || []
+    myVisitors.value = res || []
   } catch (e) {
     ElMessage.error('获取来访记录失败')
   } finally {

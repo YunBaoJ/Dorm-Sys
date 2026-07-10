@@ -89,7 +89,7 @@ const fetchMyRepairs = async () => {
   loading.value = true
   try {
     const res = await getRepairs(userStore.userInfo?.id)
-    myRepairs.value = (Array.isArray(res) ? res : res.data) || []
+    myRepairs.value = res || []
   } catch (e) {
     ElMessage.error('获取报修记录失败')
   } finally {

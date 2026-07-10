@@ -172,7 +172,7 @@ const fetchTransfers = async () => {
   try {
     const statusParam = statusFilter.value === 'all' ? '' : statusFilter.value.toUpperCase()
     const res = await getTransfers(null, statusParam)
-    applications.value = ((Array.isArray(res) ? res : res.data) || []).map(a => ({
+    applications.value = (res || []).map(a => ({
       ...a,
       name: a.studentName || '未知',
       current: a.currentBedName || '未知',

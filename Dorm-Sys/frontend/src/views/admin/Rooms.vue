@@ -246,7 +246,7 @@ onMounted(async () => {
 const fetchBuildings = async () => {
   try {
     const res = await getBuildings()
-    buildings.value = (Array.isArray(res) ? res : res.data) || []
+    buildings.value = res || []
   } catch (error) {
     console.error('Failed to fetch buildings', error)
   }
@@ -256,7 +256,7 @@ const fetchRooms = async () => {
   loading.value = true
   try {
     const res = await getRooms(buildingFilter.value || null)
-    rooms.value = (Array.isArray(res) ? res : res.data) || []
+    rooms.value = res || []
   } catch (error) {
     ElMessage.error('获取房间列表失败')
   } finally {
@@ -315,7 +315,7 @@ const handleViewBeds = async (room) => {
   bedLoading.value = true
   try {
     const res = await getBeds(room.id)
-    beds.value = (Array.isArray(res) ? res : res.data) || []
+    beds.value = res || []
   } catch (error) {
     ElMessage.error('获取床位信息失败')
   } finally {

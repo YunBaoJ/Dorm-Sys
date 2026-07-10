@@ -10,7 +10,7 @@
             <p>营造整洁环境 · 共建文明宿舍</p>
           </div>
         </div>
-        <el-button type="primary"><el-icon class="el-icon--left"><component :is="Plus" /></el-icon>录入新检查</el-button>
+        <el-button type="primary"><el-icon class="el-icon--left"><component :is="Plus" /></el-icon>录入检查结果</el-button>
       </div>
     </el-card>
 
@@ -27,12 +27,10 @@
           </template>
           
           <div class="stats-container">
-            <div class="stat-item">
-              <div class="stat-label">平均得分</div>
-              <div class="stat-val text-blue">92.5</div>
-              <div class="stat-trend trend-up">
-                <el-icon><component :is="ArrowUp" /></el-icon> 2.4%
-              </div>
+            <div class="dash-icon bg-light-blue"><el-icon><component :is="Medal" /></el-icon></div>
+            <div class="dash-info">
+              <div class="dash-label">平均得分</div>
+              <div class="dash-value">{{ avgScore }} <span>分</span></div>
             </div>
             <div class="stat-item">
               <div class="stat-label">合格率</div>
@@ -95,11 +93,12 @@
               </el-select>
             </div>
             <div class="list-actions">
-              <el-button circle><el-icon><component :is="Refresh" /></el-icon></el-button>
+              <el-button icon="Refresh" circle style="margin-left: 12px" @click="fetchRecords" />
             </div>
           </div>
 
-          <div class="record-list">
+          <div class="record-list" v-loading="loading">
+            <el-empty v-if="records.length === 0" description="暂无检查记录" />
             <div v-for="record in records" :key="record.id" class="record-item">
               <div class="score-badge" :class="getScoreClass(record.score)">
                 <span class="score-val">{{ record.score }}</span>
@@ -110,10 +109,10 @@
                 <div class="record-main">
                   <span class="record-room">{{ record.room }}</span>
                   <el-tag size="small" :type="record.score >= 90 ? 'primary' : 'warning'" effect="plain" round>
-                    {{ record.score >= 90 ? '优秀' : '良好' }}
+                    {{ record.score >= 90 ? '优秀' : (record.score >= 80 ? '良好' : '及格') }}
                   </el-tag>
                 </div>
-                <div class="record-desc">{{ record.description }}</div>
+                <div class="record-desc">{{ record.comment || record.description || '无备注' }}</div>
                 <div class="record-meta">
                   <span class="meta-item"><el-icon><component :is="User" /></el-icon> {{ record.inspector }}</span>
                   <span class="meta-item"><el-icon><component :is="Clock" /></el-icon> {{ record.time }}</span>
@@ -121,7 +120,7 @@
               </div>
 
               <div class="record-actions">
-                <el-button type="danger" link><el-icon class="el-icon--left"><component :is="Trash2" /></el-icon>删除</el-button>
+                <el-button type="danger" link @click="handleDelete(record.id)"><el-icon class="el-icon--left"><component :is="Trash2" /></el-icon>删除</el-button>
               </div>
             </div>
           </div>
@@ -132,20 +131,52 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { Medal, Plus, BarChart2, ArrowUp, ArrowDown, RefreshCw as Refresh, User, Clock, Trash2 } from '@lucide/vue'
+import { getHygieneRecords, deleteHygieneRecord } from '../../api/hygiene'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const activeCriteria = ref('1')
 const buildingFilter = ref('')
 
-const records = ref([
-  { id: 1, room: '明德楼 · 101', score: 92, description: '整体保持良好', inspector: '张宿管', time: '2026-01-05T10:00:00' },
-  { id: 2, room: '明德楼 · 101', score: 88, description: '地面有少许灰尘，其他良好', inspector: '张宿管', time: '2025-12-22T10:00:00' },
-  { id: 3, room: '至善楼 · 102', score: 85, description: '基本整洁，继续保持', inspector: '李宿管', time: '2025-12-15T11:30:00' },
-  { id: 4, room: '至善楼 · 101', score: 90, description: '卫生状况良好', inspector: '李宿管', time: '2025-12-15T11:00:00' },
-  { id: 5, room: '明德楼 · 102', score: 78, description: '桌面较乱，需要整理', inspector: '张宿管', time: '2025-12-15T10:30:00' },
-  { id: 6, room: '明德楼 · 101', score: 95, description: '宿舍整洁，物品摆放整齐', inspector: '张宿管', time: '2025-12-15T10:00:00' },
-])
+const records = ref([])
+const loading = ref(false)
+
+const fetchRecords = async () => {
+  loading.value = true
+  try {
+    const res = await getHygieneRecords()
+    records.value = (Array.isArray(res) ? res : (res.data || [])).map(r => ({
+      ...r,
+      room: r.roomName || '未知房间',
+      inspector: r.inspectorName || '未知',
+      time: r.checkDate ? r.checkDate.replace('T', ' ') : ''
+    }))
+  } catch (e) {
+    ElMessage.error('获取卫生检查记录失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => fetchRecords())
+
+const handleDelete = async (id) => {
+  try {
+    await ElMessageBox.confirm('确定要删除这条记录吗？', '提示', { type: 'warning' })
+    await deleteHygieneRecord(id)
+    ElMessage.success('删除成功')
+    fetchRecords()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('删除失败')
+  }
+}
+
+const avgScore = computed(() => {
+  if (!records.value.length) return 0
+  const sum = records.value.reduce((acc, curr) => acc + curr.score, 0)
+  return (sum / records.value.length).toFixed(1)
+})
 
 const getScoreClass = (score) => {
   if (score >= 90) return 'score-blue'

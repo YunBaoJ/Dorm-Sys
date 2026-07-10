@@ -91,7 +91,7 @@ const fetchMyTransfers = async () => {
   loading.value = true
   try {
     const res = await getTransfers(userStore.userInfo?.id)
-    myTransfers.value = (Array.isArray(res) ? res : res.data) || []
+    myTransfers.value = res || []
   } catch (e) {
     ElMessage.error('获取调宿记录失败')
   } finally {
@@ -102,10 +102,10 @@ const fetchMyTransfers = async () => {
 const fetchRoomsAndBeds = async () => {
   try {
     const [roomsRes, bedsRes] = await Promise.all([getRooms(), getBeds()])
-    availableRooms.value = ((Array.isArray(roomsRes) ? roomsRes : roomsRes.data) || []).filter(r => r.status !== 'FULL')
+    availableRooms.value = (roomsRes || []).filter(r => r.status !== 'FULL')
     
     // Find student's current bed
-    const myBed = ((Array.isArray(bedsRes) ? bedsRes : bedsRes.data) || []).find(b => b.studentId === userStore.userInfo?.id)
+    const myBed = (bedsRes || []).find(b => b.studentId === userStore.userInfo?.id)
     if (myBed) myCurrentBedId.value = myBed.id
   } catch (e) {
     console.error('Failed to fetch rooms/beds', e)

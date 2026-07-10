@@ -1,7 +1,7 @@
 import request from '../utils/request'
 
 export const getBuildings = () => {
-  return request.get('/building/list').then(data => ({ data }))
+  return request.get('/building/list')
 }
 
 export const getBuildingList = getBuildings
