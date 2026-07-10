@@ -50,18 +50,11 @@ const userStore = useUserStore()
 
 const navMap = {
   admin: [
-    { path: '/admin/overview', label: '管理概览', icon: Gauge },
-    { path: '/admin/users', label: '用户权限', icon: UserRound, children: [
-      { path: '/admin/users/list', label: '用户列表' },
-      { path: '/admin/users/roles', label: '角色管理' }
-    ]},
+    { path: '/admin/users/list', label: '用户管理', icon: UserRound },
     { path: '/admin/resources', label: '宿舍资源', icon: Building, children: [
       { path: '/admin/resources/buildings', label: '楼栋管理' },
       { path: '/admin/resources/rooms', label: '房间管理' }
-    ]},
-    { path: '/admin/repairs', label: '业务管控', icon: ClipboardList, children: [
-      { path: '/admin/repairs/list', label: '报修监控' }
-    ]},
+    ]}
   ],
   dormmanager: [
     { path: '/dormmanager/workbench', label: '工作台', icon: ClipboardList },
@@ -72,15 +65,11 @@ const navMap = {
     { path: '/dormmanager/transfer', label: '调宿审批', icon: Repeat2 },
   ],
   student: [
-    { path: '/student/desk', label: '服务台', icon: Gauge },
     { path: '/student/dorm', label: '我的宿舍', icon: Home },
     { path: '/student/repair', label: '报修申请', icon: Settings },
     { path: '/student/fees', label: '费用查询', icon: WalletCards },
-    { path: '/student/notice', label: '校园公告', icon: Newspaper },
     { path: '/student/visitor', label: '访客预约', icon: UserRoundCheck },
     { path: '/student/transfer', label: '调宿申请', icon: Repeat2 },
-    { path: '/student/ai', label: 'AI助手', icon: MessageCircle },
-    { path: '/student/settings', label: '账户设置', icon: SlidersHorizontal },
   ]
 }
 
