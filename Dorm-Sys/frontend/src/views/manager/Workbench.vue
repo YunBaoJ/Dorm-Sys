@@ -11,8 +11,7 @@
               <p>今天是 2026年3月27日星期五，目前楼栋运行状态：<span class="text-blue">良好</span></p>
             </div>
             <div class="hero-actions">
-              <el-button type="primary"><el-icon class="el-icon--left"><component :is="Bell" /></el-icon>发布公告</el-button>
-              <el-button type="primary"><el-icon class="el-icon--left"><component :is="Refresh" /></el-icon>刷新数据</el-button>
+              <el-button type="primary" @click="loadData"><el-icon class="el-icon--left"><component :is="Refresh" /></el-icon>刷新数据</el-button>
             </div>
           </div>
         </div>
@@ -25,7 +24,7 @@
                 <div class="stat-icon bg-blue"><el-icon><component :is="User" /></el-icon></div>
                 <div class="stat-info">
                   <div class="stat-label">在住学子</div>
-                  <div class="stat-value">16</div>
+                  <div class="stat-value">{{ residentCount }}</div>
                 </div>
               </div>
               <div class="stat-footer">当前楼栋入住率--</div>
@@ -37,7 +36,7 @@
                 <div class="stat-icon bg-orange"><el-icon><component :is="Settings" /></el-icon></div>
                 <div class="stat-info">
                   <div class="stat-label">待办报修</div>
-                  <div class="stat-value">2</div>
+                  <div class="stat-value">{{ pendingRepairCount }}</div>
                 </div>
               </div>
               <div class="stat-footer stat-action">
@@ -51,7 +50,7 @@
                 <div class="stat-icon bg-blue"><el-icon><component :is="UserCheck" /></el-icon></div>
                 <div class="stat-info">
                   <div class="stat-label">今日访客</div>
-                  <div class="stat-value">0</div>
+                  <div class="stat-value">{{ todayVisitorCount }}</div>
                 </div>
               </div>
               <div class="stat-footer">预计还有 -- 人到达</div>
@@ -109,9 +108,10 @@
                 </div>
               </template>
               <div class="mini-list">
-                <div class="mini-item">
-                  <span>水管</span>
-                  <span class="mini-date">2026-01-05</span>
+                <el-empty v-if="pendingRepairs.length === 0" description="暂无待办" :image-size="60"></el-empty>
+                <div v-for="r in pendingRepairs" :key="r.id" class="mini-item">
+                  <span>{{ r.type || '报修' }}</span>
+                  <span class="mini-date">{{ r.createTime?.substring(0, 10) }}</span>
                 </div>
               </div>
             </el-card>
@@ -218,27 +218,49 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Bell, RefreshCw as Refresh, User, Settings, UserCheck, Clock, ChevronRight, UserPlus, Medal, MessageCircle, Info, AlertCircle } from '@lucide/vue'
+import { getBeds, getRooms } from '../../api/room'
+import { getRepairs } from '../../api/repair'
+import { getVisitorRecords } from '../../api/visitor'
+import { useUserStore } from '../../store/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 const dynamicsView = ref('room')
 
-const rooms = [
-  { number: 101, warning: false },
-  { number: 102, warning: false },
-  { number: 103, warning: true },
-  { number: 104, warning: false },
-  { number: 105, warning: false },
-  { number: 106, warning: false },
-  { number: 107, warning: false },
-  { number: 108, warning: true },
-  { number: 109, warning: false },
-  { number: 110, warning: false },
-  { number: 111, warning: false },
-  { number: 112, warning: false },
-]
+const residentCount = ref(0)
+const pendingRepairCount = ref(0)
+const todayVisitorCount = ref(0)
+const rooms = ref([])
+const pendingRepairs = ref([])
+
+const loadData = async () => {
+  try {
+    const [beds, repairList, visitors, roomList] = await Promise.all([
+      getBeds(), getRepairs(), getVisitorRecords(), getRooms()
+    ])
+    
+    residentCount.value = beds.filter(b => b.status === 'OCCUPIED').length
+    
+    const pendings = repairList.filter(r => r.status === 'PENDING')
+    pendingRepairCount.value = pendings.length
+    pendingRepairs.value = pendings.slice(0, 3) // preview top 3
+    
+    const today = new Date().toDateString()
+    todayVisitorCount.value = visitors.filter(v => new Date(v.createTime).toDateString() === today).length
+    
+    rooms.value = roomList.map(r => ({
+      number: r.roomNumber,
+      warning: false // Simplified: no warning logic for now
+    }))
+  } catch (e) {
+    console.error('Failed to load workbench data', e)
+  }
+}
+
+onMounted(() => loadData())
 </script>
 
 <style scoped>
