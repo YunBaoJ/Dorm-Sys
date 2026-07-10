@@ -1,0 +1,500 @@
+<template>
+  <div class="resources-container">
+    <el-row :gutter="24">
+      <!-- Left Column -->
+      <el-col :span="18">
+        <!-- Hero Header -->
+        <el-card shadow="never" class="hero-card">
+          <div class="hero-content">
+            <div class="hero-text">
+              <el-icon :size="28" color="var(--el-color-primary)"><component :is="Building2" /></el-icon>
+              <div>
+                <h2>楼栋资源管理</h2>
+                <p>资产登记 · 房源动态配置</p>
+              </div>
+            </div>
+            <el-button type="primary"><el-icon class="el-icon--left"><component :is="Plus" /></el-icon>新增宿舍楼栋</el-button>
+          </div>
+        </el-card>
+
+        <!-- Building List Section -->
+        <el-card shadow="never" class="list-card">
+          <div class="list-header">
+            <span class="list-title">楼宇列表</span>
+            <div class="list-actions">
+              <el-input v-model="search" placeholder="搜索楼栋名称" prefix-icon="Search" style="width: 240px" />
+              <el-button icon="Refresh" circle style="margin-left: 12px" />
+            </div>
+          </div>
+
+          <div class="building-list">
+            <div v-for="b in buildings" :key="b.id" class="building-item">
+              <div class="building-icon" :class="b.type === '男生楼' ? 'bg-blue' : 'bg-orange'">
+                <el-icon :size="32"><component :is="Building" /></el-icon>
+                <el-tag size="small" :type="b.type === '男生楼' ? 'primary' : 'warning'" effect="plain" class="type-tag">{{ b.type }}</el-tag>
+              </div>
+              
+              <div class="building-info">
+                <div class="building-main">
+                  <span class="building-name">{{ b.name }}</span>
+                  <span class="building-no">#{{ b.id }}</span>
+                  <el-tag size="small" type="info" effect="plain" round>{{ b.floors }} 层</el-tag>
+                </div>
+                
+                <div class="building-manager">
+                  <el-icon><component :is="UserRound" /></el-icon> 负责人：{{ b.manager }}
+                </div>
+                
+                <div class="building-stats">
+                  <div class="stat-col">
+                    <span class="stat-label">总房间</span>
+                    <span class="stat-val text-dark">{{ b.totalRooms }}</span>
+                  </div>
+                  <div class="stat-col">
+                    <span class="stat-label">已占用</span>
+                    <span class="stat-val text-blue">{{ b.occupiedRooms }}</span>
+                  </div>
+                  <div class="stat-col">
+                    <span class="stat-label">空余</span>
+                    <span class="stat-val text-orange">{{ b.freeRooms }}</span>
+                  </div>
+                </div>
+
+                <div class="building-location">
+                  <el-icon><component :is="MapPin" /></el-icon> {{ b.location }}
+                </div>
+              </div>
+
+              <div class="building-actions">
+                <div class="status-toggle">
+                  <span class="status-label">运营中</span>
+                  <el-switch v-model="b.active" />
+                </div>
+                <div class="btn-group">
+                  <el-button type="primary" link><el-icon class="el-icon--left"><component :is="Edit" /></el-icon>编辑</el-button>
+                  <el-button type="danger" link><el-icon class="el-icon--left"><component :is="Delete" /></el-icon>删除</el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+
+      <!-- Right Column -->
+      <el-col :span="6">
+        <!-- Asset Overview -->
+        <el-card shadow="never" class="side-card">
+          <template #header>
+            <div class="card-header"><span>资产概览</span></div>
+          </template>
+          <div class="asset-list">
+            <div class="asset-item">
+              <div class="asset-icon bg-light-blue"><el-icon><component :is="Building" /></el-icon></div>
+              <div class="asset-info">
+                <div class="asset-label">楼栋总数</div>
+                <div class="asset-value">2 <span>栋</span></div>
+              </div>
+            </div>
+            <div class="asset-item">
+              <div class="asset-icon bg-light-orange"><el-icon><component :is="Home" /></el-icon></div>
+              <div class="asset-info">
+                <div class="asset-label">总床位数</div>
+                <div class="asset-value">4,850 <span>张</span></div>
+              </div>
+            </div>
+            <div class="asset-item">
+              <div class="asset-icon bg-light-cyan"><el-icon><component :is="Clock" /></el-icon></div>
+              <div class="asset-info">
+                <div class="asset-label">平均入住率</div>
+                <div class="asset-value">88.4 <span>%</span></div>
+              </div>
+            </div>
+          </div>
+        </el-card>
+
+        <!-- Resource Allocation Rules -->
+        <el-card shadow="never" class="side-card">
+          <template #header>
+            <div class="card-header"><span>资源分配说明</span></div>
+          </template>
+          <div class="rules-list">
+            <div class="rule-item">
+              <div class="rule-number">1</div>
+              <div class="rule-content">
+                <div class="rule-title">性别隔离原则</div>
+                <div class="rule-desc">宿舍楼栋必须明确性别限制，不可混合入住，系统将强制校验。</div>
+              </div>
+            </div>
+            <div class="rule-item">
+              <div class="rule-number">2</div>
+              <div class="rule-content">
+                <div class="rule-title">宿管员配置</div>
+                <div class="rule-desc">每栋楼须指派至少一名专职宿管员，负责日常考勤与报修初审。</div>
+              </div>
+            </div>
+          </div>
+        </el-card>
+
+        <!-- Maintenance Tips -->
+        <el-card shadow="never" class="side-card bg-light-blue tips-card">
+          <template #header>
+            <div class="card-header">
+              <span>维护贴士</span>
+              <el-icon><component :is="Info" /></el-icon>
+            </div>
+          </template>
+          <ul class="tips-list">
+            <li>寒暑假封楼前，请统一更新楼栋运营状态为"禁用"。</li>
+            <li>新楼启用需先录入楼栋信息，再批量导入房间数据。</li>
+            <li>楼层数修改将影响房间号的自动生成逻辑。</li>
+          </ul>
+        </el-card>
+      </el-col>
+    </el-row>
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+import { Building2, Building, Home, Clock, Info, Search, RefreshCw as Refresh, Plus, MapPin, UserRound, Edit, Delete } from '@lucide/vue'
+
+const search = ref('')
+
+const buildings = ref([
+  {
+    id: '1',
+    name: '明德楼',
+    type: '男生楼',
+    floors: 6,
+    manager: '张宿管',
+    totalRooms: 10,
+    occupiedRooms: 8,
+    freeRooms: 2,
+    location: '校园东区A区',
+    active: true
+  },
+  {
+    id: '2',
+    name: '至善楼',
+    type: '女生楼',
+    floors: 6,
+    manager: '李宿管',
+    totalRooms: 10,
+    occupiedRooms: 8,
+    freeRooms: 2,
+    location: '校园东区B区',
+    active: true
+  }
+])
+</script>
+
+<style scoped>
+.resources-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.hero-card {
+  margin-bottom: 24px;
+  border-radius: 12px;
+}
+
+.hero-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hero-text {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.hero-text h2 {
+  margin: 0 0 4px 0;
+  font-size: 20px;
+  color: #1f2937;
+}
+
+.hero-text p {
+  margin: 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.list-card {
+  min-height: 600px;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.list-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+.list-actions {
+  display: flex;
+  align-items: center;
+}
+
+.building-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.building-item {
+  display: flex;
+  padding: 24px;
+  background-color: #f8fafc;
+  border-radius: 12px;
+  transition: background-color 0.2s;
+}
+
+.building-item:hover {
+  background-color: #f1f5f9;
+}
+
+.building-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.type-tag {
+  position: absolute;
+  bottom: -10px;
+  font-weight: bold;
+}
+
+.bg-blue { background: #eff6ff; color: #3b82f6; border: 1px solid #dbeafe; }
+.bg-orange { background: #fff7ed; color: #f97316; border: 1px solid #ffedd5; }
+
+.building-info {
+  flex: 1;
+  margin-left: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.building-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.building-name {
+  font-size: 18px;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+.building-no {
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+.building-manager {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #64748b;
+  margin-bottom: 16px;
+}
+
+.building-stats {
+  display: flex;
+  gap: 32px;
+  margin-bottom: 16px;
+}
+
+.stat-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.stat-val {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.text-dark { color: #1f2937; }
+.text-blue { color: #3b82f6; }
+.text-orange { color: #f59e0b; }
+
+.building-location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.building-actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.status-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-label {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.btn-group {
+  display: flex;
+  gap: 16px;
+}
+
+.side-card {
+  margin-bottom: 24px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+}
+
+.asset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.asset-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 12px;
+}
+
+.asset-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 24px;
+}
+
+.bg-light-blue { background: #eff6ff; color: #3b82f6; }
+.bg-light-orange { background: #fff7ed; color: #f97316; }
+.bg-light-cyan { background: #ecfeff; color: #06b6d4; }
+
+.asset-info {
+  flex: 1;
+}
+
+.asset-label {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.asset-value {
+  font-size: 20px;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+.asset-value span {
+  font-size: 13px;
+  font-weight: normal;
+  color: #94a3b8;
+}
+
+.rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.rule-item {
+  display: flex;
+  gap: 12px;
+}
+
+.rule-number {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #eff6ff;
+  color: #3b82f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.rule-content {
+  flex: 1;
+}
+
+.rule-title {
+  font-size: 14px;
+  font-weight: bold;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.rule-desc {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.tips-card {
+  background-color: #f0f7ff;
+  border: 1px solid #e0f2fe !important;
+}
+
+.tips-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: #1e293b;
+  line-height: 2;
+}
+
+.tips-list li::marker {
+  color: #3b82f6;
+}
+</style>

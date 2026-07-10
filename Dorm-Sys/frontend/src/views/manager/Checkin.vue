@@ -1,0 +1,370 @@
+<template>
+  <div class="checkin-container">
+    <el-row :gutter="24">
+      <!-- Left Column -->
+      <el-col :span="18">
+        <!-- Hero Header -->
+        <el-card shadow="never" class="hero-card">
+          <div class="hero-content">
+            <div class="hero-text">
+              <el-icon :size="28" color="var(--el-color-primary)"><component :is="User" /></el-icon>
+              <div>
+                <h2>入住管理</h2>
+                <p>规范登记 · 动态流转</p>
+              </div>
+            </div>
+            <el-button type="primary"><el-icon class="el-icon--left"><component :is="Plus" /></el-icon>办理新入住</el-button>
+          </div>
+        </el-card>
+
+        <!-- Resident List Section -->
+        <el-card shadow="never" class="list-card">
+          <div class="list-header">
+            <span class="list-title">在住人员</span>
+            <div class="list-actions">
+              <el-input v-model="search" placeholder="姓名/学号/房间号" prefix-icon="Search" style="width: 240px" />
+              <el-select v-model="statusFilter" style="width: 120px; margin-left: 12px">
+                <el-option label="在住" value="active" />
+                <el-option label="已退宿" value="inactive" />
+              </el-select>
+              <el-button icon="Refresh" circle style="margin-left: 12px" />
+            </div>
+          </div>
+
+          <div class="resident-list">
+            <div v-for="r in residents" :key="r.id" class="resident-item">
+              <el-avatar :size="48" :src="r.avatar">{{ r.name[0] }}</el-avatar>
+              
+              <div class="resident-info">
+                <div class="resident-main">
+                  <span class="resident-name">{{ r.name }}</span>
+                  <span class="resident-id">{{ r.id }}</span>
+                  <el-tag size="small" type="primary" effect="plain" round>{{ r.status }}</el-tag>
+                </div>
+                <div class="resident-meta">
+                  <span class="meta-item"><el-icon><component :is="Home" /></el-icon> {{ r.room }}</span>
+                  <span class="meta-item"><el-icon><component :is="CalendarDays" /></el-icon> 入住: {{ r.date }}</span>
+                </div>
+              </div>
+
+              <div class="resident-actions">
+                <el-button type="danger" link>退宿办理</el-button>
+                <el-button type="primary" link>档案</el-button>
+              </div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+
+      <!-- Right Column -->
+      <el-col :span="6">
+        <!-- Data Dashboard -->
+        <el-card shadow="never" class="side-card">
+          <template #header>
+            <div class="card-header"><span>数据看板</span></div>
+          </template>
+          <div class="dashboard-list">
+            <div class="dash-item">
+              <div class="dash-icon bg-light-blue"><el-icon><component :is="User" /></el-icon></div>
+              <div class="dash-info">
+                <div class="dash-label">累计入住</div>
+                <div class="dash-value">16 <span>人</span></div>
+              </div>
+            </div>
+            <div class="dash-item">
+              <div class="dash-icon bg-light-orange"><el-icon><component :is="Check" /></el-icon></div>
+              <div class="dash-info">
+                <div class="dash-label">当前在住</div>
+                <div class="dash-value">10 <span>人</span></div>
+              </div>
+            </div>
+            <div class="dash-item">
+              <div class="dash-icon bg-gray"><el-icon><component :is="X" /></el-icon></div>
+              <div class="dash-info">
+                <div class="dash-label">已退宿</div>
+                <div class="dash-value">6 <span>人</span></div>
+              </div>
+            </div>
+          </div>
+        </el-card>
+
+        <!-- Building Occupation -->
+        <el-card shadow="never" class="side-card">
+          <template #header>
+            <div class="card-header"><span>楼栋占用情况</span></div>
+          </template>
+          <div class="occupation-list">
+            <div class="occ-item">
+              <div class="occ-head">
+                <span>明德楼</span>
+                <span class="text-blue">92%</span>
+              </div>
+              <el-progress :percentage="92" :show-text="false" color="#3b82f6" />
+            </div>
+            <div class="occ-item">
+              <div class="occ-head">
+                <span>至善楼</span>
+                <span class="text-blue">92%</span>
+              </div>
+              <el-progress :percentage="92" :show-text="false" color="#3b82f6" />
+            </div>
+          </div>
+        </el-card>
+
+        <!-- Notes -->
+        <el-card shadow="never" class="side-card bg-light-blue notes-card">
+          <template #header>
+            <div class="card-header">
+              <span>办理须知</span>
+              <el-icon><component :is="Info" /></el-icon>
+            </div>
+          </template>
+          <ol class="tips-list">
+            <li>入住前需核对学生身份并确认完成注册。</li>
+            <li>床位分配遵循系统规划，严禁私自调换。</li>
+            <li>退宿须实地检查设施及钥匙回收情况。</li>
+          </ol>
+        </el-card>
+      </el-col>
+    </el-row>
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+import { User, Plus, Search, RefreshCw as Refresh, Home, CalendarDays, Check, X, Info } from '@lucide/vue'
+
+const search = ref('')
+const statusFilter = ref('active')
+
+const residents = ref([
+  { id: '2021030004', name: '徐浩', room: '明德楼 · 102 房间 · 2-4号床', date: '09/01', status: '在住', avatar: '' },
+  { id: '2024040004', name: '林雪', room: '至善楼 · 102 房间 · 12-4号床', date: '09/01', status: '在住', avatar: '' },
+  { id: '2021030003', name: '黄鹏', room: '明德楼 · 102 房间 · 2-3号床', date: '09/01', status: '在住', avatar: '' },
+  { id: '2024040003', name: '郭芳', room: '至善楼 · 102 房间 · 12-3号床', date: '09/01', status: '在住', avatar: '' },
+  { id: '2021030002', name: '郑凯', room: '明德楼 · 102 房间 · 2-2号床', date: '09/01', status: '在住', avatar: '' },
+  { id: '2024040002', name: '何娟', room: '至善楼 · 102 房间 · 12-2号床', date: '09/01', status: '在住', avatar: '' },
+  { id: '2021030001', name: '吴刚', room: '明德楼 · 102 房间 · 2-1号床', date: '09/01', status: '在住', avatar: '' },
+])
+</script>
+
+<style scoped>
+.checkin-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.hero-card {
+  margin-bottom: 24px;
+  border-radius: 12px;
+}
+
+.hero-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hero-text {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.hero-text h2 {
+  margin: 0 0 4px 0;
+  font-size: 20px;
+  color: #1f2937;
+}
+
+.hero-text p {
+  margin: 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.list-card {
+  min-height: 600px;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.list-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+.list-actions {
+  display: flex;
+  align-items: center;
+}
+
+.resident-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.resident-item {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  background-color: #f8fafc;
+  border-radius: 12px;
+  transition: background-color 0.2s;
+}
+
+.resident-item:hover {
+  background-color: #f1f5f9;
+}
+
+.resident-info {
+  flex: 1;
+  margin-left: 16px;
+}
+
+.resident-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.resident-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.resident-id {
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+.resident-meta {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.resident-actions {
+  display: flex;
+  gap: 16px;
+}
+
+.side-card {
+  margin-bottom: 24px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+}
+
+.dashboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dash-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 12px;
+}
+
+.dash-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 24px;
+}
+
+.bg-light-blue { background: #eff6ff; color: #3b82f6; }
+.bg-light-orange { background: #fff7ed; color: #f97316; }
+.bg-gray { background: #f1f5f9; color: #94a3b8; }
+
+.dash-info {
+  flex: 1;
+}
+
+.dash-label {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.dash-value {
+  font-size: 20px;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+.dash-value span {
+  font-size: 13px;
+  font-weight: normal;
+  color: #94a3b8;
+}
+
+.occupation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.occ-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.occ-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #334155;
+}
+
+.text-blue { color: #3b82f6; font-weight: bold; }
+
+.notes-card {
+  background-color: #f0f7ff;
+  border: 1px solid #e0f2fe !important;
+}
+
+.tips-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: #1e293b;
+  line-height: 2;
+}
+
+.tips-list li::marker {
+  color: #3b82f6;
+}
+</style>

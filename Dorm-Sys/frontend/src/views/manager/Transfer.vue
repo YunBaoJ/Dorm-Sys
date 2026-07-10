@@ -1,0 +1,507 @@
+<template>
+  <div class="transfer-container">
+    <!-- Hero Header -->
+    <el-card shadow="never" class="hero-card">
+      <div class="hero-content">
+        <div class="hero-text">
+          <el-icon :size="28" color="var(--el-color-primary)"><component :is="Repeat2" /></el-icon>
+          <div>
+            <h2>调宿审批</h2>
+            <p>规范流转 · 动态调整</p>
+          </div>
+        </div>
+        <el-button type="primary"><el-icon class="el-icon--left"><component :is="Refresh" /></el-icon>同步申请单</el-button>
+      </div>
+    </el-card>
+
+    <el-row :gutter="24">
+      <!-- Left Column: Application List -->
+      <el-col :span="18">
+        <el-card shadow="never" class="list-card">
+          <div class="list-header">
+            <div class="header-left">
+              <span class="list-title">待办列表</span>
+              <el-radio-group v-model="statusFilter" size="small" class="status-tabs">
+                <el-radio-button label="all">全部</el-radio-button>
+                <el-radio-button label="pending">待审批</el-radio-button>
+                <el-radio-button label="approved">已通过</el-radio-button>
+              </el-radio-group>
+            </div>
+            <div class="list-actions">
+              <el-tag type="info" effect="plain" class="count-tag">共 2 项</el-tag>
+            </div>
+          </div>
+
+          <div class="transfer-list">
+            <div v-for="app in applications" :key="app.id" class="transfer-item">
+              <div class="item-header">
+                <div class="applicant-info">
+                  <el-avatar :size="32" :src="app.avatar">{{ app.name[0] }}</el-avatar>
+                  <span class="applicant-name">{{ app.name }}</span>
+                  <span class="applicant-id">{{ app.studentId }}</span>
+                </div>
+                <el-tag size="small" :type="app.statusType" effect="plain" round>{{ app.status }}</el-tag>
+              </div>
+
+              <div class="transfer-route-box">
+                <div class="route-point">
+                  <div class="route-label">当前</div>
+                  <div class="route-value">{{ app.current }}</div>
+                </div>
+                <div class="route-arrow">
+                  <el-icon color="#94a3b8"><component :is="ArrowRight" /></el-icon>
+                </div>
+                <div class="route-point">
+                  <div class="route-label">期望</div>
+                  <div class="route-value">{{ app.target }}</div>
+                </div>
+              </div>
+
+              <div class="transfer-details">
+                <div class="detail-row">
+                  <span class="detail-label">申请原因：</span>
+                  <span class="detail-content">{{ app.reason }}</span>
+                </div>
+                <div v-if="app.comment" class="comment-bubble">
+                  <el-icon color="#3b82f6"><component :is="MessageSquare" /></el-icon>
+                  <span>{{ app.comment }}</span>
+                </div>
+              </div>
+
+              <div class="item-footer">
+                <div class="time-info"><el-icon><component :is="Clock" /></el-icon> {{ app.time }}</div>
+                <el-button type="primary" link>查看详情</el-button>
+              </div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+
+      <!-- Right Column: Sidebar -->
+      <el-col :span="6">
+        <!-- Dashboard -->
+        <el-card shadow="never" class="side-card">
+          <template #header>
+            <div class="card-header"><span>申请动态</span></div>
+          </template>
+          <div class="dashboard-list">
+            <div class="dash-item">
+              <div class="dash-icon bg-light-orange"><el-icon color="#f59e0b"><component :is="Timer" /></el-icon></div>
+              <div class="dash-info">
+                <div class="dash-label">等待处理</div>
+                <div class="dash-value">0 <span>单</span></div>
+              </div>
+            </div>
+            <div class="dash-item">
+              <div class="dash-icon bg-light-blue"><el-icon color="#3b82f6"><component :is="CheckCircle2" /></el-icon></div>
+              <div class="dash-info">
+                <div class="dash-label">今日已处理</div>
+                <div class="dash-value">2 <span>单</span></div>
+              </div>
+            </div>
+          </div>
+        </el-card>
+
+        <!-- Process Timeline -->
+        <el-card shadow="never" class="side-card">
+          <template #header>
+            <div class="card-header"><span>调宿办理流程</span></div>
+          </template>
+          <div class="process-steps">
+            <div class="step-item">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <div class="step-title">原因核实</div>
+                <div class="step-desc">确认调宿理由是否符合规定，核实学生近期表现。</div>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <div class="step-title">目标确认</div>
+                <div class="step-desc">检查目标房间是否有空余床位及当前入住学生情况。</div>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <div class="step-title">办理搬离</div>
+                <div class="step-desc">指引学生完成原宿舍卫生清扫及钥匙交接。</div>
+              </div>
+            </div>
+          </div>
+        </el-card>
+
+        <!-- Notes -->
+        <el-card shadow="never" class="side-card bg-light-blue tips-card">
+          <template #header>
+            <div class="card-header">
+              <span>管理备注</span>
+              <el-icon><component :is="Info" /></el-icon>
+            </div>
+          </template>
+          <ul class="tips-list">
+            <li>调宿周期一般为每学期开学两周内。</li>
+            <li>因宿舍矛盾申请者，须先经辅导员调解。</li>
+            <li>调宿完成后，水费、电费须及时清算。</li>
+          </ul>
+        </el-card>
+      </el-col>
+    </el-row>
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+import { Repeat2, RefreshCw as Refresh, ArrowRight, MessageSquare, Clock, Timer, CheckCircle2, Info } from '@lucide/vue'
+
+const statusFilter = ref('all')
+
+const applications = ref([
+  {
+    id: 1,
+    name: '孙娜',
+    studentId: '2023020003',
+    status: '已拒绝',
+    statusType: 'danger',
+    current: '至善楼 101室 11-3号床',
+    target: '-',
+    reason: '希望换到有空调的房间',
+    comment: '目前所有宿舍均已配备空调，不符合调宿条件',
+    time: '2026-01-02T09:00:00',
+    avatar: ''
+  },
+  {
+    id: 2,
+    name: '王芳',
+    studentId: '2022010003',
+    status: '已通过',
+    statusType: 'primary',
+    current: '明德楼 101室 1-3号床',
+    target: '明德楼 103室 3-1号床',
+    reason: '与室友作息时间差异大，影响休息',
+    comment: '同意调宿，请在本周内完成搬迁',
+    time: '2025-12-20T10:00:00',
+    avatar: ''
+  }
+])
+</script>
+
+<style scoped>
+.transfer-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.hero-card {
+  margin-bottom: 24px;
+  border-radius: 12px;
+}
+
+.hero-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hero-text {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.hero-text h2 {
+  margin: 0 0 4px 0;
+  font-size: 20px;
+  color: #1f2937;
+}
+
+.hero-text p {
+  margin: 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.list-card {
+  min-height: 600px;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.list-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+.count-tag {
+  background: white;
+}
+
+.transfer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.transfer-item {
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  padding: 24px;
+  transition: box-shadow 0.2s;
+}
+
+.transfer-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.applicant-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.applicant-name {
+  font-size: 16px;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+.applicant-id {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.transfer-route-box {
+  background-color: #f8fafc;
+  border-radius: 8px;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.route-point {
+  flex: 1;
+}
+
+.route-label {
+  font-size: 13px;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+.route-value {
+  font-size: 15px;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+.route-arrow {
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+}
+
+.transfer-details {
+  margin-bottom: 20px;
+}
+
+.detail-row {
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.detail-label {
+  color: #64748b;
+}
+
+.detail-content {
+  color: #334155;
+}
+
+.comment-bubble {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #eff6ff;
+  color: #3b82f6;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.item-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.time-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.side-card {
+  margin-bottom: 24px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+}
+
+.dashboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dash-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 12px;
+}
+
+.dash-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 20px;
+}
+
+.bg-light-blue { background: #eff6ff; }
+.bg-light-orange { background: #fff7ed; }
+
+.dash-info {
+  flex: 1;
+}
+
+.dash-label {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.dash-value {
+  font-size: 20px;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+.dash-value span {
+  font-size: 13px;
+  font-weight: normal;
+  color: #94a3b8;
+}
+
+.process-steps {
+  position: relative;
+  padding-left: 12px;
+}
+
+.process-steps::before {
+  content: '';
+  position: absolute;
+  top: 16px;
+  bottom: 16px;
+  left: 23px;
+  width: 2px;
+  background: #f1f5f9;
+}
+
+.step-item {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.step-item:last-child {
+  margin-bottom: 0;
+}
+
+.step-num {
+  position: relative;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #eff6ff;
+  color: #3b82f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.step-content {
+  flex: 1;
+  padding-top: 2px;
+}
+
+.step-title {
+  font-size: 14px;
+  font-weight: bold;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.step-desc {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.tips-card {
+  background-color: #f0f7ff;
+  border: 1px solid #e0f2fe !important;
+}
+
+.tips-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: #1e293b;
+  line-height: 2;
+}
+
+.tips-list li::marker {
+  color: #3b82f6;
+}
+</style>
