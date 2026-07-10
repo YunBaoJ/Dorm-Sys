@@ -10,7 +10,7 @@
             <p>规范流转 · 动态调整</p>
           </div>
         </div>
-        <el-button type="primary"><el-icon class="el-icon--left"><component :is="Refresh" /></el-icon>同步申请单</el-button>
+        <el-button type="primary" @click="fetchTransfers"><el-icon class="el-icon--left"><component :is="Refresh" /></el-icon>同步申请单</el-button>
       </div>
     </el-card>
 
@@ -32,15 +32,15 @@
             </div>
           </div>
 
-          <div class="transfer-list">
+          <div class="transfer-list" v-loading="loading">
             <div v-for="app in applications" :key="app.id" class="transfer-item">
               <div class="item-header">
                 <div class="applicant-info">
-                  <el-avatar :size="32" :src="app.avatar">{{ app.name[0] }}</el-avatar>
+                  <el-avatar :size="32" :src="app.avatar">{{ app.name?.[0] }}</el-avatar>
                   <span class="applicant-name">{{ app.name }}</span>
                   <span class="applicant-id">{{ app.studentId }}</span>
                 </div>
-                <el-tag size="small" :type="app.statusType" effect="plain" round>{{ app.status }}</el-tag>
+                <el-tag size="small" :type="app.statusType" effect="plain" round>{{ app.statusLabel }}</el-tag>
               </div>
 
               <div class="transfer-route-box">
@@ -70,7 +70,10 @@
 
               <div class="item-footer">
                 <div class="time-info"><el-icon><component :is="Clock" /></el-icon> {{ app.time }}</div>
-                <el-button type="primary" link>查看详情</el-button>
+                <div v-if="app.status === 'PENDING'">
+                  <el-button type="primary" size="small" @click="handleApprove(app)">批准</el-button>
+                  <el-button type="danger" size="small" @click="handleReject(app)">驳回</el-button>
+                </div>
               </div>
             </div>
           </div>
@@ -89,14 +92,14 @@
               <div class="dash-icon bg-light-orange"><el-icon color="#f59e0b"><component :is="Timer" /></el-icon></div>
               <div class="dash-info">
                 <div class="dash-label">等待处理</div>
-                <div class="dash-value">0 <span>单</span></div>
+                <div class="dash-value">{{ pendingCount }} <span>单</span></div>
               </div>
             </div>
             <div class="dash-item">
               <div class="dash-icon bg-light-blue"><el-icon color="#3b82f6"><component :is="CheckCircle2" /></el-icon></div>
               <div class="dash-info">
-                <div class="dash-label">今日已处理</div>
-                <div class="dash-value">2 <span>单</span></div>
+                <div class="dash-label">已处理</div>
+                <div class="dash-value">{{ processedCount }} <span>单</span></div>
               </div>
             </div>
           </div>
@@ -152,39 +155,60 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Repeat2, RefreshCw as Refresh, ArrowRight, MessageSquare, Clock, Timer, CheckCircle2, Info } from '@lucide/vue'
+import { getTransfers, saveTransfer } from '../../api/transfer'
+import { ElMessage } from 'element-plus'
 
 const statusFilter = ref('all')
+const applications = ref([])
+const loading = ref(false)
 
-const applications = ref([
-  {
-    id: 1,
-    name: '孙娜',
-    studentId: '2023020003',
-    status: '已拒绝',
-    statusType: 'danger',
-    current: '至善楼 101室 11-3号床',
-    target: '-',
-    reason: '希望换到有空调的房间',
-    comment: '目前所有宿舍均已配备空调，不符合调宿条件',
-    time: '2026-01-02T09:00:00',
-    avatar: ''
-  },
-  {
-    id: 2,
-    name: '王芳',
-    studentId: '2022010003',
-    status: '已通过',
-    statusType: 'primary',
-    current: '明德楼 101室 1-3号床',
-    target: '明德楼 103室 3-1号床',
-    reason: '与室友作息时间差异大，影响休息',
-    comment: '同意调宿，请在本周内完成搬迁',
-    time: '2025-12-20T10:00:00',
-    avatar: ''
+const statusMap = { 'PENDING': '待审批', 'APPROVED': '已通过', 'REJECTED': '已拒绝' }
+const statusTypeMap = { 'PENDING': 'warning', 'APPROVED': 'primary', 'REJECTED': 'danger' }
+
+const fetchTransfers = async () => {
+  loading.value = true
+  try {
+    const statusParam = statusFilter.value === 'all' ? '' : statusFilter.value.toUpperCase()
+    const res = await getTransfers(null, statusParam)
+    applications.value = ((Array.isArray(res) ? res : res.data) || []).map(a => ({
+      ...a,
+      name: a.studentName || '未知',
+      current: a.currentBedName || '未知',
+      target: a.targetRoomName || '由宿管分配',
+      statusLabel: statusMap[a.status] || a.status,
+      statusType: statusTypeMap[a.status] || 'info',
+      time: a.createTime ? a.createTime.replace('T', ' ').substring(0, 16) : '',
+      avatar: ''
+    }))
+  } catch (e) {
+    ElMessage.error('获取调宿申请列表失败')
+  } finally {
+    loading.value = false
   }
-])
+}
+
+onMounted(() => fetchTransfers())
+
+const handleApprove = async (app) => {
+  try {
+    await saveTransfer({ ...app, status: 'APPROVED' })
+    ElMessage.success('已批准')
+    fetchTransfers()
+  } catch (e) { ElMessage.error('操作失败') }
+}
+
+const handleReject = async (app) => {
+  try {
+    await saveTransfer({ ...app, status: 'REJECTED' })
+    ElMessage.success('已驳回')
+    fetchTransfers()
+  } catch (e) { ElMessage.error('操作失败') }
+}
+
+const pendingCount = computed(() => applications.value.filter(a => a.status === 'PENDING').length)
+const processedCount = computed(() => applications.value.filter(a => a.status !== 'PENDING').length)
 </script>
 
 <style scoped>

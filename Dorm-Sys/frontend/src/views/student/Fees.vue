@@ -154,19 +154,42 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { WalletCards, Plus, BadgeCheck, Wallet, MousePointerClick, Info } from '@lucide/vue'
 import { ElMessage } from 'element-plus'
+import { getFeeBills } from '../../api/fee'
+import { getBeds } from '../../api/room'
+import { useUserStore } from '../../store/user'
 
-const bills = [
-  { id: 1, period: "2025-12", type: "电费", amount: 92.30, status: "unpaid", payTime: null },
-  { id: 2, period: "2025-12", type: "水费", amount: 28.50, status: "unpaid", payTime: null },
-  { id: 3, period: "2025-11", type: "电费", amount: 85.50, status: "paid", payTime: "2025-12-01 10:23:11" },
-  { id: 4, period: "2025-11", type: "水费", amount: 25.00, status: "paid", payTime: "2025-12-01 10:23:45" },
-  { id: 5, period: "2025-10", type: "电费", amount: 78.20, status: "paid", payTime: "2025-11-02 09:12:00" },
-]
+const userStore = useUserStore()
+const bills = ref([])
 
-const unpaidBills = computed(() => bills.filter(b => b.status === "unpaid"))
+const fetchFees = async () => {
+  try {
+    const me = userStore.userInfo || {}
+    const bedsRes = await getBeds()
+    const beds = Array.isArray(bedsRes) ? bedsRes : (bedsRes.data || [])
+    const myBed = beds.find(b => b.studentId === me.id)
+    
+    if (myBed) {
+      const res = await getFeeBills(myBed.roomId)
+      bills.value = (Array.isArray(res) ? res : (res.data || [])).map(b => ({
+        ...b,
+        period: b.month,
+        type: b.type === 'WATER' ? '水费' : b.type === 'ELECTRICITY' ? '电费' : b.type,
+        amount: b.amount || 0,
+        status: b.status === 'UNPAID' ? 'unpaid' : 'paid',
+        payTime: b.status === 'PAID' ? b.updateTime?.replace('T', ' ')?.substring(0, 16) : null
+      }))
+    }
+  } catch (e) {
+    ElMessage.error('获取账单失败')
+  }
+}
+
+onMounted(() => fetchFees())
+
+const unpaidBills = computed(() => bills.value.filter(b => b.status === "unpaid"))
 const unpaidTotal = computed(() => unpaidBills.value.reduce((sum, b) => sum + b.amount, 0))
 </script>
 

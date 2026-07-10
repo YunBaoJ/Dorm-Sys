@@ -24,14 +24,14 @@
               <div class="tile-icon"><el-icon :size="22"><component :is="Home" /></el-icon></div>
               <div>
                 <span class="muted" style="font-size:13px">楼栋房间</span>
-                <span class="num" style="font-size:18px">明德楼 101</span>
+                <span class="num" style="font-size:18px">{{ myBuilding ? myBuilding.name : '未知' }} {{ myRoom ? myRoom.roomNumber : '未知' }}</span>
               </div>
             </div>
             <div class="stat">
               <div class="tile-icon"><el-icon :size="22"><component :is="BedDouble" /></el-icon></div>
               <div>
                 <span class="muted" style="font-size:13px">床位</span>
-                <span class="num" style="font-size:18px">1号床</span>
+                <span class="num" style="font-size:18px">{{ myBed ? myBed.bedNumber : '-' }}号床</span>
               </div>
             </div>
             <div class="stat">
@@ -56,31 +56,30 @@
           <div class="card-head"><h2>室友信息</h2></div>
           <div class="card-body list">
             <div class="row">
-              <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(145deg, #334155, #94a3b8); display: grid; place-items: center; color: white; font-size: 18px; font-weight: bold;">张</div>
+              <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(145deg, #334155, #94a3b8); display: grid; place-items: center; color: white; font-size: 18px; font-weight: bold;">{{ userStore.userInfo?.name?.[0] || '我' }}</div>
               <div class="row-main">
                 <div class="row-title">
-                  <span style="font-size:16px">张伟</span>
+                  <span style="font-size:16px">{{ userStore.userInfo?.name || '我' }}</span>
                   <span class="tag info">自己</span>
                 </div>
                 <div class="row-meta">
-                  <span>学号：2022010001</span>
-                  <span>计科2201</span>
-                  <span>1号床</span>
+                  <span>学号：{{ userStore.userInfo?.username || '-' }}</span>
+                  <span></span>
+                  <span>{{ myBed ? myBed.bedNumber : '-' }}号床</span>
                 </div>
               </div>
               <button class="ghost-btn">编辑</button>
             </div>
             <div class="row" v-for="(rm, i) in roommates" :key="i">
-              <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--muted-2); display: grid; place-items: center; font-weight: bold; color: var(--text-secondary); font-size: 18px;">{{ rm.name[0] }}</div>
+              <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--muted-2); display: grid; place-items: center; font-weight: bold; color: var(--text-secondary); font-size: 18px;">{{ rm.name?.[0] || '?' }}</div>
               <div class="row-main">
                 <div class="row-title">
                   <span style="font-size:16px">{{ rm.name }}</span>
-                  <span v-if="rm.role === 'dormhead'" class="tag warn">宿舍长</span>
                 </div>
                 <div class="row-meta">
                   <span>学号：{{ rm.sno }}</span>
-                  <span>计科2201</span>
-                  <span>{{ i + 2 }}号床</span>
+                  <span></span>
+                  <span>{{ rm.bedNumber }}号床</span>
                 </div>
               </div>
               <button class="ghost-btn">联系</button>
@@ -130,7 +129,7 @@
               <el-icon :size="24" color="var(--primary)"><component :is="Users" /></el-icon>
               <div>
                 <span class="muted" style="font-size:13px">当前人数</span>
-                <strong>4 人</strong>
+                <strong>{{ roommates.length + (myBed ? 1 : 0) }} 人</strong>
               </div>
             </div>
             <div class="side-stat">
@@ -185,16 +184,63 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   Home, BedDouble, Calendar, Medal,
   Zap, Wifi, Lightbulb, Users, WalletCards, Settings, Trophy, UserRoundCheck, Phone
 } from '@lucide/vue'
+import { getRooms, getBeds } from '../../api/room'
+import { getUsers } from '../../api/user'
+import { getBuildings } from '../../api/building'
+import { useUserStore } from '../../store/user'
 
 const router = useRouter()
-const roommates = [
-  { name: '李明', sno: '2022010002', role: 'dormhead' },
-  { name: '王芳', sno: '2022010003', role: 'member' },
-  { name: '刘洋', sno: '2022010004', role: 'member' }
-]
+const userStore = useUserStore()
+
+const myRoom = ref(null)
+const myBed = ref(null)
+const myBuilding = ref(null)
+const roommates = ref([])
+
+const fetchDormInfo = async () => {
+  try {
+    const [bedsRes, usersRes, roomsRes, buildingsRes] = await Promise.all([
+      getBeds(), getUsers(), getRooms(), getBuildings()
+    ])
+    const beds = Array.isArray(bedsRes) ? bedsRes : (bedsRes.data || [])
+    const users = Array.isArray(usersRes) ? usersRes : (usersRes.data || [])
+    const rooms = Array.isArray(roomsRes) ? roomsRes : (roomsRes.data || [])
+    const buildings = Array.isArray(buildingsRes) ? buildingsRes : (buildingsRes.data || [])
+
+    const me = userStore.userInfo || {}
+    const myBedInfo = beds.find(b => b.studentId === me.id)
+    if (!myBedInfo) return // No bed assigned
+    
+    myBed.value = myBedInfo
+    const roomInfo = rooms.find(r => r.id === myBedInfo.roomId)
+    if (roomInfo) {
+      myRoom.value = roomInfo
+      myBuilding.value = buildings.find(b => b.id === roomInfo.buildingId)
+      
+      // Find roommates
+      const roomBeds = beds.filter(b => b.roomId === roomInfo.id && b.studentId && b.studentId !== me.id)
+      const userMap = Object.fromEntries(users.map(u => [u.id, u]))
+      
+      roommates.value = roomBeds.map(b => {
+        const u = userMap[b.studentId] || {}
+        return {
+          name: u.name || '未知',
+          sno: u.username || '',
+          bedNumber: b.bedNumber,
+          role: 'member'
+        }
+      })
+    }
+  } catch (e) {
+    console.error('Failed to fetch dorm info', e)
+  }
+}
+
+onMounted(() => fetchDormInfo())
 </script>

@@ -13,7 +13,7 @@
                 <p>高效派工 · 极速维护</p>
               </div>
             </div>
-            <el-button type="primary"><el-icon class="el-icon--left"><component :is="Refresh" /></el-icon>同步最新工单</el-button>
+            <el-button type="primary" @click="fetchTickets"><el-icon class="el-icon--left"><component :is="Refresh" /></el-icon>同步最新工单</el-button>
           </div>
         </el-card>
 
@@ -34,7 +34,7 @@
             </div>
           </div>
 
-          <div class="ticket-list">
+          <div class="ticket-list" v-loading="loading">
             <div v-for="t in tickets" :key="t.id" class="ticket-item">
               <div class="ticket-icon bg-blue">
                 {{ t.categoryIcon }}
@@ -44,7 +44,7 @@
                 <div class="ticket-main">
                   <span class="ticket-room">{{ t.room }}</span>
                   <span class="ticket-category">{{ t.category }}</span>
-                  <el-tag size="small" :type="t.statusType" effect="plain" round>{{ t.status }}</el-tag>
+                  <el-tag size="small" :type="t.statusType" effect="plain" round>{{ t.statusLabel }}</el-tag>
                 </div>
                 <div class="ticket-desc">{{ t.description }}</div>
                 <div class="ticket-meta">
@@ -54,9 +54,8 @@
               </div>
 
               <div class="ticket-actions">
-                <el-button v-if="t.status === '待处理'" type="primary">接单派工</el-button>
-                <el-button v-if="t.status === '处理中'" type="primary">确认完工</el-button>
-                <el-button type="primary" link>查看详情</el-button>
+                <el-button v-if="t.status === 'PENDING'" type="primary" @click="handleAccept(t)">接单派工</el-button>
+                <el-button v-if="t.status === 'PROCESSING'" type="primary" @click="handleComplete(t)">确认完工</el-button>
               </div>
             </div>
           </div>
@@ -80,21 +79,21 @@
               <div class="dash-icon bg-light-orange"><el-icon><component :is="Clock" /></el-icon></div>
               <div class="dash-info">
                 <div class="dash-label">待处理工单</div>
-                <div class="dash-value">1 <span>单</span></div>
+                <div class="dash-value">{{ pendingCount }} <span>单</span></div>
               </div>
             </div>
             <div class="dash-item">
               <div class="dash-icon bg-light-blue"><el-icon><component :is="Wrench" /></el-icon></div>
               <div class="dash-info">
                 <div class="dash-label">维修进行中</div>
-                <div class="dash-value">1 <span>单</span></div>
+                <div class="dash-value">{{ processingCount }} <span>单</span></div>
               </div>
             </div>
             <div class="dash-item">
               <div class="dash-icon bg-gray"><el-icon><component :is="Check" /></el-icon></div>
               <div class="dash-info">
                 <div class="dash-label">已修复结办</div>
-                <div class="dash-value">2 <span>单</span></div>
+                <div class="dash-value">{{ completedCount }} <span>单</span></div>
               </div>
             </div>
           </div>
@@ -159,18 +158,63 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Settings, RefreshCw as Refresh, Search, User, Clock, Wrench, Check, Phone } from '@lucide/vue'
+import { getRepairs, saveRepair } from '../../api/repair'
+import { ElMessage } from 'element-plus'
 
 const search = ref('')
 const statusFilter = ref('all')
+const tickets = ref([])
+const loading = ref(false)
 
-const tickets = ref([
-  { id: 1, categoryIcon: '水', room: '至善楼 · 101', category: '水管', status: '待处理', statusType: 'warning', description: '卫生间水龙头漏水', reporter: '陈欣', time: '2026/01/05 09:00' },
-  { id: 2, categoryIcon: '网', room: '明德楼 · 101', category: '网络', status: '处理中', statusType: 'primary', description: '网络信号时断时续，无法正常上网', reporter: '李明', time: '2025/12/10 14:30' },
-  { id: 3, categoryIcon: '电', room: '明德楼 · 101', category: '电器', status: '已完成', statusType: 'info', description: '空调不制冷，开机后只有风扇转动', reporter: '张伟', time: '2025/12/01 10:00' },
-  { id: 4, categoryIcon: '门', room: '明德楼 · 102', category: '门窗', status: '已完成', statusType: 'info', description: '窗户关不严，有风漏进来', reporter: '吴刚', time: '2025/11/20 11:00' },
-])
+const statusMap = { 'PENDING': '待处理', 'PROCESSING': '处理中', 'COMPLETED': '已完成' }
+const statusTypeMap = { 'PENDING': 'warning', 'PROCESSING': 'primary', 'COMPLETED': 'info' }
+const iconMap = { '水管': '水', '电器': '电', '门窗': '门', '网络': '网' }
+
+const fetchTickets = async () => {
+  loading.value = true
+  try {
+    const statusParam = statusFilter.value === 'all' ? '' : statusFilter.value.toUpperCase()
+    const res = await getRepairs(null, statusParam)
+    tickets.value = ((Array.isArray(res) ? res : res.data) || []).map(t => ({
+      ...t,
+      categoryIcon: iconMap[t.type] || '修',
+      category: t.type,
+      room: t.roomName || '未知房间',
+      reporter: t.submitterName || '未知',
+      statusLabel: statusMap[t.status] || t.status,
+      statusType: statusTypeMap[t.status] || 'info',
+      time: t.createTime ? t.createTime.replace('T', ' ').substring(0, 16) : ''
+    }))
+  } catch (e) {
+    ElMessage.error('获取工单列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => fetchTickets())
+
+const handleAccept = async (t) => {
+  try {
+    await saveRepair({ id: t.id, submitterId: t.submitterId, roomId: t.roomId, type: t.type, description: t.description, status: 'PROCESSING' })
+    ElMessage.success('已接单')
+    fetchTickets()
+  } catch (e) { ElMessage.error('操作失败') }
+}
+
+const handleComplete = async (t) => {
+  try {
+    await saveRepair({ id: t.id, submitterId: t.submitterId, roomId: t.roomId, type: t.type, description: t.description, status: 'COMPLETED' })
+    ElMessage.success('已标记完工')
+    fetchTickets()
+  } catch (e) { ElMessage.error('操作失败') }
+}
+
+const pendingCount = computed(() => tickets.value.filter(t => t.status === 'PENDING').length)
+const processingCount = computed(() => tickets.value.filter(t => t.status === 'PROCESSING').length)
+const completedCount = computed(() => tickets.value.filter(t => t.status === 'COMPLETED').length)
 </script>
 
 <style scoped>

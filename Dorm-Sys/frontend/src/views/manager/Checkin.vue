@@ -31,9 +31,9 @@
             </div>
           </div>
 
-          <div class="resident-list">
+          <div class="resident-list" v-loading="loading">
             <div v-for="r in residents" :key="r.id" class="resident-item">
-              <el-avatar :size="48" :src="r.avatar">{{ r.name[0] }}</el-avatar>
+              <el-avatar :size="48" :src="r.avatar">{{ r.name?.[0] }}</el-avatar>
               
               <div class="resident-info">
                 <div class="resident-main">
@@ -48,8 +48,7 @@
               </div>
 
               <div class="resident-actions">
-                <el-button type="danger" link>退宿办理</el-button>
-                <el-button type="primary" link>档案</el-button>
+                <el-button type="danger" link @click="handleCheckout(r)">退宿办理</el-button>
               </div>
             </div>
           </div>
@@ -131,21 +130,68 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { User, Plus, Search, RefreshCw as Refresh, Home, CalendarDays, Check, X, Info } from '@lucide/vue'
+import { getBeds, saveBed } from '../../api/room'
+import { getUsers } from '../../api/user'
+import { getBuildings } from '../../api/building'
+import { getRooms } from '../../api/room'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const search = ref('')
 const statusFilter = ref('active')
+const residents = ref([])
+const loading = ref(false)
 
-const residents = ref([
-  { id: '2021030004', name: '徐浩', room: '明德楼 · 102 房间 · 2-4号床', date: '09/01', status: '在住', avatar: '' },
-  { id: '2024040004', name: '林雪', room: '至善楼 · 102 房间 · 12-4号床', date: '09/01', status: '在住', avatar: '' },
-  { id: '2021030003', name: '黄鹏', room: '明德楼 · 102 房间 · 2-3号床', date: '09/01', status: '在住', avatar: '' },
-  { id: '2024040003', name: '郭芳', room: '至善楼 · 102 房间 · 12-3号床', date: '09/01', status: '在住', avatar: '' },
-  { id: '2021030002', name: '郑凯', room: '明德楼 · 102 房间 · 2-2号床', date: '09/01', status: '在住', avatar: '' },
-  { id: '2024040002', name: '何娟', room: '至善楼 · 102 房间 · 12-2号床', date: '09/01', status: '在住', avatar: '' },
-  { id: '2021030001', name: '吴刚', room: '明德楼 · 102 房间 · 2-1号床', date: '09/01', status: '在住', avatar: '' },
-])
+const fetchResidents = async () => {
+  loading.value = true
+  try {
+    const [bedsRes, usersRes, roomsRes, buildingsRes] = await Promise.all([
+      getBeds(), getUsers(), getRooms(), getBuildings()
+    ])
+    const beds = (Array.isArray(bedsRes) ? bedsRes : bedsRes.data) || []
+    const users = (Array.isArray(usersRes) ? usersRes : usersRes.data) || []
+    const rooms = (Array.isArray(roomsRes) ? roomsRes : roomsRes.data) || []
+    const buildings = (Array.isArray(buildingsRes) ? buildingsRes : buildingsRes.data) || []
+    
+    const userMap = Object.fromEntries(users.map(u => [u.id, u]))
+    const roomMap = Object.fromEntries(rooms.map(r => [r.id, r]))
+    const buildingMap = Object.fromEntries(buildings.map(b => [b.id, b.name]))
+    
+    const occupiedBeds = beds.filter(b => b.studentId && b.status === 'OCCUPIED')
+    residents.value = occupiedBeds.map(bed => {
+      const student = userMap[bed.studentId] || {}
+      const room = roomMap[bed.roomId] || {}
+      const bName = buildingMap[room.buildingId] || ''
+      return {
+        id: student.username || student.id,
+        name: student.name || '未知',
+        room: `${bName} · ${room.roomNumber || '?'} · ${bed.bedNumber}`,
+        date: bed.createTime ? bed.createTime.substring(5, 10) : '09/01',
+        status: '在住',
+        avatar: student.avatar || '',
+        bedId: bed.id
+      }
+    })
+  } catch (e) {
+    ElMessage.error('获取住宿信息失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => fetchResidents())
+
+const handleCheckout = async (r) => {
+  try {
+    await ElMessageBox.confirm(`确定要为 ${r.name} 办理退宿吗？`, '退宿确认', { type: 'warning' })
+    await saveBed({ id: r.bedId, status: 'EMPTY', studentId: null })
+    ElMessage.success('退宿办理成功')
+    fetchResidents()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('退宿操作失败')
+  }
+}
 </script>
 
 <style scoped>

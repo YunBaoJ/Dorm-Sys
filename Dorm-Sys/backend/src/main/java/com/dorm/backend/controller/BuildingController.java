@@ -1,5 +1,6 @@
 package com.dorm.backend.controller;
 
+import com.dorm.backend.common.Result;
 import com.dorm.backend.entity.Building;
 import com.dorm.backend.service.BuildingService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,22 +15,22 @@ public class BuildingController {
     private BuildingService buildingService;
 
     @GetMapping("/list")
-    public List<Building> list() {
-        return buildingService.list();
+    public Result<List<Building>> list() {
+        return Result.success(buildingService.list());
     }
 
     @GetMapping("/{id}")
-    public Building getById(@PathVariable Long id) {
-        return buildingService.getById(id);
+    public Result<Building> getById(@PathVariable Long id) {
+        return Result.success(buildingService.getById(id));
     }
 
     @PostMapping("/save")
-    public boolean save(@RequestBody Building building) {
-        return buildingService.saveOrUpdate(building);
+    public Result<Boolean> save(@RequestBody Building building) {
+        return Result.success(buildingService.saveOrUpdate(building));
     }
 
     @DeleteMapping("/{id}")
-    public boolean delete(@PathVariable Long id) {
-        return buildingService.removeById(id);
+    public Result<Boolean> delete(@PathVariable Long id) {
+        return Result.success(buildingService.removeById(id));
     }
 }
