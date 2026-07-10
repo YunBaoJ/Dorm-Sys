@@ -49,7 +49,7 @@
                   <div class="route-value">{{ app.current }}</div>
                 </div>
                 <div class="route-arrow">
-                  <el-icon color="#94a3b8"><component :is="ArrowRight" /></el-icon>
+                  <el-icon color="var(--sub)"><component :is="ArrowRight" /></el-icon>
                 </div>
                 <div class="route-point">
                   <div class="route-label">期望</div>
@@ -213,13 +213,13 @@ const applications = ref([
 .hero-text h2 {
   margin: 0 0 4px 0;
   font-size: 20px;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .hero-text p {
   margin: 0;
   font-size: 14px;
-  color: #64748b;
+  color: var(--sub);
 }
 
 .list-card {
@@ -232,7 +232,7 @@ const applications = ref([
   align-items: center;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--line);
 }
 
 .header-left {
@@ -244,11 +244,11 @@ const applications = ref([
 .list-title {
   font-size: 16px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .count-tag {
-  background: white;
+  background: var(--surface);
 }
 
 .transfer-list {
@@ -258,7 +258,7 @@ const applications = ref([
 }
 
 .transfer-item {
-  border: 1px solid #f1f5f9;
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 24px;
   transition: box-shadow 0.2s;
@@ -284,16 +284,16 @@ const applications = ref([
 .applicant-name {
   font-size: 16px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .applicant-id {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .transfer-route-box {
-  background-color: #f8fafc;
+  background-color: var(--bg);
   border-radius: 8px;
   padding: 20px 24px;
   display: flex;
@@ -307,14 +307,14 @@ const applications = ref([
 
 .route-label {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--sub);
   margin-bottom: 4px;
 }
 
 .route-value {
   font-size: 15px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .route-arrow {
@@ -333,18 +333,18 @@ const applications = ref([
 }
 
 .detail-label {
-  color: #64748b;
+  color: var(--sub);
 }
 
 .detail-content {
-  color: #334155;
+  color: var(--text-secondary);
 }
 
 .comment-bubble {
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: #eff6ff;
+  background-color: var(--primary-2);
   color: #3b82f6;
   padding: 12px 16px;
   border-radius: 8px;
@@ -356,7 +356,7 @@ const applications = ref([
   justify-content: space-between;
   align-items: center;
   padding-top: 16px;
-  border-top: 1px dashed #e2e8f0;
+  border-top: 1px dashed var(--line);
 }
 
 .time-info {
@@ -364,7 +364,7 @@ const applications = ref([
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .side-card {
@@ -389,7 +389,7 @@ const applications = ref([
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: #f8fafc;
+  background: var(--bg);
   border-radius: 12px;
 }
 
@@ -403,8 +403,8 @@ const applications = ref([
   font-size: 20px;
 }
 
-.bg-light-blue { background: #eff6ff; }
-.bg-light-orange { background: #fff7ed; }
+.bg-light-blue { background: var(--primary-2); }
+.bg-light-orange { background: var(--orange-2); }
 
 .dash-info {
   flex: 1;
@@ -412,20 +412,20 @@ const applications = ref([
 
 .dash-label {
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
   margin-bottom: 4px;
 }
 
 .dash-value {
   font-size: 20px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .dash-value span {
   font-size: 13px;
   font-weight: normal;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .process-steps {
@@ -440,7 +440,7 @@ const applications = ref([
   bottom: 16px;
   left: 23px;
   width: 2px;
-  background: #f1f5f9;
+  background: var(--line);
 }
 
 .step-item {
@@ -460,7 +460,7 @@ const applications = ref([
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #eff6ff;
+  background: var(--primary-2);
   color: #3b82f6;
   display: flex;
   align-items: center;
@@ -478,26 +478,26 @@ const applications = ref([
 .step-title {
   font-size: 14px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
   margin-bottom: 4px;
 }
 
 .step-desc {
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
   line-height: 1.5;
 }
 
 .tips-card {
-  background-color: #f0f7ff;
-  border: 1px solid #e0f2fe !important;
+  background-color: var(--primary-2);
+  border: 1px solid var(--primary-2) !important;
 }
 
 .tips-list {
   margin: 0;
   padding-left: 20px;
   font-size: 13px;
-  color: #1e293b;
+  color: var(--text);
   line-height: 2;
 }
 

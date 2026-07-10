@@ -214,13 +214,13 @@ const buildings = ref([
 .hero-text h2 {
   margin: 0 0 4px 0;
   font-size: 20px;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .hero-text p {
   margin: 0;
   font-size: 14px;
-  color: #64748b;
+  color: var(--sub);
 }
 
 .list-card {
@@ -233,13 +233,13 @@ const buildings = ref([
   align-items: center;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--line);
 }
 
 .list-title {
   font-size: 16px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .list-actions {
@@ -256,13 +256,13 @@ const buildings = ref([
 .building-item {
   display: flex;
   padding: 24px;
-  background-color: #f8fafc;
+  background-color: var(--bg);
   border-radius: 12px;
   transition: background-color 0.2s;
 }
 
 .building-item:hover {
-  background-color: #f1f5f9;
+  background-color: var(--line);
 }
 
 .building-icon {
@@ -282,8 +282,8 @@ const buildings = ref([
   font-weight: bold;
 }
 
-.bg-blue { background: #eff6ff; color: #3b82f6; border: 1px solid #dbeafe; }
-.bg-orange { background: #fff7ed; color: #f97316; border: 1px solid #ffedd5; }
+.bg-blue { background: var(--primary-2); color: #3b82f6; border: 1px solid #dbeafe; }
+.bg-orange { background: var(--orange-2); color: #f97316; border: 1px solid #ffedd5; }
 
 .building-info {
   flex: 1;
@@ -303,12 +303,12 @@ const buildings = ref([
 .building-name {
   font-size: 18px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .building-no {
   font-size: 14px;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .building-manager {
@@ -316,7 +316,7 @@ const buildings = ref([
   align-items: center;
   gap: 6px;
   font-size: 14px;
-  color: #64748b;
+  color: var(--sub);
   margin-bottom: 16px;
 }
 
@@ -334,7 +334,7 @@ const buildings = ref([
 
 .stat-label {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .stat-val {
@@ -342,7 +342,7 @@ const buildings = ref([
   font-weight: bold;
 }
 
-.text-dark { color: #1f2937; }
+.text-dark { color: var(--text); }
 .text-blue { color: #3b82f6; }
 .text-orange { color: #f59e0b; }
 
@@ -351,7 +351,7 @@ const buildings = ref([
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .building-actions {
@@ -369,7 +369,7 @@ const buildings = ref([
 
 .status-label {
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
 }
 
 .btn-group {
@@ -399,7 +399,7 @@ const buildings = ref([
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: #f8fafc;
+  background: var(--bg);
   border-radius: 12px;
 }
 
@@ -413,9 +413,9 @@ const buildings = ref([
   font-size: 24px;
 }
 
-.bg-light-blue { background: #eff6ff; color: #3b82f6; }
-.bg-light-orange { background: #fff7ed; color: #f97316; }
-.bg-light-cyan { background: #ecfeff; color: #06b6d4; }
+.bg-light-blue { background: var(--primary-2); color: #3b82f6; }
+.bg-light-orange { background: var(--orange-2); color: #f97316; }
+.bg-light-cyan { background: var(--info-2); color: #06b6d4; }
 
 .asset-info {
   flex: 1;
@@ -423,20 +423,20 @@ const buildings = ref([
 
 .asset-label {
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
   margin-bottom: 4px;
 }
 
 .asset-value {
   font-size: 20px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .asset-value span {
   font-size: 13px;
   font-weight: normal;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .rules-list {
@@ -454,7 +454,7 @@ const buildings = ref([
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #eff6ff;
+  background: var(--primary-2);
   color: #3b82f6;
   display: flex;
   align-items: center;
@@ -471,26 +471,26 @@ const buildings = ref([
 .rule-title {
   font-size: 14px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
   margin-bottom: 4px;
 }
 
 .rule-desc {
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
   line-height: 1.5;
 }
 
 .tips-card {
-  background-color: #f0f7ff;
-  border: 1px solid #e0f2fe !important;
+  background-color: var(--primary-2);
+  border: 1px solid var(--primary-2) !important;
 }
 
 .tips-list {
   margin: 0;
   padding-left: 20px;
   font-size: 13px;
-  color: #1e293b;
+  color: var(--text);
   line-height: 2;
 }
 

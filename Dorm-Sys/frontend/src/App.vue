@@ -31,7 +31,7 @@ const isLoginRoute = computed(() => route.path === '/login')
   overflow: hidden;
 }
 .app-main {
-  background-color: #f4f7f9;
+  background-color: var(--bg);
   padding: 24px;
   overflow-y: auto;
 }

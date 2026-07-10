@@ -187,13 +187,13 @@ const users = ref([
 .hero-text h2 {
   margin: 0 0 4px 0;
   font-size: 20px;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .hero-text p {
   margin: 0;
   font-size: 14px;
-  color: #64748b;
+  color: var(--sub);
 }
 
 .list-card {
@@ -206,13 +206,13 @@ const users = ref([
   align-items: center;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--line);
 }
 
 .list-title {
   font-size: 16px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .list-actions {
@@ -230,13 +230,13 @@ const users = ref([
   display: flex;
   align-items: center;
   padding: 16px;
-  background-color: #f8fafc;
+  background-color: var(--bg);
   border-radius: 12px;
   transition: background-color 0.2s;
 }
 
 .user-item:hover {
-  background-color: #f1f5f9;
+  background-color: var(--line);
 }
 
 .user-info {
@@ -254,12 +254,12 @@ const users = ref([
 .user-name {
   font-size: 16px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .user-account {
   font-size: 14px;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .user-meta {
@@ -267,7 +267,7 @@ const users = ref([
   align-items: center;
   gap: 24px;
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
   margin-bottom: 4px;
 }
 
@@ -292,7 +292,7 @@ const users = ref([
 
 .status-label {
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
 }
 
 .btn-group {
@@ -328,7 +328,7 @@ const users = ref([
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: #f8fafc;
+  background: var(--bg);
   border-radius: 12px;
 }
 
@@ -342,9 +342,9 @@ const users = ref([
   font-size: 24px;
 }
 
-.bg-blue { background: #eff6ff; color: #3b82f6; }
-.bg-orange { background: #fff7ed; color: #f97316; }
-.bg-gray { background: #f1f5f9; color: #94a3b8; }
+.bg-blue { background: var(--primary-2); color: #3b82f6; }
+.bg-orange { background: var(--orange-2); color: #f97316; }
+.bg-gray { background: var(--line); color: var(--sub); }
 
 .stat-info {
   flex: 1;
@@ -352,20 +352,20 @@ const users = ref([
 
 .stat-label {
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
   margin-bottom: 4px;
 }
 
 .stat-value {
   font-size: 20px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .stat-value span {
   font-size: 13px;
   font-weight: normal;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .assist-list {
@@ -387,19 +387,19 @@ const users = ref([
 .assist-title {
   font-size: 14px;
   font-weight: 500;
-  color: #1f2937;
+  color: var(--text);
   margin-bottom: 4px;
 }
 
 .assist-desc {
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
   line-height: 1.5;
 }
 
 .bg-light-blue {
-  background-color: #f0f7ff;
-  border: 1px solid #e0f2fe !important;
+  background-color: var(--primary-2);
+  border: 1px solid var(--primary-2) !important;
 }
 
 .tips-list {

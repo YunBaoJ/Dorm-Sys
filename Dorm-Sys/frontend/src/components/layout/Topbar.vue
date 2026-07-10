@@ -104,8 +104,8 @@ function handleCommand(cmd) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: #fff;
-  border-bottom: 1px solid #eef0f4;
+  background-color: var(--surface);
+  border-bottom: 1px solid var(--line);
   padding: 0 20px;
 }
 
@@ -118,7 +118,7 @@ function handleCommand(cmd) {
 .toggle-icon {
   font-size: 20px;
   cursor: pointer;
-  color: #64748b;
+  color: var(--sub);
   transition: color 0.2s;
 }
 
@@ -139,7 +139,7 @@ function handleCommand(cmd) {
 .action-icon {
   font-size: 20px;
   cursor: pointer;
-  color: #64748b;
+  color: var(--sub);
   transition: color 0.2s;
 }
 
@@ -160,7 +160,7 @@ function handleCommand(cmd) {
 
 .user-name {
   font-size: 14px;
-  color: #1f2937;
+  color: var(--text);
   font-weight: 500;
 }
 

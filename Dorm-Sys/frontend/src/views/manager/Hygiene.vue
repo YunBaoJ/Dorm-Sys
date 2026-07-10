@@ -180,13 +180,13 @@ const getScoreClass = (score) => {
 .hero-text h2 {
   margin: 0 0 4px 0;
   font-size: 20px;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .hero-text p {
   margin: 0;
   font-size: 14px;
-  color: #64748b;
+  color: var(--sub);
 }
 
 .side-card {
@@ -217,7 +217,7 @@ const getScoreClass = (score) => {
 
 .stat-label {
   font-size: 14px;
-  color: #64748b;
+  color: var(--sub);
 }
 
 .stat-val {
@@ -228,7 +228,7 @@ const getScoreClass = (score) => {
 
 .text-blue { color: #3b82f6; }
 .text-orange { color: #f59e0b; }
-.text-dark { color: #1f2937; }
+.text-dark { color: var(--text); }
 
 .stat-trend {
   display: flex;
@@ -240,12 +240,12 @@ const getScoreClass = (score) => {
 
 .trend-up { color: #3b82f6; }
 .trend-down { color: #f59e0b; }
-.text-gray { color: #94a3b8; font-weight: normal; }
+.text-gray { color: var(--sub); font-weight: normal; }
 
 .section-title {
   font-size: 15px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
   margin-bottom: 16px;
 }
 
@@ -257,7 +257,7 @@ const getScoreClass = (score) => {
 .custom-collapse :deep(.el-collapse-item__header) {
   border-bottom: none;
   font-size: 14px;
-  color: #334155;
+  color: var(--text-secondary);
 }
 
 .custom-collapse :deep(.el-collapse-item__wrap) {
@@ -266,16 +266,16 @@ const getScoreClass = (score) => {
 
 .criteria-desc {
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
   line-height: 1.6;
-  background-color: #f8fafc;
+  background-color: var(--bg);
   padding: 12px;
   border-radius: 8px;
 }
 
 .tips-card {
-  background-color: #f0f7ff;
-  border: 1px solid #e0f2fe !important;
+  background-color: var(--primary-2);
+  border: 1px solid var(--primary-2) !important;
 }
 
 .text-primary {
@@ -287,7 +287,7 @@ const getScoreClass = (score) => {
   margin: 0;
   padding-left: 20px;
   font-size: 13px;
-  color: #1e293b;
+  color: var(--text);
   line-height: 2;
 }
 
@@ -305,7 +305,7 @@ const getScoreClass = (score) => {
   align-items: center;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--line);
 }
 
 .header-left {
@@ -316,7 +316,7 @@ const getScoreClass = (score) => {
 .list-title {
   font-size: 16px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .record-list {
@@ -329,13 +329,13 @@ const getScoreClass = (score) => {
   display: flex;
   align-items: center;
   padding: 24px;
-  background-color: #f8fafc;
+  background-color: var(--bg);
   border-radius: 12px;
   transition: background-color 0.2s;
 }
 
 .record-item:hover {
-  background-color: #f1f5f9;
+  background-color: var(--line);
 }
 
 .score-badge {
@@ -346,7 +346,7 @@ const getScoreClass = (score) => {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background: white;
+  background: var(--surface);
   border: 2px solid;
 }
 
@@ -362,12 +362,12 @@ const getScoreClass = (score) => {
 }
 
 .score-blue {
-  border-color: #eff6ff;
+  border-color: var(--primary-2);
   color: #3b82f6;
 }
 
 .score-orange {
-  border-color: #fff7ed;
+  border-color: var(--orange-2);
   color: #f59e0b;
 }
 
@@ -391,12 +391,12 @@ const getScoreClass = (score) => {
 .record-room {
   font-size: 16px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .record-desc {
   font-size: 14px;
-  color: #475569;
+  color: var(--text-secondary);
   margin-bottom: 12px;
 }
 
@@ -405,7 +405,7 @@ const getScoreClass = (score) => {
   align-items: center;
   gap: 24px;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .meta-item {

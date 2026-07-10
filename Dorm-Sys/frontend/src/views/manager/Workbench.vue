@@ -259,12 +259,12 @@ const rooms = [
 
 .hero-text h2 {
   font-size: 24px;
-  color: #1f2937;
+  color: var(--text);
   margin: 0 0 8px 0;
 }
 
 .hero-text p {
-  color: #64748b;
+  color: var(--sub);
   font-size: 14px;
   margin: 0;
 }
@@ -315,9 +315,9 @@ const rooms = [
   font-size: 24px;
 }
 
-.bg-blue { background: #eff6ff; color: #3b82f6; }
-.bg-orange { background: #fff7ed; color: #f97316; }
-.bg-red { background: #fef2f2; color: #ef4444; }
+.bg-blue { background: var(--primary-2); color: #3b82f6; }
+.bg-orange { background: var(--orange-2); color: #f97316; }
+.bg-red { background: var(--danger-2); color: var(--danger); }
 .text-red { color: #ef4444 !important; }
 
 .stat-info {
@@ -326,21 +326,21 @@ const rooms = [
 
 .stat-label {
   font-size: 14px;
-  color: #64748b;
+  color: var(--sub);
   margin-bottom: 4px;
 }
 
 .stat-value {
   font-size: 24px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .stat-footer {
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--line);
   padding: 12px 24px;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .stat-action {
@@ -363,7 +363,7 @@ const rooms = [
 .card-title {
   font-size: 16px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .rooms-grid {
@@ -374,8 +374,8 @@ const rooms = [
 }
 
 .room-box {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--bg);
+  border: 1px solid var(--line);
   border-radius: 8px;
   padding: 16px 0;
   display: flex;
@@ -386,14 +386,14 @@ const rooms = [
 }
 
 .room-box.is-warning {
-  background: #fef2f2;
-  border-color: #fecaca;
+  background: var(--danger-2);
+  border-color: var(--danger);
 }
 
 .room-number {
   font-size: 14px;
   font-weight: 500;
-  color: #334155;
+  color: var(--text-secondary);
 }
 
 .room-dots {
@@ -405,7 +405,7 @@ const rooms = [
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background-color: #cbd5e1;
+  background-color: var(--line);
 }
 
 .dot.filled {
@@ -442,14 +442,14 @@ const rooms = [
   display: flex;
   justify-content: space-between;
   padding: 12px 16px;
-  background: #f8fafc;
+  background: var(--bg);
   border-radius: 8px;
   font-size: 14px;
-  color: #334155;
+  color: var(--text-secondary);
 }
 
 .mini-date {
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .side-card {
@@ -463,7 +463,7 @@ const rooms = [
 }
 
 .tool-btn {
-  background: #f8fafc;
+  background: var(--bg);
   border-radius: 12px;
   padding: 16px 0;
   display: flex;
@@ -475,12 +475,12 @@ const rooms = [
 }
 
 .tool-btn:hover {
-  background: #f1f5f9;
+  background: var(--line);
 }
 
 .tool-btn span {
   font-size: 13px;
-  color: #475569;
+  color: var(--text-secondary);
 }
 
 .memos-list {
@@ -492,7 +492,7 @@ const rooms = [
 .memo-item {
   display: flex;
   gap: 12px;
-  background: #f8fafc;
+  background: var(--bg);
   padding: 12px;
   border-radius: 8px;
 }
@@ -510,13 +510,13 @@ const rooms = [
 .memo-title {
   font-size: 14px;
   font-weight: 500;
-  color: #1f2937;
+  color: var(--text);
   margin-bottom: 4px;
 }
 
 .memo-time {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .add-memo-btn {
@@ -535,7 +535,7 @@ const rooms = [
   align-items: flex-start;
   gap: 8px;
   font-size: 13px;
-  color: #475569;
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 </style>

@@ -199,13 +199,13 @@ const tickets = ref([
 .hero-text h2 {
   margin: 0 0 4px 0;
   font-size: 20px;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .hero-text p {
   margin: 0;
   font-size: 14px;
-  color: #64748b;
+  color: var(--sub);
 }
 
 .list-card {
@@ -218,7 +218,7 @@ const tickets = ref([
   align-items: center;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--line);
 }
 
 .header-left {
@@ -230,7 +230,7 @@ const tickets = ref([
 .list-title {
   font-size: 16px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .ticket-list {
@@ -243,13 +243,13 @@ const tickets = ref([
   display: flex;
   align-items: center;
   padding: 24px;
-  background-color: #f8fafc;
+  background-color: var(--bg);
   border-radius: 12px;
   transition: background-color 0.2s;
 }
 
 .ticket-item:hover {
-  background-color: #f1f5f9;
+  background-color: var(--line);
 }
 
 .ticket-icon {
@@ -281,17 +281,17 @@ const tickets = ref([
 .ticket-room {
   font-size: 16px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .ticket-category {
   font-size: 14px;
-  color: #64748b;
+  color: var(--sub);
 }
 
 .ticket-desc {
   font-size: 14px;
-  color: #475569;
+  color: var(--text-secondary);
   margin-bottom: 12px;
 }
 
@@ -300,7 +300,7 @@ const tickets = ref([
   align-items: center;
   gap: 24px;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .meta-item {
@@ -325,7 +325,7 @@ const tickets = ref([
 
 .total-text {
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
 }
 
 .side-card {
@@ -350,7 +350,7 @@ const tickets = ref([
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: #f8fafc;
+  background: var(--bg);
   border-radius: 12px;
 }
 
@@ -364,9 +364,9 @@ const tickets = ref([
   font-size: 24px;
 }
 
-.bg-light-blue { background: #eff6ff; color: #3b82f6; }
-.bg-light-orange { background: #fff7ed; color: #f97316; }
-.bg-gray { background: #f1f5f9; color: #94a3b8; }
+.bg-light-blue { background: var(--primary-2); color: #3b82f6; }
+.bg-light-orange { background: var(--orange-2); color: #f97316; }
+.bg-gray { background: var(--line); color: var(--sub); }
 
 .dash-info {
   flex: 1;
@@ -374,20 +374,20 @@ const tickets = ref([
 
 .dash-label {
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
   margin-bottom: 4px;
 }
 
 .dash-value {
   font-size: 20px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .dash-value span {
   font-size: 13px;
   font-weight: normal;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .sla-list {
@@ -419,13 +419,13 @@ const tickets = ref([
 .sla-title {
   font-size: 14px;
   font-weight: 500;
-  color: #1f2937;
+  color: var(--text);
   margin-bottom: 4px;
 }
 
 .sla-desc {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--sub);
   line-height: 1.5;
 }
 
@@ -439,7 +439,7 @@ const tickets = ref([
   display: flex;
   justify-content: space-between;
   font-size: 13px;
-  color: #475569;
+  color: var(--text-secondary);
 }
 
 .hotline-val {

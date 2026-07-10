@@ -172,13 +172,13 @@ const visitors = ref([
 .hero-text h2 {
   margin: 0 0 4px 0;
   font-size: 20px;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .hero-text p {
   margin: 0;
   font-size: 14px;
-  color: #64748b;
+  color: var(--sub);
 }
 
 .list-card {
@@ -191,7 +191,7 @@ const visitors = ref([
   align-items: center;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--line);
 }
 
 .header-left {
@@ -203,7 +203,7 @@ const visitors = ref([
 .list-title {
   font-size: 16px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .visitor-list {
@@ -216,13 +216,13 @@ const visitors = ref([
   display: flex;
   align-items: center;
   padding: 24px;
-  background-color: #f8fafc;
+  background-color: var(--bg);
   border-radius: 12px;
   transition: background-color 0.2s;
 }
 
 .visitor-item:hover {
-  background-color: #f1f5f9;
+  background-color: var(--line);
 }
 
 .visitor-avatar {
@@ -258,17 +258,17 @@ const visitors = ref([
 .visitor-name {
   font-size: 16px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .visitor-phone {
   font-size: 14px;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .visitor-desc {
   font-size: 14px;
-  color: #475569;
+  color: var(--text-secondary);
   margin-bottom: 12px;
   display: flex;
   align-items: center;
@@ -285,7 +285,7 @@ const visitors = ref([
   display: flex;
   align-items: center;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .meta-item {
@@ -310,7 +310,7 @@ const visitors = ref([
 
 .total-text {
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
 }
 
 .side-card {
@@ -335,7 +335,7 @@ const visitors = ref([
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: #f8fafc;
+  background: var(--bg);
   border-radius: 12px;
 }
 
@@ -349,9 +349,9 @@ const visitors = ref([
   font-size: 24px;
 }
 
-.bg-light-blue { background: #eff6ff; color: #3b82f6; }
-.bg-light-orange { background: #fff7ed; color: #f97316; }
-.bg-gray { background: #f1f5f9; color: #94a3b8; }
+.bg-light-blue { background: var(--primary-2); color: #3b82f6; }
+.bg-light-orange { background: var(--orange-2); color: #f97316; }
+.bg-gray { background: var(--line); color: var(--sub); }
 
 .dash-info {
   flex: 1;
@@ -359,20 +359,20 @@ const visitors = ref([
 
 .dash-label {
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
   margin-bottom: 4px;
 }
 
 .dash-value {
   font-size: 20px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .dash-value span {
   font-size: 13px;
   font-weight: normal;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .recent-card {
@@ -380,15 +380,15 @@ const visitors = ref([
 }
 
 .rules-card {
-  background-color: #f0f7ff;
-  border: 1px solid #e0f2fe !important;
+  background-color: var(--primary-2);
+  border: 1px solid var(--primary-2) !important;
 }
 
 .rules-list {
   margin: 0;
   padding-left: 20px;
   font-size: 13px;
-  color: #1e293b;
+  color: var(--text);
   line-height: 2;
 }
 

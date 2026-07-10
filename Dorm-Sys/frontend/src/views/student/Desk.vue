@@ -1,444 +1,277 @@
 <template>
-  <div class="desk-container">
+  <div>
     <!-- Hero Section -->
-    <div class="welcome-card">
-      <div class="welcome-content">
-        <h1 class="welcome-title">早安，张伟</h1>
-        <p class="welcome-subtitle">今天是 2026年3月27日星期五，开启高效的一天吧！</p>
-        
-        <div class="hero-banner">
-          <div class="banner-text">
-            <h2>文明寝室 · 共同维护</h2>
-            <p>本周将进行月度卫生大检查</p>
+    <div class="hero" style="padding: 24px 28px; margin-bottom: 24px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+        <div style="display: flex; align-items: center; gap: 18px;">
+          <!-- Empty avatar for placeholder, style kept from prototype -->
+          <div style="width: 56px; height: 56px; border-radius: 16px; background: linear-gradient(145deg, var(--primary), #5ba6ff); color: white; display: grid; place-items: center; font-size: 24px; box-shadow: 0 6px 16px rgba(47, 140, 255, .35); font-weight: bold;">
+            张
+          </div>
+          <div>
+            <h1 style="margin: 0; font-size: 22px;">早安，张伟 👋</h1>
+            <p style="margin: 4px 0 0; color: var(--sub); font-size: 14px;">今天是 2026年3月27日星期五，开启高效的一天吧！</p>
           </div>
         </div>
-      </div>
-      <div class="weather-widget">
-        <el-icon :size="20" color="#f59e0b"><component :is="Sun" /></el-icon>
-        <span class="weather-temp">22℃ 晴</span>
-        <span class="weather-separator">·</span>
-        <span class="weather-desc">校园空气优</span>
+        <div style="display: flex; align-items: center; gap: 16px; padding: 12px 20px; background: var(--muted); border-radius: 12px;">
+          <div style="text-align: center;">
+            <div style="font-size: 28px;">☀️</div>
+            <div style="font-size: 11px; color: var(--sub); margin-top: 2px;">晴</div>
+          </div>
+          <div style="width: 1px; height: 40px; background: var(--line);"></div>
+          <div>
+            <div style="font-size: 24px; font-weight: 700; color: var(--text);">22℃</div>
+            <div style="font-size: 12px; color: var(--ok); margin-top: 2px;">空气优</div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Main Grid -->
-    <el-row :gutter="24">
-      <!-- Left Column -->
-      <el-col :span="16">
-        <div class="service-grid">
-          <el-card shadow="hover" class="service-card" @click="router.push('/student/dorm')">
-            <div class="service-header">
-              <div class="icon-box icon-blue"><component :is="Home" /></div>
-              <span class="service-label">我的宿舍</span>
-            </div>
-            <div class="service-body">
-              <div class="service-value">明德楼 101</div>
-              <div class="service-action">
-                <span>查看详情</span>
-                <el-icon><component :is="ChevronRight" /></el-icon>
+    <div class="grid" style="gap: 28px;">
+      <!-- Left Stack -->
+      <div class="left-stack" style="gap: 28px;">
+        <!-- Banner -->
+        <div class="card" style="background: linear-gradient(135deg, var(--primary-2) 0%, var(--surface) 100%); border: 1px solid var(--primary-2); padding: 24px 28px; margin-bottom: 0; transition: transform .25s ease, box-shadow .25s ease; cursor: pointer;"
+             @mouseover="hoverBanner = true" @mouseleave="hoverBanner = false"
+             :style="hoverBanner ? 'transform: translateY(-2px); box-shadow: 0 8px 24px rgba(59, 130, 246, .12);' : 'box-shadow: var(--shadow);'">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <div style="width: 52px; height: 52px; display: grid; place-items: center; background: linear-gradient(135deg, var(--primary), #60a5fa); color: #fff; border-radius: 14px; box-shadow: 0 6px 16px rgba(59, 130, 246, .3); transition: transform .2s ease;"
+                   :style="hoverBanner ? 'transform: scale(1.05)' : ''">
+                <el-icon :size="24"><component :is="Home" /></el-icon>
+              </div>
+              <div>
+                <h2 style="margin: 0; font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -.3px;">文明寝室 · 共同维护</h2>
+                <p style="margin: 4px 0 0; font-size: 13px; color: var(--sub); line-height: 1.5;">本周将进行月度卫生大检查，请保持寝室整洁</p>
               </div>
             </div>
-          </el-card>
-
-          <el-card shadow="hover" class="service-card" @click="router.push('/student/fees')">
-            <div class="service-header">
-              <div class="icon-box icon-orange"><component :is="Wallet" /></div>
-              <span class="service-label">账户余额</span>
-            </div>
-            <div class="service-body">
-              <div class="service-value">¥ 0.00</div>
-              <div class="service-action">
-                <span>立即充值</span>
-                <el-icon><component :is="ChevronRight" /></el-icon>
-              </div>
-            </div>
-          </el-card>
-
-          <el-card shadow="hover" class="service-card" @click="router.push('/student/repair')">
-            <div class="service-header">
-              <div class="icon-box icon-cyan"><component :is="Settings" /></div>
-              <span class="service-label">报修申请</span>
-            </div>
-            <div class="service-body">
-              <div class="service-value"><strong>1</strong> 件</div>
-              <div class="service-action">
-                <span>申请报修</span>
-                <el-icon><component :is="ChevronRight" /></el-icon>
-              </div>
-            </div>
-          </el-card>
-
-          <el-card shadow="hover" class="service-card" @click="router.push('/student/dorm')">
-            <div class="service-header">
-              <div class="icon-box icon-blue"><component :is="Medal" /></div>
-              <span class="service-label">卫生评分</span>
-            </div>
-            <div class="service-body">
-              <div class="service-value"><strong>92</strong> 分</div>
-              <div class="service-action">
-                <span>查看详情</span>
-                <el-icon><component :is="ChevronRight" /></el-icon>
-              </div>
-            </div>
-          </el-card>
+            <button class="ghost-btn" style="white-space: nowrap;">查看详情 →</button>
+          </div>
         </div>
 
-        <el-card shadow="never" class="tracking-card">
-          <template #header>
-            <div class="card-header">
-              <span>业务追踪</span>
-              <el-button type="primary" link>查看历史</el-button>
+        <!-- Service Cards -->
+        <div class="service-cards">
+          <div class="card" style="padding: 20px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <div style="width: 46px; height: 46px; border-radius: 12px; background: var(--primary-2); color: var(--primary); display: grid; place-items: center;">
+                <el-icon :size="22"><component :is="Home" /></el-icon>
+              </div>
+              <div>
+                <div style="color: var(--sub); font-size: 13px; margin-bottom: 2px;">我的宿舍</div>
+                <div style="font-weight: 700; font-size: 17px;">明德楼 101</div>
+              </div>
             </div>
-          </template>
-          <el-empty description="暂无最近动态" :image-size="100"></el-empty>
-        </el-card>
-      </el-col>
+            <button class="ghost-btn" @click="router.push('/student/dorm')">查看详情</button>
+          </div>
+          
+          <div class="card" style="padding: 20px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <div style="width: 46px; height: 46px; border-radius: 12px; background: var(--orange-2); color: var(--orange); display: grid; place-items: center;">
+                <el-icon :size="22"><component :is="Wallet" /></el-icon>
+              </div>
+              <div>
+                <div style="color: var(--sub); font-size: 13px; margin-bottom: 2px;">账户余额</div>
+                <div style="font-weight: 700; font-size: 17px;">¥ 128.50</div>
+              </div>
+            </div>
+            <button class="ghost-btn" @click="router.push('/student/fees')">立即充值</button>
+          </div>
 
-      <!-- Right Column -->
-      <el-col :span="8">
-        <el-card shadow="never" class="side-card">
-          <template #header>
-            <div class="card-header">
-              <span>校园公告</span>
-              <el-button type="primary" link>更多</el-button>
+          <div class="card" style="padding: 20px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <div style="width: 46px; height: 46px; border-radius: 12px; background: var(--danger-2); color: var(--danger); display: grid; place-items: center;">
+                <el-icon :size="22"><component :is="Settings" /></el-icon>
+              </div>
+              <div>
+                <div style="color: var(--sub); font-size: 13px; margin-bottom: 2px;">报修申请</div>
+                <div style="font-weight: 700; font-size: 17px;">1 件待处理</div>
+              </div>
             </div>
-          </template>
-          <div class="notice-list">
-            <div v-for="n in notices" :key="n.id" class="notice-item">
-              <div class="notice-dot" :class="{ 'is-pinned': n.pinned }"></div>
-              <div class="notice-content">
-                <div class="notice-title">{{ n.title }}</div>
-                <div class="notice-date">{{ n.date }}</div>
+            <button class="ghost-btn" @click="router.push('/student/repair')">申请报修</button>
+          </div>
+
+          <div class="card" style="padding: 20px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <div style="width: 46px; height: 46px; border-radius: 12px; background: var(--teal-2); color: var(--teal); display: grid; place-items: center;">
+                <el-icon :size="22"><component :is="Medal" /></el-icon>
+              </div>
+              <div>
+                <div style="color: var(--sub); font-size: 13px; margin-bottom: 2px;">卫生评分</div>
+                <div style="font-weight: 700; font-size: 17px;">92 分</div>
+              </div>
+            </div>
+            <button class="ghost-btn" @click="router.push('/student/dorm')">查看详情</button>
+          </div>
+        </div>
+
+        <!-- Todo List -->
+        <div class="card">
+          <div class="card-head">
+            <h2>待办事项</h2>
+            <span class="tag info" style="border-radius: 12px; padding: 2px 8px;">3</span>
+          </div>
+          <div class="card-body list">
+            <div class="row" style="min-height: 60px;">
+              <span class="status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: var(--warn);"></span>
+              <div class="row-main">
+                <div class="row-title">缴纳12月电费</div>
+                <div class="row-meta">
+                  <span>金额：¥ 92.30</span>
+                  <span style="color: var(--danger);">明天截止</span>
+                </div>
+              </div>
+              <button class="ghost-btn" @click="router.push('/student/fees')">去缴纳</button>
+            </div>
+            <div class="row" style="min-height: 60px;">
+              <span class="status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: var(--ok);"></span>
+              <div class="row-main">
+                <div class="row-title">报修工单待确认</div>
+                <div class="row-meta">
+                  <span>明德楼101 · 网络故障</span>
+                  <span>处理中</span>
+                </div>
+              </div>
+              <button class="ghost-btn" @click="router.push('/student/repair')">查看详情</button>
+            </div>
+            <div class="row" style="min-height: 60px;">
+              <span class="status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: var(--sub);"></span>
+              <div class="row-main">
+                <div class="row-title">访客预约审批</div>
+                <div class="row-meta">
+                  <span>张三 · 3月28日来访</span>
+                  <span>待审批</span>
+                </div>
+              </div>
+              <button class="ghost-btn" @click="router.push('/student/visitor')">查看</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Power Chart -->
+        <div class="card">
+          <div class="card-head">
+            <h2>用电趋势</h2>
+            <div>
+              <button class="ghost-btn">本周</button>
+              <button class="ghost-btn active-filter" style="margin-left: 8px;">本月</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div style="display: flex; align-items: flex-end; gap: 8px; height: 120px; padding: 16px 0;">
+              <div v-for="(h, i) in [45, 62, 38, 75, 55, 68, 42, 58, 72, 48, 65, 52]" :key="i" 
+                   style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                <span style="font-size: 11px; color: var(--sub);">{{h}}</span>
+                <div :style="`width: 100%; height: ${h}px; background: linear-gradient(180deg, var(--primary), var(--primary-2)); border-radius: 4px 4px 0 0; transition: height .6s ease;`"></div>
+                <span style="font-size: 11px; color: var(--sub);">{{i + 1}}日</span>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line);">
+              <span style="font-size: 13px; color: var(--sub);">本月用电</span>
+              <span style="font-size: 13px; font-weight: 600; color: var(--primary);">186.5 度</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Stack -->
+      <div class="right-stack">
+        <!-- Notices -->
+        <div class="card">
+          <div class="card-head">
+            <h2>校园公告</h2>
+            <a class="mini-link" style="cursor: pointer;">更多</a>
+          </div>
+          <div class="card-body list">
+            <div v-for="n in notices" :key="n.id" class="notice" style="display: flex; flex-direction: column; align-items: flex-start; background: var(--surface); border: 1px solid var(--line); color: var(--text);">
+              <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
+                <span style="font-size: 14px; font-weight: 600; flex: 1;" class="text-truncate">{{ n.title }}</span>
+                <span class="tag" :class="n.pinned ? 'warn' : 'gray'" style="font-size: 10px; padding: 0 6px; min-height: 20px;">
+                  {{ n.pinned ? '置顶' : '通知' }}
+                </span>
+              </div>
+              <div style="font-size: 12px; color: var(--sub); margin-top: 6px;">{{ n.date }} 发布</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Roommates -->
+        <div class="card">
+          <div class="card-head">
+            <h2>我的室友</h2>
+          </div>
+          <div class="card-body list">
+            <div v-for="(rm, idx) in roommates" :key="idx" class="row" style="border: 1px solid var(--line); min-height: 64px;">
+              <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--muted-2); display: grid; place-items: center; font-weight: bold; color: var(--text-secondary);">
+                {{ rm.name[0] }}
+              </div>
+              <div class="row-main">
+                <div class="row-title">{{ rm.name }}</div>
+                <div class="row-meta"><span>1-{{ idx + 2 }}号床</span></div>
               </div>
             </div>
           </div>
-        </el-card>
+        </div>
 
-        <el-card shadow="never" class="side-card">
-          <template #header>
-            <div class="card-header">
-              <span>我的室友</span>
-            </div>
-          </template>
-          <div class="roommate-list">
-            <div v-for="(rm, idx) in roommates" :key="idx" class="roommate-item">
-              <el-avatar :size="40" :src="rm.avatar">{{ rm.name[0] }}</el-avatar>
-              <div class="roommate-info">
-                <div class="roommate-name">{{ rm.name }}</div>
-                <div class="roommate-bed">1-{{ idx + 2 }}号床</div>
-              </div>
-              <el-button type="primary" link class="chat-btn">
-                <el-icon :size="18"><component :is="MessageCircle" /></el-icon>
-              </el-button>
-            </div>
+        <!-- Quick Actions -->
+        <div class="card">
+          <div class="card-head">
+            <h2>快捷服务</h2>
           </div>
-        </el-card>
-
-        <el-card shadow="never" class="side-card quick-entry-card">
-          <template #header>
-            <div class="card-header">
-              <span>快速入口</span>
-            </div>
-          </template>
-          <div class="quick-entry-grid">
-            <div class="quick-btn" @click="router.push('/student/visitor')">
+          <div class="card-body quick-grid">
+            <button @click="router.push('/student/visitor')">
               <el-icon :size="24"><component :is="UserRoundCheck" /></el-icon>
               <span>访客预约</span>
-            </div>
-            <div class="quick-btn" @click="router.push('/student/transfer')">
+            </button>
+            <button @click="router.push('/student/transfer')">
               <el-icon :size="24"><component :is="Repeat2" /></el-icon>
               <span>调宿申请</span>
-            </div>
-            <div class="quick-btn" @click="router.push('/student/ai')">
+            </button>
+            <button @click="router.push('/student/ai')">
               <el-icon :size="24"><component :is="MessageCircle" /></el-icon>
-              <span>AI 助手</span>
-            </div>
-            <div class="quick-btn">
+              <span>AI助手</span>
+            </button>
+            <button>
               <el-icon :size="24"><component :is="Pencil" /></el-icon>
               <span>意见反馈</span>
-            </div>
+            </button>
+            <button>
+              <el-icon :size="24"><component :is="Newspaper" /></el-icon>
+              <span>校园公告</span>
+            </button>
+            <button @click="router.push('/student/fees')">
+              <el-icon :size="24"><component :is="WalletCards" /></el-icon>
+              <span>费用查询</span>
+            </button>
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { dataStore } from '../../store/data'
-import { Sun, Home, Wallet, Settings, Medal, ChevronRight, MessageCircle, UserRoundCheck, Repeat2, Pencil } from '@lucide/vue'
+import { 
+  Home, Wallet, Settings, Medal,
+  UserRoundCheck, Repeat2, MessageCircle, Pencil, Newspaper, WalletCards
+} from '@lucide/vue'
 
 const router = useRouter()
-const notices = computed(() => dataStore.notices)
-
+const hoverBanner = ref(false)
+const notices = computed(() => dataStore.notices.slice(0, 3))
 const roommates = [
-  { name: '李明', avatar: '' },
-  { name: '王芳', avatar: '' },
-  { name: '刘洋', avatar: '' }
+  { name: '李明' },
+  { name: '王芳' },
+  { name: '刘洋' }
 ]
 </script>
 
 <style scoped>
-.desk-container {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.welcome-card {
-  position: relative;
-  margin-bottom: 24px;
-}
-
-.welcome-title {
-  font-size: 24px;
-  font-weight: bold;
-  color: #1f2937;
-  margin: 0 0 8px 0;
-}
-
-.welcome-subtitle {
-  color: #64748b;
-  font-size: 14px;
-  margin: 0 0 20px 0;
-}
-
-.weather-widget {
-  position: absolute;
-  top: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background-color: #fff;
-  padding: 8px 16px;
-  border-radius: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  font-size: 14px;
-  color: #475569;
-}
-
-.weather-separator {
-  color: #cbd5e1;
-}
-
-.hero-banner {
-  height: 200px;
-  background: linear-gradient(135deg, #d1d5db 0%, #e5e7eb 100%); /* Placeholder gray gradient */
-  border-radius: 16px;
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  padding: 32px;
-  color: #fff;
+.text-truncate {
+  white-space: nowrap;
   overflow: hidden;
-}
-
-.hero-banner::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 100%);
-}
-
-.banner-text {
-  position: relative;
-  z-index: 1;
-}
-
-.banner-text h2 {
-  font-size: 24px;
-  margin: 0 0 8px 0;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-.banner-text p {
-  margin: 0;
-  opacity: 0.9;
-}
-
-.service-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
-.service-card {
-  cursor: pointer;
-  transition: transform 0.2s;
-  border-radius: 16px !important;
-}
-
-.service-card:hover {
-  transform: translateY(-2px);
-}
-
-.service-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.icon-box {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.icon-blue { background: #e0f2fe; color: #0284c7; }
-.icon-orange { background: #ffedd5; color: #ea580c; }
-.icon-cyan { background: #cffafe; color: #0891b2; }
-
-.service-label {
-  color: #64748b;
-  font-size: 14px;
-}
-
-.service-body {
-  display: flex;
-  flex-direction: column;
-}
-
-.service-value {
-  font-size: 20px;
-  color: #1f2937;
-  margin-bottom: 16px;
-}
-
-.service-value strong {
-  font-size: 24px;
-}
-
-.service-action {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: #94a3b8;
-  font-size: 13px;
-  border-top: 1px solid #f1f5f9;
-  padding-top: 12px;
-}
-
-.tracking-card {
-  min-height: 250px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.side-card {
-  margin-bottom: 20px;
-}
-
-.notice-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.notice-item {
-  display: flex;
-  gap: 12px;
-}
-
-.notice-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: #cbd5e1;
-  margin-top: 6px;
-  flex-shrink: 0;
-}
-
-.notice-dot.is-pinned {
-  background-color: var(--el-color-danger);
-}
-
-.notice-content {
-  flex: 1;
-}
-
-.notice-title {
-  color: #334155;
-  font-size: 14px;
-  margin-bottom: 4px;
-}
-
-.notice-date {
-  color: #94a3b8;
-  font-size: 12px;
-}
-
-.roommate-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.roommate-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.roommate-info {
-  flex: 1;
-}
-
-.roommate-name {
-  font-size: 14px;
-  color: #1f2937;
-  font-weight: 500;
-  margin-bottom: 4px;
-}
-
-.roommate-bed {
-  font-size: 12px;
-  color: #64748b;
-  background-color: #f1f5f9;
-  padding: 2px 8px;
-  border-radius: 4px;
-  display: inline-block;
-}
-
-.chat-btn {
-  color: var(--el-color-primary-light-3);
-}
-
-.quick-entry-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-}
-
-.quick-btn {
-  background-color: #f8fafc;
-  border-radius: 12px;
-  padding: 20px 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  color: #475569;
-}
-
-.quick-btn:hover {
-  background-color: #f1f5f9;
-  color: var(--el-color-primary);
-}
-
-.quick-btn span {
-  font-size: 13px;
+  text-overflow: ellipsis;
 }
 </style>

@@ -11,4 +11,9 @@ export const appStore = reactive({
 watch(() => appStore.theme, (newTheme) => {
   localStorage.setItem("dorm-theme", newTheme);
   document.documentElement.dataset.theme = newTheme;
+  if (newTheme === 'dark') {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
 }, { immediate: true });

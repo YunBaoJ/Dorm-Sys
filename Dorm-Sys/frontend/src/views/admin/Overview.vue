@@ -275,13 +275,13 @@ const activities = [
 .hero-text h2 {
   margin: 0 0 4px 0;
   font-size: 20px;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .hero-text p {
   margin: 0;
   font-size: 14px;
-  color: #64748b;
+  color: var(--sub);
 }
 
 .hero-time {
@@ -291,14 +291,14 @@ const activities = [
 .time-main {
   font-size: 32px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
   line-height: 1;
   margin-bottom: 4px;
 }
 
 .time-sub {
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
 }
 
 .alerts-wrapper {
@@ -334,7 +334,7 @@ const activities = [
 }
 
 .building-item {
-  background: #f8fafc;
+  background: var(--bg);
   padding: 16px;
   border-radius: 12px;
 }
@@ -347,7 +347,7 @@ const activities = [
 
 .building-name {
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .building-percent {
@@ -364,7 +364,7 @@ const activities = [
 
 .building-meta {
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
 }
 
 .timeline-card {
@@ -384,19 +384,19 @@ const activities = [
 }
 
 .timeline-title {
-  color: #334155;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
 .timeline-time {
-  color: #94a3b8;
+  color: var(--sub);
   font-size: 12px;
 }
 
 .timeline-tag {
-  background-color: #f1f5f9;
-  border-color: #e2e8f0;
-  color: #64748b;
+  background-color: var(--line);
+  border-color: var(--line);
+  color: var(--sub);
 }
 
 .side-card {
@@ -414,7 +414,7 @@ const activities = [
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: #f8fafc;
+  background: var(--bg);
   border-radius: 12px;
 }
 
@@ -428,10 +428,10 @@ const activities = [
   font-size: 24px;
 }
 
-.bg-blue { background: #eff6ff; color: #3b82f6; }
-.bg-orange { background: #fff7ed; color: #f97316; }
-.bg-cyan { background: #ecfeff; color: #06b6d4; }
-.bg-yellow { background: #fefce8; color: #eab308; }
+.bg-blue { background: var(--primary-2); color: #3b82f6; }
+.bg-orange { background: var(--orange-2); color: #f97316; }
+.bg-cyan { background: var(--info-2); color: #06b6d4; }
+.bg-yellow { background: var(--warn-2); color: #eab308; }
 
 .biz-info {
   flex: 1;
@@ -439,20 +439,20 @@ const activities = [
 
 .biz-label {
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
   margin-bottom: 4px;
 }
 
 .biz-value {
   font-size: 20px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .biz-value span {
   font-size: 13px;
   font-weight: normal;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .resource-list {
@@ -465,7 +465,7 @@ const activities = [
   display: flex;
   justify-content: space-between;
   font-size: 13px;
-  color: #475569;
+  color: var(--text-secondary);
   margin-bottom: 8px;
 }
 
@@ -478,7 +478,7 @@ const activities = [
 }
 
 .wb-btn {
-  background: #f8fafc;
+  background: var(--bg);
   border-radius: 12px;
   padding: 16px 0;
   display: flex;
@@ -490,11 +490,11 @@ const activities = [
 }
 
 .wb-btn:hover {
-  background: #f1f5f9;
+  background: var(--line);
 }
 
 .wb-btn span {
   font-size: 13px;
-  color: #475569;
+  color: var(--text-secondary);
 }
 </style>

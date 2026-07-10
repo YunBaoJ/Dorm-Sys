@@ -89,8 +89,8 @@ const navItems = computed(() => navMap[userStore.role] || navMap.student)
 
 <style scoped>
 .sidebar-container {
-  background-color: #fff;
-  border-right: 1px solid #eef0f4;
+  background-color: var(--surface);
+  border-right: 1px solid var(--line);
   transition: width 0.3s ease;
   display: flex;
   flex-direction: column;
@@ -101,7 +101,7 @@ const navItems = computed(() => navMap[userStore.role] || navMap.student)
   display: flex;
   align-items: center;
   padding: 0 16px;
-  border-bottom: 1px solid #eef0f4;
+  border-bottom: 1px solid var(--line);
   overflow: hidden;
   white-space: nowrap;
 }
@@ -121,18 +121,19 @@ const navItems = computed(() => navMap[userStore.role] || navMap.student)
   margin-left: 12px;
   font-weight: 600;
   font-size: 16px;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .sidebar-menu {
   flex: 1;
   border-right: none;
+  background-color: transparent;
 }
 
 .sidebar-menu :deep(.el-menu-item.is-active) {
-  background-color: var(--el-color-primary-light-9);
-  color: var(--el-color-primary);
-  border-right: 3px solid var(--el-color-primary);
+  background-color: var(--primary-2);
+  color: var(--primary);
+  border-right: 3px solid var(--primary);
   font-weight: bold;
 }
 

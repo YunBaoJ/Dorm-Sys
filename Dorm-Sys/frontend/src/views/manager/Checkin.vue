@@ -174,13 +174,13 @@ const residents = ref([
 .hero-text h2 {
   margin: 0 0 4px 0;
   font-size: 20px;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .hero-text p {
   margin: 0;
   font-size: 14px;
-  color: #64748b;
+  color: var(--sub);
 }
 
 .list-card {
@@ -193,13 +193,13 @@ const residents = ref([
   align-items: center;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--line);
 }
 
 .list-title {
   font-size: 16px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .list-actions {
@@ -217,13 +217,13 @@ const residents = ref([
   display: flex;
   align-items: center;
   padding: 16px;
-  background-color: #f8fafc;
+  background-color: var(--bg);
   border-radius: 12px;
   transition: background-color 0.2s;
 }
 
 .resident-item:hover {
-  background-color: #f1f5f9;
+  background-color: var(--line);
 }
 
 .resident-info {
@@ -241,12 +241,12 @@ const residents = ref([
 .resident-name {
   font-size: 16px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .resident-id {
   font-size: 14px;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .resident-meta {
@@ -254,7 +254,7 @@ const residents = ref([
   align-items: center;
   gap: 24px;
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
 }
 
 .meta-item {
@@ -290,7 +290,7 @@ const residents = ref([
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: #f8fafc;
+  background: var(--bg);
   border-radius: 12px;
 }
 
@@ -304,9 +304,9 @@ const residents = ref([
   font-size: 24px;
 }
 
-.bg-light-blue { background: #eff6ff; color: #3b82f6; }
-.bg-light-orange { background: #fff7ed; color: #f97316; }
-.bg-gray { background: #f1f5f9; color: #94a3b8; }
+.bg-light-blue { background: var(--primary-2); color: #3b82f6; }
+.bg-light-orange { background: var(--orange-2); color: #f97316; }
+.bg-gray { background: var(--line); color: var(--sub); }
 
 .dash-info {
   flex: 1;
@@ -314,20 +314,20 @@ const residents = ref([
 
 .dash-label {
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
   margin-bottom: 4px;
 }
 
 .dash-value {
   font-size: 20px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .dash-value span {
   font-size: 13px;
   font-weight: normal;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .occupation-list {
@@ -346,21 +346,21 @@ const residents = ref([
   display: flex;
   justify-content: space-between;
   font-size: 14px;
-  color: #334155;
+  color: var(--text-secondary);
 }
 
 .text-blue { color: #3b82f6; font-weight: bold; }
 
 .notes-card {
-  background-color: #f0f7ff;
-  border: 1px solid #e0f2fe !important;
+  background-color: var(--primary-2);
+  border: 1px solid var(--primary-2) !important;
 }
 
 .tips-list {
   margin: 0;
   padding-left: 20px;
   font-size: 13px;
-  color: #1e293b;
+  color: var(--text);
   line-height: 2;
 }
 

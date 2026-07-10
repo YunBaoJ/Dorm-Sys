@@ -58,7 +58,7 @@
                   <el-progress 
                     :percentage="(room.occupied / room.capacity) * 100" 
                     :stroke-width="8" 
-                    :color="room.occupied === room.capacity ? '#f59e0b' : '#e2e8f0'"
+                    :color="room.occupied === room.capacity ? '#f59e0b' : 'var(--line)'"
                     :show-text="false"
                   />
                 </div>
@@ -107,7 +107,7 @@
               </div>
             </div>
             <div class="dash-item">
-              <div class="dash-icon bg-gray"><el-icon color="#64748b"><component :is="Settings" /></el-icon></div>
+              <div class="dash-icon bg-gray"><el-icon color="var(--sub)"><component :is="Settings" /></el-icon></div>
               <div class="dash-info">
                 <div class="dash-label">维修中</div>
                 <div class="dash-value">15 <span>间</span></div>
@@ -201,13 +201,13 @@ const rooms = ref([
 .hero-text h2 {
   margin: 0 0 4px 0;
   font-size: 20px;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .hero-text p {
   margin: 0;
   font-size: 14px;
-  color: #64748b;
+  color: var(--sub);
 }
 
 .hero-actions {
@@ -225,7 +225,7 @@ const rooms = ref([
   align-items: center;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--line);
 }
 
 .header-left {
@@ -236,7 +236,7 @@ const rooms = ref([
 .list-title {
   font-size: 16px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .room-list {
@@ -249,13 +249,13 @@ const rooms = ref([
   display: flex;
   align-items: center;
   padding: 24px;
-  background-color: #f8fafc;
+  background-color: var(--bg);
   border-radius: 12px;
   transition: background-color 0.2s;
 }
 
 .room-item:hover {
-  background-color: #f1f5f9;
+  background-color: var(--line);
 }
 
 .room-badge {
@@ -269,7 +269,7 @@ const rooms = ref([
   color: #3b82f6;
 }
 
-.bg-light-blue { background: #eff6ff; }
+.bg-light-blue { background: var(--primary-2); }
 
 .room-no {
   font-size: 24px;
@@ -292,7 +292,7 @@ const rooms = ref([
   gap: 12px;
   margin-bottom: 16px;
   font-size: 14px;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .room-bldg {
@@ -303,7 +303,7 @@ const rooms = ref([
 }
 
 .room-floor {
-  color: #64748b;
+  color: var(--sub);
 }
 
 .progress-section {
@@ -319,12 +319,12 @@ const rooms = ref([
 }
 
 .progress-label {
-  color: #64748b;
+  color: var(--sub);
 }
 
 .progress-val {
   font-weight: 500;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .room-tags {
@@ -349,7 +349,7 @@ const rooms = ref([
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .side-card {
@@ -374,7 +374,7 @@ const rooms = ref([
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: #f8fafc;
+  background: var(--bg);
   border-radius: 12px;
 }
 
@@ -388,8 +388,8 @@ const rooms = ref([
   font-size: 20px;
 }
 
-.bg-light-orange { background: #fff7ed; }
-.bg-gray { background: #f1f5f9; }
+.bg-light-orange { background: var(--orange-2); }
+.bg-gray { background: var(--line); }
 
 .dash-info {
   flex: 1;
@@ -397,20 +397,20 @@ const rooms = ref([
 
 .dash-label {
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
   margin-bottom: 4px;
 }
 
 .dash-value {
   font-size: 20px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
 }
 
 .dash-value span {
   font-size: 13px;
   font-weight: normal;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 .guide-list {
@@ -428,7 +428,7 @@ const rooms = ref([
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #eff6ff;
+  background: var(--primary-2);
   color: #3b82f6;
   display: flex;
   align-items: center;
@@ -450,19 +450,19 @@ const rooms = ref([
 .guide-title {
   font-size: 14px;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text);
   margin-bottom: 4px;
 }
 
 .guide-desc {
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
   line-height: 1.5;
 }
 
 .rules-card {
-  background-color: #f0f7ff;
-  border: 1px solid #e0f2fe !important;
+  background-color: var(--primary-2);
+  border: 1px solid var(--primary-2) !important;
 }
 
 .text-primary {
@@ -473,7 +473,7 @@ const rooms = ref([
   margin: 0;
   padding-left: 16px;
   font-size: 13px;
-  color: #1e293b;
+  color: var(--text);
   line-height: 2;
 }
 
