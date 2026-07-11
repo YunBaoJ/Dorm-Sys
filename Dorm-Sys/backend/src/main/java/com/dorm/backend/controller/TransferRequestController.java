@@ -1,6 +1,7 @@
 package com.dorm.backend.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.dorm.backend.common.Result;
 import com.dorm.backend.entity.TransferRequest;
 import com.dorm.backend.entity.User;
@@ -118,15 +119,17 @@ public class TransferRequestController {
         }
 
         Bed currentBed = findCurrentBed(transferRequest);
+        if (currentBed != null && transferRequest.getTargetRoomId().equals(currentBed.getRoomId())) {
+            return Result.success(true);
+        }
+
         Bed targetBed = findAvailableTargetBed(transferRequest.getTargetRoomId());
         if (targetBed == null) {
             return Result.error(400, "目标房间暂无可用床位");
         }
 
         if (currentBed != null && !currentBed.getId().equals(targetBed.getId())) {
-            currentBed.setStudentId(null);
-            currentBed.setStatus("EMPTY");
-            bedService.updateById(currentBed);
+            releaseBed(currentBed);
         }
 
         targetBed.setStudentId(transferRequest.getStudentId());
@@ -161,6 +164,16 @@ public class TransferRequestController {
             .filter(bed -> bed.getStatus() == null || "EMPTY".equals(bed.getStatus()))
             .findFirst()
             .orElse(null);
+    }
+
+    private void releaseBed(Bed bed) {
+        UpdateWrapper<Bed> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("id", bed.getId())
+            .set("student_id", null)
+            .set("status", "EMPTY");
+        bedService.update(updateWrapper);
+        bed.setStudentId(null);
+        bed.setStatus("EMPTY");
     }
 
     private void refreshRoomStatus(Long roomId) {

@@ -63,7 +63,7 @@ class TransferRequestControllerTest {
         org.assertj.core.api.Assertions.assertThat(currentBed.getStatus()).isEqualTo("EMPTY");
         org.assertj.core.api.Assertions.assertThat(targetBed.getStudentId()).isEqualTo(1L);
         org.assertj.core.api.Assertions.assertThat(targetBed.getStatus()).isEqualTo("OCCUPIED");
-        verify(bedService).updateById(currentBed);
+        verify(bedService).update(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any());
         verify(bedService).updateById(targetBed);
         verify(transferRequestService).saveOrUpdate(request);
     }

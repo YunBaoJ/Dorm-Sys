@@ -9,7 +9,7 @@
             张
           </div>
           <div>
-            <h1 style="margin: 0; font-size: 22px;">早安，张伟 👋</h1>
+            <h1 style="margin: 0; font-size: 22px;">早安，{{ userStore.userInfo?.name || '同学' }} 👋</h1>
             <p style="margin: 4px 0 0; color: var(--sub); font-size: 14px;">今天是 2026年3月27日星期五，开启高效的一天吧！</p>
           </div>
         </div>
@@ -58,7 +58,7 @@
               </div>
               <div>
                 <div style="color: var(--sub); font-size: 13px; margin-bottom: 2px;">我的宿舍</div>
-                <div style="font-weight: 700; font-size: 17px;">明德楼 101</div>
+                <div style="font-weight: 700; font-size: 17px;">{{ currentDormLabel }}</div>
               </div>
             </div>
             <button class="ghost-btn" @click="router.push('/student/dorm')">查看详情</button>
@@ -127,7 +127,7 @@
               <div class="row-main">
                 <div class="row-title">报修工单待确认</div>
                 <div class="row-meta">
-                  <span>明德楼101 · 网络故障</span>
+                  <span>{{ currentDormLabel }} · 网络故障</span>
                   <span>处理中</span>
                 </div>
               </div>
@@ -206,7 +206,7 @@
               </div>
               <div class="row-main">
                 <div class="row-title">{{ rm.name }}</div>
-                <div class="row-meta"><span>1-{{ idx + 2 }}号床</span></div>
+                <div class="row-meta"><span>{{ rm.bedNumber }}号床</span></div>
               </div>
             </div>
           </div>
@@ -250,22 +250,60 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { dataStore } from '../../store/data'
+import { getRooms, getBeds } from '../../api/room'
+import { getUsers } from '../../api/user'
+import { getBuildings } from '../../api/building'
+import { useUserStore } from '../../store/user'
 import { 
   Home, Wallet, Settings, Medal,
   UserRoundCheck, Repeat2, MessageCircle, Pencil, Newspaper, WalletCards
 } from '@lucide/vue'
 
 const router = useRouter()
+const userStore = useUserStore()
 const hoverBanner = ref(false)
 const notices = computed(() => dataStore.notices.slice(0, 3))
-const roommates = [
-  { name: '李明' },
-  { name: '王芳' },
-  { name: '刘洋' }
-]
+const currentDormLabel = ref('加载中')
+const roommates = ref([])
+
+const fetchDormSummary = async () => {
+  try {
+    const [bedsRes, usersRes, roomsRes, buildingsRes] = await Promise.all([
+      getBeds(), getUsers(), getRooms(), getBuildings()
+    ])
+    const beds = bedsRes || []
+    const users = usersRes || []
+    const rooms = roomsRes || []
+    const buildings = buildingsRes || []
+    const me = userStore.userInfo || {}
+    const myBed = beds.find((bed) => bed.studentId === me.id)
+    if (!myBed) {
+      currentDormLabel.value = '未分配宿舍'
+      roommates.value = []
+      return
+    }
+
+    const room = rooms.find((item) => item.id === myBed.roomId)
+    const building = room ? buildings.find((item) => item.id === room.buildingId) : null
+    currentDormLabel.value = room ? `${building?.name || ''} ${room.roomNumber}`.trim() : '未分配宿舍'
+
+    const userMap = Object.fromEntries(users.map((user) => [user.id, user]))
+    roommates.value = beds
+      .filter((bed) => bed.roomId === myBed.roomId && bed.studentId && bed.studentId !== me.id)
+      .map((bed) => ({
+        name: userMap[bed.studentId]?.name || '未知',
+        bedNumber: bed.bedNumber
+      }))
+  } catch (error) {
+    currentDormLabel.value = '获取失败'
+    roommates.value = []
+  }
+}
+
+onMounted(() => fetchDormSummary())
 </script>
 
 <style scoped>
