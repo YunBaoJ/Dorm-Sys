@@ -28,32 +28,36 @@
             </div>
             <div class="list-actions">
               <el-input v-model="keyword" clearable placeholder="搜索记录" style="width: 220px" />
-              <el-select v-model="statusFilter" placeholder="状态" clearable style="width: 140px">
+              <el-select v-model="statusFilter" placeholder="状态" clearable style="width: 140px" @change="loadRecords">
                 <el-option v-for="status in statuses" :key="status" :label="status" :value="status" />
               </el-select>
             </div>
           </div>
 
-          <el-empty v-if="filteredRecords.length === 0" description="暂无记录" />
-          <div v-else class="record-list">
-            <div v-for="record in filteredRecords" :key="record.id" class="record-item">
-              <div class="record-icon">
-                <el-icon><component :is="icon" /></el-icon>
-              </div>
-              <div class="record-main">
-                <div class="record-head">
-                  <strong>{{ record.title }}</strong>
-                  <el-tag size="small" :type="statusType(record.status)" effect="plain">{{ record.status }}</el-tag>
+          <div v-loading="loading">
+            <el-empty v-if="filteredRecords.length === 0" description="暂无记录" />
+            <div v-else class="record-list">
+              <div v-for="record in filteredRecords" :key="record.id" class="record-item">
+                <div class="record-icon">
+                  <el-icon><component :is="icon" /></el-icon>
                 </div>
-                <div class="record-desc">{{ record.description }}</div>
-                <div class="record-meta">
-                  <span>{{ record.owner }}</span>
-                  <span>{{ record.time }}</span>
+                <div class="record-main">
+                  <div class="record-head">
+                    <strong>{{ record.title }}</strong>
+                    <el-tag size="small" :type="statusType(record.status)" effect="plain">{{ record.status }}</el-tag>
+                  </div>
+                  <div class="record-desc">{{ record.description }}</div>
+                  <div class="record-meta">
+                    <span>{{ record.owner }}</span>
+                    <span>{{ formatTime(record.eventTime || record.createTime || record.time) }}</span>
+                  </div>
                 </div>
-              </div>
-              <div class="record-actions">
-                <el-button type="primary" link @click="advance(record)">{{ nextAction(record.status) }}</el-button>
-                <el-button type="danger" link @click="remove(record.id)">删除</el-button>
+                <div class="record-actions">
+                  <el-button type="primary" link :disabled="isFinal(record.status)" @click="advance(record)">
+                    {{ nextAction(record.status) }}
+                  </el-button>
+                  <el-button type="danger" link @click="remove(record.id)">删除</el-button>
+                </div>
               </div>
             </div>
           </div>
@@ -103,7 +107,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submit">保存</el-button>
+        <el-button type="primary" :loading="submitting" @click="submit">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -113,9 +117,12 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@lucide/vue'
+import { getBusinessRecords, saveBusinessRecord, deleteBusinessRecord } from '../api/businessRecord'
+import { useUserStore } from '../store/user'
 
 const props = defineProps({
   storageKey: { type: String, required: true },
+  recordType: { type: String, required: true },
   title: { type: String, required: true },
   subtitle: { type: String, default: '' },
   listTitle: { type: String, default: '记录列表' },
@@ -129,29 +136,49 @@ const props = defineProps({
   descriptionPlaceholder: { type: String, default: '请输入详细说明' }
 })
 
+const userStore = useUserStore()
 const records = ref([])
 const keyword = ref('')
 const statusFilter = ref('')
 const dialogVisible = ref(false)
+const loading = ref(false)
+const submitting = ref(false)
 const form = reactive({ title: '', owner: '', description: '', status: props.statuses[0] })
+const seedFlagKey = `${props.storageKey}:seeded`
 
-onMounted(() => {
-  const stored = localStorage.getItem(props.storageKey)
-  records.value = stored ? JSON.parse(stored) : props.defaultRecords
-  persist()
-})
+onMounted(() => loadRecords())
 
 const filteredRecords = computed(() => {
   const key = keyword.value.trim().toLowerCase()
   return records.value.filter((record) => {
-    const matchesKeyword = !key || [record.title, record.owner, record.description].some((value) => String(value || '').toLowerCase().includes(key))
-    const matchesStatus = !statusFilter.value || record.status === statusFilter.value
-    return matchesKeyword && matchesStatus
+    return !key || [record.title, record.owner, record.description].some((value) => String(value || '').toLowerCase().includes(key))
   })
 })
 
-const persist = () => {
-  localStorage.setItem(props.storageKey, JSON.stringify(records.value))
+const loadRecords = async () => {
+  loading.value = true
+  try {
+    const data = await getBusinessRecords(props.recordType, statusFilter.value || null)
+    records.value = data
+    if (records.value.length === 0 && !statusFilter.value && props.defaultRecords.length > 0 && !localStorage.getItem(seedFlagKey)) {
+      records.value = await seedDefaultRecords()
+      localStorage.setItem(seedFlagKey, '1')
+    }
+  } catch (error) {
+    ElMessage.error('获取记录失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const seedDefaultRecords = async () => {
+  const seeded = []
+  for (const record of props.defaultRecords) {
+    const payload = toApiPayload(record)
+    await saveBusinessRecord(payload)
+    seeded.push(payload)
+  }
+  return getBusinessRecords(props.recordType)
 }
 
 const openCreate = () => {
@@ -159,39 +186,52 @@ const openCreate = () => {
   dialogVisible.value = true
 }
 
-const submit = () => {
+const submit = async () => {
   if (!form.title || !form.description) {
     ElMessage.warning('请填写标题和说明')
     return
   }
-  records.value.unshift({
-    id: Date.now(),
-    title: form.title,
-    owner: form.owner || '未指定',
-    description: form.description,
-    status: form.status,
-    time: new Date().toLocaleString()
-  })
-  persist()
-  dialogVisible.value = false
-  ElMessage.success('保存成功')
+  submitting.value = true
+  try {
+    await saveBusinessRecord(toApiPayload(form))
+    dialogVisible.value = false
+    ElMessage.success('保存成功')
+    await loadRecords()
+  } catch (error) {
+    ElMessage.error('保存失败')
+  } finally {
+    submitting.value = false
+  }
 }
 
 const remove = async (id) => {
   await ElMessageBox.confirm('确定删除这条记录吗？', '提示', { type: 'warning' })
-  records.value = records.value.filter((record) => record.id !== id)
-  persist()
+  await deleteBusinessRecord(id)
+  await loadRecords()
 }
 
-const advance = (record) => {
+const advance = async (record) => {
   const index = props.statuses.indexOf(record.status)
-  record.status = props.statuses[Math.min(index + 1, props.statuses.length - 1)]
-  persist()
+  const nextStatus = props.statuses[Math.min(index + 1, props.statuses.length - 1)]
+  await saveBusinessRecord({ ...record, type: props.recordType, status: nextStatus })
+  await loadRecords()
 }
+
+const toApiPayload = (record) => ({
+  id: record.id || null,
+  type: props.recordType,
+  title: record.title,
+  owner: record.owner || '未指定',
+  description: record.description,
+  status: record.status || props.statuses[0],
+  creatorId: userStore.userInfo?.id || null
+})
+
+const isFinal = (status) => props.statuses.indexOf(status) >= props.statuses.length - 1
 
 const nextAction = (status) => {
   const index = props.statuses.indexOf(status)
-  return index >= props.statuses.length - 1 ? '已完成' : `转为${props.statuses[index + 1]}`
+  return isFinal(status) ? '已完成' : `转为${props.statuses[index + 1]}`
 }
 
 const countByStatus = (status) => records.value.filter((record) => record.status === status).length
@@ -201,6 +241,11 @@ const statusType = (status) => {
   if (index === 0) return 'warning'
   if (index === props.statuses.length - 1) return 'success'
   return 'primary'
+}
+
+const formatTime = (value) => {
+  if (!value) return ''
+  return String(value).replace('T', ' ').slice(0, 19)
 }
 </script>
 

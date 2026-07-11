@@ -1,6 +1,7 @@
 <template>
   <LocalFeaturePage
     storage-key="manager-items"
+    record-type="manager_items"
     title="物品出入"
     subtitle="登记大件物品、维修工具和临时物资出入"
     list-title="出入记录"

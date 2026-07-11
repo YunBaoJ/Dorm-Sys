@@ -1,6 +1,7 @@
 <template>
   <LocalFeaturePage
     storage-key="manager-late-return"
+    record-type="manager_late_return"
     title="晚归登记"
     subtitle="记录学生晚归情况与后续跟进"
     list-title="晚归记录"

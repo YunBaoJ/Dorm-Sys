@@ -1,6 +1,7 @@
 <template>
   <LocalFeaturePage
     storage-key="manager-smart-calls"
+    record-type="manager_call"
     title="智能通话"
     subtitle="联系学生、维修人员和访客的通话任务"
     list-title="通话任务"

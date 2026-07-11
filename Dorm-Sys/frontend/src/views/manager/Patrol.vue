@@ -1,6 +1,7 @@
 <template>
   <LocalFeaturePage
     storage-key="manager-ai-patrol"
+    record-type="manager_ai_patrol"
     title="AI巡查"
     subtitle="记录智能巡查线索、异常风险和复核结果"
     list-title="巡查线索"

@@ -1,6 +1,7 @@
 <template>
   <LocalFeaturePage
     storage-key="manager-profile-tasks"
+    record-type="manager_profile"
     title="个人中心"
     subtitle="个人待办、值班备忘和工作记录"
     list-title="个人事项"

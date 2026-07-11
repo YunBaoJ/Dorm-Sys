@@ -1,6 +1,7 @@
 <template>
   <LocalFeaturePage
     storage-key="manager-messages"
+    record-type="manager_messages"
     title="消息通知"
     subtitle="面向楼栋、房间或学生发布管理通知"
     list-title="通知记录"

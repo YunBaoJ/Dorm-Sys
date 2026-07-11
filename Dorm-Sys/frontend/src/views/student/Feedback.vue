@@ -1,6 +1,7 @@
 <template>
   <LocalFeaturePage
     storage-key="student-feedback"
+    record-type="student_feedback"
     title="意见反馈"
     subtitle="提交宿舍服务建议、投诉和体验反馈"
     list-title="反馈记录"

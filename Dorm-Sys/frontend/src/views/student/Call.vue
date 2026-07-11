@@ -1,6 +1,7 @@
 <template>
   <LocalFeaturePage
     storage-key="student-smart-calls"
+    record-type="student_call"
     title="智能通话"
     subtitle="宿舍事务语音联系与通话记录"
     list-title="通话记录"
