@@ -2,7 +2,7 @@ import request from '../utils/request'
 
 export function getTransfers(studentId, status) {
   return request({
-    url: '/api/transferRequest/list',
+    url: '/transferRequest/list',
     method: 'get',
     params: { studentId, status }
   })
@@ -10,7 +10,7 @@ export function getTransfers(studentId, status) {
 
 export function saveTransfer(data) {
   return request({
-    url: '/api/transferRequest/save',
+    url: '/transferRequest/save',
     method: 'post',
     data
   })
@@ -18,7 +18,7 @@ export function saveTransfer(data) {
 
 export function deleteTransfer(id) {
   return request({
-    url: `/api/transferRequest/${id}`,
+    url: `/transferRequest/${id}`,
     method: 'delete'
   })
 }

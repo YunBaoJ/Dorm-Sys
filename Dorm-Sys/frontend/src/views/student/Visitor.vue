@@ -94,7 +94,7 @@ const submitting = ref(false)
 const fetchMyVisitors = async () => {
   loading.value = true
   try {
-    const res = await request({ url: '/api/visitorRecord/list', method: 'get', params: { studentId: userStore.userInfo?.id } })
+    const res = await request({ url: '/visitorRecord/list', method: 'get', params: { studentId: userStore.userInfo?.id } })
     myVisitors.value = res || []
   } catch (e) {
     ElMessage.error('获取来访记录失败')
@@ -113,7 +113,7 @@ const handleSubmit = async () => {
   submitting.value = true
   try {
     await request({
-      url: '/api/visitorRecord/save',
+      url: '/visitorRecord/save',
       method: 'post',
       data: {
         studentId: userStore.userInfo?.id,

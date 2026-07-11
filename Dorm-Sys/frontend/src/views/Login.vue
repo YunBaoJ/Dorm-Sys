@@ -156,9 +156,9 @@ const handleLogin = async () => {
       duration: 2000
     })
     
-    if (form.role === 'student') router.push('/student/dorm')
+    if (form.role === 'student') router.push('/student/desk')
     else if (form.role === 'dormmanager') router.push('/dormmanager/workbench')
-    else router.push('/admin/users/list')
+    else router.push('/admin/overview')
   } catch (error) {
     // 失败时的提示已在拦截器或者 api 里处理，此处可以做一些补充
     console.error(error)

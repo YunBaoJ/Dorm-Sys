@@ -15,6 +15,8 @@ const routes = [
   { path: '/student/visitor', component: () => import('../views/student/Visitor.vue') },
   { path: '/student/transfer', component: () => import('../views/student/Transfer.vue') },
   { path: '/student/ai', component: () => import('../views/student/AI.vue') },
+  { path: '/student/call', component: () => import('../views/student/Call.vue') },
+  { path: '/student/feedback', component: () => import('../views/student/Feedback.vue') },
   { path: '/student/settings', component: () => import('../views/student/Settings.vue') },
   
   // Dorm Manager Routes
@@ -24,6 +26,12 @@ const routes = [
   { path: '/dormmanager/visitor', component: () => import('../views/manager/Visitor.vue') },
   { path: '/dormmanager/hygiene', component: () => import('../views/manager/Hygiene.vue') },
   { path: '/dormmanager/transfer', component: () => import('../views/manager/Transfer.vue') },
+  { path: '/dormmanager/late-return', component: () => import('../views/manager/LateReturn.vue') },
+  { path: '/dormmanager/items', component: () => import('../views/manager/Items.vue') },
+  { path: '/dormmanager/messages', component: () => import('../views/manager/Messages.vue') },
+  { path: '/dormmanager/patrol', component: () => import('../views/manager/Patrol.vue') },
+  { path: '/dormmanager/call', component: () => import('../views/manager/Call.vue') },
+  { path: '/dormmanager/profile', component: () => import('../views/manager/Profile.vue') },
 
   // Admin Routes
   { path: '/admin/overview', component: () => import('../views/admin/Overview.vue') },

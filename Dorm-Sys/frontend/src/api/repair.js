@@ -2,7 +2,7 @@ import request from '../utils/request'
 
 export function getRepairs(submitterId, status) {
   return request({
-    url: '/api/repairRequest/list',
+    url: '/repairRequest/list',
     method: 'get',
     params: { submitterId, status }
   })
@@ -10,7 +10,7 @@ export function getRepairs(submitterId, status) {
 
 export function saveRepair(data) {
   return request({
-    url: '/api/repairRequest/save',
+    url: '/repairRequest/save',
     method: 'post',
     data
   })
@@ -18,7 +18,7 @@ export function saveRepair(data) {
 
 export function deleteRepair(id) {
   return request({
-    url: `/api/repairRequest/${id}`,
+    url: `/repairRequest/${id}`,
     method: 'delete'
   })
 }

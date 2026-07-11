@@ -10,7 +10,7 @@
             <p>营造整洁环境 · 共建文明宿舍</p>
           </div>
         </div>
-        <el-button type="primary"><el-icon class="el-icon--left"><component :is="Plus" /></el-icon>录入检查结果</el-button>
+        <el-button type="primary" @click="openCreateDialog"><el-icon class="el-icon--left"><component :is="Plus" /></el-icon>录入检查结果</el-button>
       </div>
     </el-card>
 
@@ -127,20 +127,60 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <el-dialog v-model="dialogVisible" title="录入检查结果" width="520px">
+      <el-form :model="form" label-width="88px">
+        <el-form-item label="检查房间" required>
+          <el-select v-model="form.roomId" filterable placeholder="请选择房间" style="width: 100%">
+            <el-option
+              v-for="room in rooms"
+              :key="room.id"
+              :label="room.buildingName ? `${room.buildingName} ${room.roomNumber}` : room.roomNumber"
+              :value="room.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="检查分数" required>
+          <el-input-number v-model="form.score" :min="0" :max="100" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="检查日期" required>
+          <el-date-picker v-model="form.checkDate" type="date" value-format="YYYY-MM-DD" placeholder="请选择日期" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="检查备注">
+          <el-input v-model="form.comment" type="textarea" :rows="4" placeholder="请输入卫生情况、整改建议或亮点" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="submitting" @click="handleSubmit">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { Medal, Plus, BarChart2, ArrowUp, ArrowDown, RefreshCw as Refresh, User, Clock, Trash2 } from '@lucide/vue'
-import { getHygieneRecords, deleteHygieneRecord } from '../../api/hygiene'
+import { getHygieneRecords, saveHygieneRecord, deleteHygieneRecord } from '../../api/hygiene'
+import { getRooms } from '../../api/room'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUserStore } from '../../store/user'
 
 const activeCriteria = ref('1')
 const buildingFilter = ref('')
+const userStore = useUserStore()
 
 const records = ref([])
+const rooms = ref([])
 const loading = ref(false)
+const submitting = ref(false)
+const dialogVisible = ref(false)
+const form = ref({
+  roomId: null,
+  score: 90,
+  checkDate: new Date().toISOString().slice(0, 10),
+  comment: ''
+})
 
 const fetchRecords = async () => {
   loading.value = true
@@ -159,7 +199,52 @@ const fetchRecords = async () => {
   }
 }
 
-onMounted(() => fetchRecords())
+const fetchRooms = async () => {
+  try {
+    rooms.value = await getRooms()
+  } catch (e) {
+    ElMessage.error('获取房间列表失败')
+  }
+}
+
+onMounted(() => {
+  fetchRecords()
+  fetchRooms()
+})
+
+const openCreateDialog = () => {
+  form.value = {
+    roomId: null,
+    score: 90,
+    checkDate: new Date().toISOString().slice(0, 10),
+    comment: ''
+  }
+  dialogVisible.value = true
+}
+
+const handleSubmit = async () => {
+  if (!form.value.roomId || form.value.score === null || !form.value.checkDate) {
+    ElMessage.warning('请填写房间、分数和检查日期')
+    return
+  }
+  submitting.value = true
+  try {
+    await saveHygieneRecord({
+      roomId: form.value.roomId,
+      score: form.value.score,
+      checkDate: form.value.checkDate,
+      comment: form.value.comment,
+      inspectorId: userStore.userInfo?.id || 1
+    })
+    ElMessage.success('录入成功')
+    dialogVisible.value = false
+    fetchRecords()
+  } catch (e) {
+    ElMessage.error('录入失败')
+  } finally {
+    submitting.value = false
+  }
+}
 
 const handleDelete = async (id) => {
   try {

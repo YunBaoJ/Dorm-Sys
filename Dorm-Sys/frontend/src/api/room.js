@@ -2,7 +2,7 @@ import request from '../utils/request'
 
 export function getRooms(buildingId) {
   return request({
-    url: '/api/room/list',
+    url: '/room/list',
     method: 'get',
     params: { buildingId }
   })
@@ -10,7 +10,7 @@ export function getRooms(buildingId) {
 
 export function saveRoom(data) {
   return request({
-    url: '/api/room/save',
+    url: '/room/save',
     method: 'post',
     data
   })
@@ -18,14 +18,14 @@ export function saveRoom(data) {
 
 export function deleteRoom(id) {
   return request({
-    url: `/api/room/${id}`,
+    url: `/room/${id}`,
     method: 'delete'
   })
 }
 
 export function getBeds(roomId) {
   return request({
-    url: '/api/bed/list',
+    url: '/bed/list',
     method: 'get',
     params: { roomId }
   })
@@ -33,7 +33,7 @@ export function getBeds(roomId) {
 
 export function saveBed(data) {
   return request({
-    url: '/api/bed/save',
+    url: '/bed/save',
     method: 'post',
     data
   })
@@ -41,7 +41,7 @@ export function saveBed(data) {
 
 export function deleteBed(id) {
   return request({
-    url: `/api/bed/${id}`,
+    url: `/bed/${id}`,
     method: 'delete'
   })
 }

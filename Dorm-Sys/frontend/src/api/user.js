@@ -4,6 +4,8 @@ export const getUserList = () => {
   return request.get('/user/list')
 }
 
+export const getUsers = getUserList
+
 export const saveUser = (data) => {
   return request.post('/user/save', data)
 }

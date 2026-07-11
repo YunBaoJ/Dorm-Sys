@@ -27,10 +27,8 @@ public class AuthController {
         // Find user by username and role
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("username", loginDTO.getUsername())
-                    .eq("password", loginDTO.getPassword());
-                    
-        // 如果前端传了 role 并且不是特殊情况可以加这个查询条件
-        // .eq("role", loginDTO.getRole());
+                    .eq("password", loginDTO.getPassword())
+                    .eq("role", loginDTO.getRole());
 
         User user = userService.getOne(queryWrapper);
 
@@ -46,6 +44,7 @@ public class AuthController {
         String token = jwtUtils.generateToken(user.getId(), user.getUsername(), user.getRole());
 
         // Return user info and token
+        user.setPassword(null);
         Map<String, Object> data = new HashMap<>();
         data.put("token", token);
         data.put("user", user);

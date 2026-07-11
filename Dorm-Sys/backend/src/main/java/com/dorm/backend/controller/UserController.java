@@ -17,7 +17,9 @@ public class UserController {
 
     @GetMapping("/list")
     public Result<List<User>> list() {
-        return Result.success(userService.list());
+        List<User> users = userService.list();
+        users.forEach(this::hidePassword);
+        return Result.success(users);
     }
 
     @PostMapping("/save")
@@ -25,6 +27,8 @@ public class UserController {
         // Simple mock encryption for prototype (in production use BCrypt)
         if (user.getId() == null && user.getPassword() == null) {
             user.setPassword("123456"); // Default password
+        } else if (user.getId() != null && (user.getPassword() == null || user.getPassword().isBlank())) {
+            user.setPassword(null);
         }
         return Result.success(userService.saveOrUpdate(user));
     }
@@ -32,5 +36,9 @@ public class UserController {
     @DeleteMapping("/{id}")
     public Result<Boolean> delete(@PathVariable Long id) {
         return Result.success(userService.removeById(id));
+    }
+
+    private void hidePassword(User user) {
+        user.setPassword(null);
     }
 }

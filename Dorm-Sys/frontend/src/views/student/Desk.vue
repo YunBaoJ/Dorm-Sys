@@ -230,11 +230,11 @@
               <el-icon :size="24"><component :is="MessageCircle" /></el-icon>
               <span>AI助手</span>
             </button>
-            <button>
+            <button @click="router.push('/student/feedback')">
               <el-icon :size="24"><component :is="Pencil" /></el-icon>
               <span>意见反馈</span>
             </button>
-            <button>
+            <button @click="router.push('/student/notice')">
               <el-icon :size="24"><component :is="Newspaper" /></el-icon>
               <span>校园公告</span>
             </button>

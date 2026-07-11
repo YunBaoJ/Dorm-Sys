@@ -17,7 +17,6 @@
       router
     >
       <template v-for="item in navItems" :key="item.path">
-        <!-- If there are submenus -->
         <el-sub-menu v-if="item.children" :index="item.path">
           <template #title>
             <el-icon><component :is="item.icon" /></el-icon>
@@ -28,7 +27,6 @@
           </el-menu-item>
         </el-sub-menu>
 
-        <!-- No submenus -->
         <el-menu-item v-else :index="item.path">
           <el-icon><component :is="item.icon" /></el-icon>
           <template #title><span>{{ item.label }}</span></template>
@@ -43,18 +41,48 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { appStore } from '../../store/app'
 import { useUserStore } from '../../store/user'
-import { Gauge, UserRound, Building, ClipboardList, UserPlus, Settings, UserCheck, Home, WalletCards, Newspaper, UserRoundCheck, Repeat2, MessageCircle, SlidersHorizontal, Building2, FileCheck } from '@lucide/vue'
+import {
+  Bot,
+  Building,
+  Building2,
+  ClipboardList,
+  Clock,
+  FileCheck,
+  Gauge,
+  Home,
+  Mail,
+  MessageCircle,
+  Package,
+  Pencil,
+  Repeat2,
+  Settings,
+  User,
+  UserCheck,
+  UserPlus,
+  UserRound,
+  UserRoundCheck,
+  Video,
+  WalletCards,
+  Newspaper
+} from '@lucide/vue'
 
 const route = useRoute()
 const userStore = useUserStore()
 
 const navMap = {
   admin: [
-    { path: '/admin/users/list', label: '用户管理', icon: UserRound },
-    { path: '/admin/resources', label: '宿舍资源', icon: Building, children: [
-      { path: '/admin/resources/buildings', label: '楼栋管理' },
-      { path: '/admin/resources/rooms', label: '房间管理' }
-    ]}
+    { path: '/admin/overview', label: '管理概览', icon: Gauge },
+    { path: '/admin/users/list', label: '用户权限', icon: UserRound },
+    {
+      path: '/admin/resources',
+      label: '宿舍资源',
+      icon: Building,
+      children: [
+        { path: '/admin/resources/buildings', label: '楼栋管理' },
+        { path: '/admin/resources/rooms', label: '房间管理' }
+      ]
+    },
+    { path: '/admin/repairs/list', label: '报修监控', icon: Settings }
   ],
   dormmanager: [
     { path: '/dormmanager/workbench', label: '工作台', icon: ClipboardList },
@@ -62,14 +90,26 @@ const navMap = {
     { path: '/dormmanager/repair', label: '报修处理', icon: Settings },
     { path: '/dormmanager/visitor', label: '访客登记', icon: UserCheck },
     { path: '/dormmanager/hygiene', label: '卫生检查', icon: FileCheck },
+    { path: '/dormmanager/late-return', label: '晚归登记', icon: Clock },
+    { path: '/dormmanager/items', label: '物品出入', icon: Package },
+    { path: '/dormmanager/messages', label: '消息通知', icon: Mail },
+    { path: '/dormmanager/patrol', label: 'AI巡查', icon: Bot },
+    { path: '/dormmanager/call', label: '智能通话', icon: Video },
     { path: '/dormmanager/transfer', label: '调宿审批', icon: Repeat2 },
+    { path: '/dormmanager/profile', label: '个人中心', icon: User }
   ],
   student: [
+    { path: '/student/desk', label: '服务台', icon: Gauge },
     { path: '/student/dorm', label: '我的宿舍', icon: Home },
     { path: '/student/repair', label: '报修申请', icon: Settings },
     { path: '/student/fees', label: '费用查询', icon: WalletCards },
+    { path: '/student/notice', label: '校园公告', icon: Newspaper },
     { path: '/student/visitor', label: '访客预约', icon: UserRoundCheck },
     { path: '/student/transfer', label: '调宿申请', icon: Repeat2 },
+    { path: '/student/ai', label: 'AI助手', icon: MessageCircle },
+    { path: '/student/call', label: '智能通话', icon: Video },
+    { path: '/student/feedback', label: '意见反馈', icon: Pencil },
+    { path: '/student/settings', label: '账户设置', icon: Settings }
   ]
 }
 
@@ -130,6 +170,7 @@ const navItems = computed(() => navMap[userStore.role] || navMap.student)
 .fade-leave-active {
   transition: opacity 0.2s;
 }
+
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
