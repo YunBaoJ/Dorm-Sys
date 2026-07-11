@@ -135,6 +135,7 @@ public class TransferRequestController {
         targetBed.setStudentId(transferRequest.getStudentId());
         targetBed.setStatus("OCCUPIED");
         bedService.updateById(targetBed);
+        releaseOtherBedsForStudent(transferRequest.getStudentId(), targetBed.getId());
         transferRequest.setCurrentBedId(currentBed != null ? currentBed.getId() : transferRequest.getCurrentBedId());
 
         refreshRoomStatus(currentBed != null ? currentBed.getRoomId() : null);
@@ -174,6 +175,15 @@ public class TransferRequestController {
         bedService.update(updateWrapper);
         bed.setStudentId(null);
         bed.setStatus("EMPTY");
+    }
+
+    private void releaseOtherBedsForStudent(Long studentId, Long keptBedId) {
+        UpdateWrapper<Bed> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("student_id", studentId)
+            .ne("id", keptBedId)
+            .set("student_id", null)
+            .set("status", "EMPTY");
+        bedService.update(updateWrapper);
     }
 
     private void refreshRoomStatus(Long roomId) {

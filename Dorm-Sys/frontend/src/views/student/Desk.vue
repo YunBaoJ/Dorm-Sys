@@ -250,12 +250,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { dataStore } from '../../store/data'
 import { getRooms, getBeds } from '../../api/room'
 import { getUsers } from '../../api/user'
 import { getBuildings } from '../../api/building'
+import { getBusinessRecords } from '../../api/businessRecord'
 import { useUserStore } from '../../store/user'
 import { 
   Home, Wallet, Settings, Medal,
@@ -265,7 +265,7 @@ import {
 const router = useRouter()
 const userStore = useUserStore()
 const hoverBanner = ref(false)
-const notices = computed(() => dataStore.notices.slice(0, 3))
+const notices = ref([])
 const currentDormLabel = ref('加载中')
 const roommates = ref([])
 
@@ -303,7 +303,20 @@ const fetchDormSummary = async () => {
   }
 }
 
-onMounted(() => fetchDormSummary())
+const fetchNotices = async () => {
+  const records = await getBusinessRecords('manager_messages', '已发布')
+  notices.value = (records || []).slice(0, 3).map((record, index) => ({
+    id: record.id,
+    title: record.title,
+    date: (record.createTime || '').replace('T', ' ').slice(0, 10),
+    pinned: index === 0
+  }))
+}
+
+onMounted(() => {
+  fetchDormSummary()
+  fetchNotices()
+})
 </script>
 
 <style scoped>

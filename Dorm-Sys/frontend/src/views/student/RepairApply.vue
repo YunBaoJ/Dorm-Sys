@@ -72,12 +72,14 @@
 import { ref, onMounted } from 'vue'
 import { Settings } from '@lucide/vue'
 import { getRepairs, saveRepair } from '../../api/repair'
+import { getBeds } from '../../api/room'
 import { useUserStore } from '../../store/user'
 import { ElMessage } from 'element-plus'
 
 const userStore = useUserStore()
 const form = ref({ type: '', description: '' })
 const myRepairs = ref([])
+const currentRoomId = ref(null)
 const loading = ref(false)
 const submitting = ref(false)
 
@@ -97,7 +99,16 @@ const fetchMyRepairs = async () => {
   }
 }
 
-onMounted(() => fetchMyRepairs())
+const fetchCurrentRoom = async () => {
+  const beds = await getBeds()
+  const currentBed = (beds || []).find((bed) => bed.studentId === userStore.userInfo?.id)
+  currentRoomId.value = currentBed?.roomId || null
+}
+
+onMounted(async () => {
+  await fetchCurrentRoom()
+  fetchMyRepairs()
+})
 
 const handleSubmit = async () => {
   if (!form.value.type || !form.value.description) {
@@ -108,7 +119,7 @@ const handleSubmit = async () => {
   try {
     await saveRepair({
       submitterId: userStore.userInfo?.id,
-      roomId: 1, // Default; in production would be the student's actual room
+      roomId: currentRoomId.value,
       type: form.value.type,
       description: form.value.description,
       status: 'PENDING'

@@ -6,10 +6,12 @@ import com.dorm.backend.entity.RepairRequest;
 import com.dorm.backend.entity.User;
 import com.dorm.backend.entity.Room;
 import com.dorm.backend.entity.Building;
+import com.dorm.backend.entity.Bed;
 import com.dorm.backend.service.RepairRequestService;
 import com.dorm.backend.service.UserService;
 import com.dorm.backend.service.RoomService;
 import com.dorm.backend.service.BuildingService;
+import com.dorm.backend.service.BedService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,6 +34,9 @@ public class RepairRequestController {
     
     @Autowired
     private BuildingService buildingService;
+
+    @Autowired
+    private BedService bedService;
 
     @GetMapping("/list")
     public Result<List<RepairRequest>> list(@RequestParam(required = false) Long submitterId, 
@@ -73,6 +78,17 @@ public class RepairRequestController {
 
     @PostMapping("/save")
     public Result<Boolean> save(@RequestBody RepairRequest repairRequest) {
+        if (repairRequest.getRoomId() == null && repairRequest.getSubmitterId() != null) {
+            QueryWrapper<Bed> bedQuery = new QueryWrapper<>();
+            bedQuery.eq("student_id", repairRequest.getSubmitterId());
+            Bed currentBed = bedService.list(bedQuery).stream().findFirst().orElse(null);
+            if (currentBed != null) {
+                repairRequest.setRoomId(currentBed.getRoomId());
+            }
+        }
+        if (repairRequest.getRoomId() == null) {
+            return Result.error(400, "未找到当前宿舍，无法提交报修");
+        }
         return Result.success(repairRequestService.saveOrUpdate(repairRequest));
     }
 
