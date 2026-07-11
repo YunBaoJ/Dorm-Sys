@@ -164,7 +164,7 @@ CREATE TABLE `hygiene_record` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='卫生检查记录表';
 
 -- 初始化测试数据
-INSERT INTO `sys_user` (`username`, `password`, `role`, `name`, `avatar`) VALUES
-('student', '123456', 'student', '张伟', '/images/avatar.jpg'),
-('dormmanager', '123456', 'dormmanager', '周强', NULL),
-('admin', '123456', 'admin', '系统管理员', NULL);
+INSERT INTO `sys_user` (`username`, `password`, `role`, `name`, `avatar`, `class_name`, `email`, `phone`) VALUES
+('2022010001', '123456', 'student', '张伟', '/images/avatar.jpg', '计科2201', 'stu001@stu.edu.cn', '13800010001'),
+('dormmanager', '123456', 'dormmanager', '周强', NULL, NULL, NULL, NULL),
+('admin', '123456', 'admin', '系统管理员', NULL, NULL, NULL, NULL);

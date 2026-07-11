@@ -117,7 +117,7 @@ const userStore = useUserStore()
 const loading = ref(false)
 
 const form = reactive({
-  username: 'student',
+  username: '2022010001',
   password: '123456',
   role: 'student',
   remember: true
