@@ -13,6 +13,7 @@ import com.dorm.backend.service.BedService;
 import com.dorm.backend.service.RoomService;
 import com.dorm.backend.service.BuildingService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -92,12 +93,92 @@ public class TransferRequestController {
     }
 
     @PostMapping("/save")
+    @Transactional
     public Result<Boolean> save(@RequestBody TransferRequest transferRequest) {
+        if ("APPROVED".equals(transferRequest.getStatus())) {
+            Result<Boolean> transferResult = applyApprovedTransfer(transferRequest);
+            if (transferResult.getCode() != 200) {
+                return transferResult;
+            }
+        }
         return Result.success(transferRequestService.saveOrUpdate(transferRequest));
     }
 
     @DeleteMapping("/{id}")
     public Result<Boolean> delete(@PathVariable Long id) {
         return Result.success(transferRequestService.removeById(id));
+    }
+
+    private Result<Boolean> applyApprovedTransfer(TransferRequest transferRequest) {
+        if (transferRequest.getStudentId() == null) {
+            return Result.error(400, "申请学生不能为空");
+        }
+        if (transferRequest.getTargetRoomId() == null) {
+            return Result.error(400, "批准调宿时必须指定目标房间");
+        }
+
+        Bed currentBed = findCurrentBed(transferRequest);
+        Bed targetBed = findAvailableTargetBed(transferRequest.getTargetRoomId());
+        if (targetBed == null) {
+            return Result.error(400, "目标房间暂无可用床位");
+        }
+
+        if (currentBed != null && !currentBed.getId().equals(targetBed.getId())) {
+            currentBed.setStudentId(null);
+            currentBed.setStatus("EMPTY");
+            bedService.updateById(currentBed);
+        }
+
+        targetBed.setStudentId(transferRequest.getStudentId());
+        targetBed.setStatus("OCCUPIED");
+        bedService.updateById(targetBed);
+        transferRequest.setCurrentBedId(currentBed != null ? currentBed.getId() : transferRequest.getCurrentBedId());
+
+        refreshRoomStatus(currentBed != null ? currentBed.getRoomId() : null);
+        refreshRoomStatus(targetBed.getRoomId());
+        return Result.success(true);
+    }
+
+    private Bed findCurrentBed(TransferRequest transferRequest) {
+        if (transferRequest.getCurrentBedId() != null) {
+            Bed bed = bedService.getById(transferRequest.getCurrentBedId());
+            if (bed != null && transferRequest.getStudentId().equals(bed.getStudentId())) {
+                return bed;
+            }
+        }
+
+        QueryWrapper<Bed> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("student_id", transferRequest.getStudentId());
+        List<Bed> beds = bedService.list(queryWrapper);
+        return beds.isEmpty() ? null : beds.get(0);
+    }
+
+    private Bed findAvailableTargetBed(Long targetRoomId) {
+        QueryWrapper<Bed> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("room_id", targetRoomId);
+        return bedService.list(queryWrapper).stream()
+            .filter(bed -> bed.getStudentId() == null)
+            .filter(bed -> bed.getStatus() == null || "EMPTY".equals(bed.getStatus()))
+            .findFirst()
+            .orElse(null);
+    }
+
+    private void refreshRoomStatus(Long roomId) {
+        if (roomId == null) {
+            return;
+        }
+
+        Room room = roomService.getById(roomId);
+        if (room == null || room.getCapacity() == null) {
+            return;
+        }
+
+        QueryWrapper<Bed> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("room_id", roomId);
+        long occupied = bedService.list(queryWrapper).stream()
+            .filter(bed -> bed.getStudentId() != null || "OCCUPIED".equals(bed.getStatus()))
+            .count();
+        room.setStatus(occupied >= room.getCapacity() ? "FULL" : "NORMAL");
+        roomService.updateById(room);
     }
 }
