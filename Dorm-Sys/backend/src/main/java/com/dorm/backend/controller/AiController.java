@@ -29,6 +29,10 @@ public class AiController {
             answer = "可在“费用查询”中查看当前宿舍账单。线上缴费尚未开放，请按页面指引到服务中心办理。";
         } else if (q.contains("访客") || q.contains("来访")) {
             answer = "请在“访客登记”中填写访客信息。宿管审批通过后，访客方可进入宿舍区。";
+        } else if (q.contains("遥控器") || q.contains("钥匙")) {
+            answer = "请先联系宿管登记遗失物品，并说明宿舍号和设备类型。确认无法找回后，由宿管协助办理补领或赔付。";
+        } else if (q.contains("用电") || q.contains("电器")) {
+            answer = "宿舍内严禁使用大功率及违规电器。发现插座发热、异味或跳闸时应立即断电，并通过报修页面联系宿管处理。";
         }
 
         return Result.success(answer);

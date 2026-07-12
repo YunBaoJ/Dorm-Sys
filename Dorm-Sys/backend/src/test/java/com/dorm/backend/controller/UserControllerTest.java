@@ -3,6 +3,9 @@ package com.dorm.backend.controller;
 import com.dorm.backend.common.Result;
 import com.dorm.backend.entity.User;
 import com.dorm.backend.service.UserService;
+import com.dorm.backend.service.StudentInfoService;
+import com.dorm.backend.service.ManagerInfoService;
+import com.dorm.backend.service.AdminInfoService;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -31,6 +34,9 @@ class UserControllerTest {
 
         UserController controller = new UserController();
         ReflectionTestUtils.setField(controller, "userService", userService);
+        ReflectionTestUtils.setField(controller, "studentInfoService", mock(StudentInfoService.class));
+        ReflectionTestUtils.setField(controller, "managerInfoService", mock(ManagerInfoService.class));
+        ReflectionTestUtils.setField(controller, "adminInfoService", mock(AdminInfoService.class));
 
         Result<List<User>> result = controller.list();
 
@@ -63,6 +69,9 @@ class UserControllerTest {
 
         UserController controller = new UserController();
         ReflectionTestUtils.setField(controller, "userService", userService);
+        ReflectionTestUtils.setField(controller, "studentInfoService", mock(StudentInfoService.class));
+        ReflectionTestUtils.setField(controller, "managerInfoService", mock(ManagerInfoService.class));
+        ReflectionTestUtils.setField(controller, "adminInfoService", mock(AdminInfoService.class));
         controller.save(submitted);
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);

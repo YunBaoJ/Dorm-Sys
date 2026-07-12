@@ -39,6 +39,10 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
                 writeForbidden(response, "学生无权修改宿舍管理资源");
                 return false;
             }
+            if (isAdminOnlyMutation(request, String.valueOf(claims.get("role")))) {
+                writeForbidden(response, "仅管理员可以修改该资源");
+                return false;
+            }
             return true;
         } catch (Exception exception) {
             writeUnauthorized(response, "登录状态已失效，请重新登录");
@@ -70,5 +74,13 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType("application/json;charset=UTF-8");
         response.getWriter().write("{\"code\":403,\"message\":\"" + message + "\",\"data\":null}");
+    }
+
+    private boolean isAdminOnlyMutation(HttpServletRequest request, String role) {
+        if ("admin".equals(role) || "GET".equalsIgnoreCase(request.getMethod())) return false;
+        String path = request.getRequestURI();
+        return path.startsWith("/api/building/")
+                || path.startsWith("/api/room/")
+                || path.startsWith("/api/feeBill/");
     }
 }

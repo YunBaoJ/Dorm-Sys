@@ -57,7 +57,7 @@ public class UserController {
 
     @PostMapping("/save")
     public Result<Boolean> save(@RequestBody User user) {
-        if ("student".equals(currentUserRole())) {
+        if (!"admin".equals(currentUserRole())) {
             Long userId = currentUserId();
             User existing = userService.getById(userId);
             if (existing == null) {
@@ -117,6 +117,9 @@ public class UserController {
 
     @DeleteMapping("/{id}")
     public Result<Boolean> delete(@PathVariable Long id) {
+        if (!"admin".equals(currentUserRole())) {
+            return Result.error(403, "仅管理员可以删除用户");
+        }
         return Result.success(userService.removeById(id));
     }
 

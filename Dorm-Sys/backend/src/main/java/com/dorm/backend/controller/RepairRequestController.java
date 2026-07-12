@@ -14,6 +14,8 @@ import com.dorm.backend.service.BuildingService;
 import com.dorm.backend.service.BedService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.List;
 import java.util.Map;
@@ -42,6 +44,7 @@ public class RepairRequestController {
     public Result<List<RepairRequest>> list(@RequestParam(required = false) Long submitterId, 
                                             @RequestParam(required = false) String status) {
         QueryWrapper<RepairRequest> queryWrapper = new QueryWrapper<>();
+        if (isStudent()) submitterId = currentUserId();
         if (submitterId != null) queryWrapper.eq("submitter_id", submitterId);
         if (status != null && !status.isEmpty()) queryWrapper.eq("status", status);
         
@@ -78,6 +81,20 @@ public class RepairRequestController {
 
     @PostMapping("/save")
     public Result<Boolean> save(@RequestBody RepairRequest repairRequest) {
+        if (isStudent()) {
+            Long userId = currentUserId();
+            if (repairRequest.getId() != null) {
+                RepairRequest existing = repairRequestService.getById(repairRequest.getId());
+                if (existing == null || !userId.equals(existing.getSubmitterId())) {
+                    return Result.error(403, "无权修改该报修记录");
+                }
+                repairRequest.setStatus(existing.getStatus());
+                repairRequest.setHandlerId(existing.getHandlerId());
+            } else {
+                repairRequest.setStatus("PENDING");
+            }
+            repairRequest.setSubmitterId(userId);
+        }
         if (repairRequest.getRoomId() == null && repairRequest.getSubmitterId() != null) {
             QueryWrapper<Bed> bedQuery = new QueryWrapper<>();
             bedQuery.eq("student_id", repairRequest.getSubmitterId());
@@ -94,6 +111,23 @@ public class RepairRequestController {
 
     @DeleteMapping("/{id}")
     public Result<Boolean> delete(@PathVariable Long id) {
+        if (isStudent()) return Result.error(403, "学生不能删除报修记录");
         return Result.success(repairRequestService.removeById(id));
+    }
+
+    private boolean isStudent() { return "student".equals(currentUserRole()); }
+    private Long currentUserId() {
+        Object value = currentRequestAttribute("currentUserId");
+        return value instanceof Number number ? number.longValue() : null;
+    }
+    private String currentUserRole() {
+        Object value = currentRequestAttribute("currentUserRole");
+        return value == null ? null : value.toString();
+    }
+    private Object currentRequestAttribute(String name) {
+        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
+            return attributes.getRequest().getAttribute(name);
+        }
+        return null;
     }
 }

@@ -21,7 +21,7 @@
           <div class="dorm-meta-list">
             <div class="meta-item">
               <span class="meta-label">入住日期</span>
-              <span class="meta-value">2025/9/1</span>
+              <span class="meta-value">{{ checkInDate }}</span>
             </div>
             <div class="meta-item">
               <span class="meta-label">所属校区</span>
@@ -205,6 +205,7 @@ import { getUsers } from '../../api/user'
 import { getBuildings } from '../../api/building'
 import { useUserStore } from '../../store/user'
 import ChatDrawer from '../../components/ChatDrawer.vue'
+import request from '../../utils/request'
 
 const userStore = useUserStore()
 
@@ -225,6 +226,7 @@ const myRoom = ref(null)
 const myBed = ref(null)
 const myBuilding = ref(null)
 const roommates = ref([])
+const checkInDate = ref('-')
 
 // Combine me + roommates into one list for rendering
 const allOccupants = computed(() => {
@@ -257,9 +259,13 @@ const getOccupantForBed = (bedIndex) => {
 
 const fetchDormInfo = async () => {
   try {
-    const [bedsRes, usersRes, roomsRes, buildingsRes] = await Promise.all([
-      getBeds(), getUsers(), getRooms(), getBuildings()
+    const [bedsRes, usersRes, roomsRes, buildingsRes, stayHistory] = await Promise.all([
+      getBeds(), getUsers(), getRooms(), getBuildings(),
+      request({ url: '/stayHistory/current', method: 'get' })
     ])
+    if (stayHistory?.checkInDate) {
+      checkInDate.value = new Date(stayHistory.checkInDate).toLocaleDateString('zh-CN')
+    }
     const beds = Array.isArray(bedsRes) ? bedsRes : (bedsRes.data || [])
     const users = Array.isArray(usersRes) ? usersRes : (usersRes.data || [])
     const rooms = Array.isArray(roomsRes) ? roomsRes : (roomsRes.data || [])

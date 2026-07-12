@@ -16,6 +16,8 @@ import com.dorm.backend.service.BuildingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.List;
 import java.util.Map;
@@ -44,6 +46,7 @@ public class TransferRequestController {
     public Result<List<TransferRequest>> list(@RequestParam(required = false) Long studentId,
                                               @RequestParam(required = false) String status) {
         QueryWrapper<TransferRequest> queryWrapper = new QueryWrapper<>();
+        if (isStudent()) studentId = currentUserId();
         if (studentId != null) queryWrapper.eq("student_id", studentId);
         if (status != null && !status.isEmpty()) queryWrapper.eq("status", status);
         
@@ -96,6 +99,11 @@ public class TransferRequestController {
     @PostMapping("/save")
     @Transactional
     public Result<Boolean> save(@RequestBody TransferRequest transferRequest) {
+        if (isStudent()) {
+            if (transferRequest.getId() != null) return Result.error(403, "学生不能审批或修改调宿申请");
+            transferRequest.setStudentId(currentUserId());
+            transferRequest.setStatus("PENDING");
+        }
         if ("APPROVED".equals(transferRequest.getStatus())) {
             Result<Boolean> transferResult = applyApprovedTransfer(transferRequest);
             if (transferResult.getCode() != 200) {
@@ -107,7 +115,29 @@ public class TransferRequestController {
 
     @DeleteMapping("/{id}")
     public Result<Boolean> delete(@PathVariable Long id) {
+        if (isStudent()) return Result.error(403, "学生不能删除调宿申请");
         return Result.success(transferRequestService.removeById(id));
+    }
+
+    private boolean isStudent() {
+        return "student".equals(currentUserRole());
+    }
+
+    private Long currentUserId() {
+        Object value = currentRequestAttribute("currentUserId");
+        return value instanceof Number number ? number.longValue() : null;
+    }
+
+    private String currentUserRole() {
+        Object value = currentRequestAttribute("currentUserRole");
+        return value == null ? null : value.toString();
+    }
+
+    private Object currentRequestAttribute(String name) {
+        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
+            return attributes.getRequest().getAttribute(name);
+        }
+        return null;
     }
 
     private Result<Boolean> applyApprovedTransfer(TransferRequest transferRequest) {
