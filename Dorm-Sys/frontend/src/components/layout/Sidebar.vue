@@ -93,6 +93,7 @@ const navMap = {
     { path: '/dormmanager/late-return', label: '晚归登记', icon: Clock },
     { path: '/dormmanager/items', label: '物品出入', icon: Package },
     { path: '/dormmanager/messages', label: '消息通知', icon: Mail },
+    { path: '/dormmanager/feedback', label: '意见反馈', icon: MessageCircle },
     { path: '/dormmanager/patrol', label: 'AI巡查', icon: Bot },
     { path: '/dormmanager/call', label: '智能通话', icon: Video },
     { path: '/dormmanager/transfer', label: '调宿审批', icon: Repeat2 },

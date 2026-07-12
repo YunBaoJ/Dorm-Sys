@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.HashMap;
 
 @RestController
-@RequestMapping("/ai")
+@RequestMapping("/api/ai")
 public class AiController {
 
     @GetMapping("/chat")

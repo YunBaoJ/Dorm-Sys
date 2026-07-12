@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/callRecord")
+@RequestMapping("/api/callRecord")
 public class CallRecordController {
 
     @Autowired
@@ -35,5 +35,17 @@ public class CallRecordController {
             return Result.success();
         }
         return Result.error("添加失败");
+    }
+
+    @PostMapping("/update")
+    public Result update(@RequestBody CallRecord callRecord) {
+        if (callRecord.getId() == null) {
+            return Result.error("ID不能为空");
+        }
+        boolean update = callRecordService.updateById(callRecord);
+        if (update) {
+            return Result.success();
+        }
+        return Result.error("更新失败");
     }
 }

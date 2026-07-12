@@ -57,12 +57,12 @@
             </el-card>
           </el-col>
           <el-col :span="12">
-            <el-card shadow="hover" class="stat-card">
+            <el-card shadow="hover" class="stat-card" @click="router.push('/dormmanager/late-return')">
               <div class="stat-body">
                 <div class="stat-icon bg-red"><el-icon><component :is="Clock" /></el-icon></div>
                 <div class="stat-info">
-                  <div class="stat-label">昨日晚归</div>
-                  <div class="stat-value text-red">0</div>
+                  <div class="stat-label">近日晚归</div>
+                  <div class="stat-value text-red">{{ lateReturnCount }}</div>
                 </div>
               </div>
               <div class="stat-footer stat-action">
@@ -146,7 +146,7 @@
               <el-icon :size="24" color="#3b82f6"><component :is="Settings" /></el-icon>
               <span>报修派工</span>
             </div>
-            <div class="tool-btn">
+            <div class="tool-btn" @click="router.push('/dormmanager/hygiene')">
               <el-icon :size="24" color="#3b82f6"><component :is="Medal" /></el-icon>
               <span>卫生评分</span>
             </div>
@@ -154,11 +154,11 @@
               <el-icon :size="24" color="#3b82f6"><component :is="UserCheck" /></el-icon>
               <span>访客登记</span>
             </div>
-            <div class="tool-btn">
+            <div class="tool-btn" @click="router.push('/dormmanager/patrol')">
               <el-icon :size="24" color="#3b82f6"><component :is="MessageCircle" /></el-icon>
               <span>AI 巡查报告</span>
             </div>
-            <div class="tool-btn">
+            <div class="tool-btn" @click="router.push('/dormmanager/late-return')">
               <el-icon :size="24" color="#3b82f6"><component :is="Clock" /></el-icon>
               <span>晚归登记</span>
             </div>
@@ -233,6 +233,7 @@ const dynamicsView = ref('room')
 const residentCount = ref(0)
 const pendingRepairCount = ref(0)
 const todayVisitorCount = ref(0)
+const lateReturnCount = ref(0)
 const rooms = ref([])
 const pendingRepairs = ref([])
 
@@ -251,6 +252,12 @@ const loadData = async () => {
     const today = new Date().toDateString()
     todayVisitorCount.value = visitors.filter(v => new Date(v.createTime).toDateString() === today).length
     
+    // Fetch late returns
+    try {
+      const lateRes = await request({ url: '/lateReturnRecord/list', method: 'get' })
+      lateReturnCount.value = lateRes ? lateRes.filter(r => r.status === 'PENDING').length : 0
+    } catch (err) {}
+    
     rooms.value = roomList.map(r => ({
       number: r.roomNumber,
       warning: false // Simplified: no warning logic for now
@@ -259,6 +266,8 @@ const loadData = async () => {
     console.error('Failed to load workbench data', e)
   }
 }
+
+import request from '../../utils/request'
 
 onMounted(() => loadData())
 </script>

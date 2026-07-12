@@ -32,6 +32,7 @@ const routes = [
   { path: '/dormmanager/messages', component: () => import('../views/manager/Messages.vue') },
   { path: '/dormmanager/patrol', component: () => import('../views/manager/Patrol.vue') },
   { path: '/dormmanager/call', component: () => import('../views/manager/Call.vue') },
+  { path: '/dormmanager/feedback', component: () => import('../views/manager/Feedback.vue') },
   { path: '/dormmanager/profile', component: () => import('../views/manager/Profile.vue') },
 
   // Admin Routes

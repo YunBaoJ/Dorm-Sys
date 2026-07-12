@@ -1,27 +1,87 @@
 <template>
-  <LocalFeaturePage
-    storage-key="manager-profile-tasks"
-    record-type="manager_profile"
-    title="个人中心"
-    subtitle="个人待办、值班备忘和工作记录"
-    list-title="个人事项"
-    action-text="新增个人事项"
-    :icon="User"
-    :default-records="records"
-    :statuses="['待办', '进行中', '已完成']"
-    :tips="tips"
-    title-placeholder="例如：整理本周卫生检查表"
-    owner-placeholder="关联对象"
-    description-placeholder="填写个人备忘或工作说明"
-  />
+  <div class="profile-manager-container">
+    <el-card shadow="never" class="hero-card">
+      <div class="hero-content">
+        <div class="hero-text">
+          <el-icon :size="28" color="var(--el-color-primary)"><component :is="User" /></el-icon>
+          <div>
+            <h2>个人中心</h2>
+            <p>管理您的宿管账号信息与偏好设置</p>
+          </div>
+        </div>
+      </div>
+    </el-card>
+
+    <el-card shadow="never" class="form-card">
+      <el-form :model="form" label-width="100px" style="max-width: 600px;">
+        <el-form-item label="姓名">
+          <el-input v-model="form.name" />
+        </el-form-item>
+        <el-form-item label="联系电话">
+          <el-input v-model="form.phone" />
+        </el-form-item>
+        <el-form-item label="电子邮箱">
+          <el-input v-model="form.email" />
+        </el-form-item>
+        <el-form-item label="账号角色">
+          <el-input :value="form.role === 'dormmanager' ? '宿舍管理员' : form.role" disabled />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleSave" :loading="saving">保存修改</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
+  </div>
 </template>
 
 <script setup>
-import LocalFeaturePage from '../../components/LocalFeaturePage.vue'
+import { ref, onMounted } from 'vue'
 import { User } from '@lucide/vue'
+import { useUserStore } from '../../store/user'
+import { ElMessage } from 'element-plus'
+import request from '../../utils/request'
 
-const tips = ['个人事项只保存在本机浏览器。', '适合记录值班备忘和临时工作。', '正式业务数据仍应在对应功能页登记。']
-const records = [
-  { id: 1, title: '整理本周卫生检查表', owner: '张宿管', description: '汇总低于 80 分宿舍并准备复查。', status: '待办', time: '2026/3/27 11:00:00' }
-]
+const userStore = useUserStore()
+const form = ref({ id: null, name: '', phone: '', email: '', role: '' })
+const saving = ref(false)
+
+const loadUserInfo = () => {
+  if (userStore.userInfo) {
+    form.value.id = userStore.userInfo.id
+    form.value.name = userStore.userInfo.name || ''
+    form.value.phone = userStore.userInfo.phone || ''
+    form.value.email = userStore.userInfo.email || ''
+    form.value.role = userStore.userInfo.role || ''
+  }
+}
+
+const handleSave = async () => {
+  saving.value = true
+  try {
+    const res = await request({
+      url: '/user/save',
+      method: 'post',
+      data: form.value
+    })
+    ElMessage.success('保存成功！下次重新登录时生效。')
+  } catch (e) {
+    ElMessage.error('保存失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+onMounted(() => {
+  loadUserInfo()
+})
 </script>
+
+<style scoped>
+.profile-manager-container { max-width: 800px; margin: 0 auto; }
+.hero-card { margin-bottom: 24px; border-radius: 12px; background: linear-gradient(135deg, rgba(var(--el-color-primary-rgb), 0.1), rgba(var(--el-color-primary-rgb), 0.02)); border: none; }
+.hero-content { display: flex; justify-content: space-between; align-items: center; }
+.hero-text { display: flex; align-items: center; gap: 16px; }
+.hero-text h2 { margin: 0 0 4px; font-size: 22px; color: var(--text); }
+.hero-text p { margin: 0; color: var(--sub); font-size: 14px; }
+.form-card { border-radius: 12px; border: 1px solid var(--border); padding: 24px; }
+</style>
