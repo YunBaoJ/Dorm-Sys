@@ -163,6 +163,37 @@ CREATE TABLE `hygiene_record` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='卫生检查记录表';
 
+-- ----------------------------
+-- 10. 智能通话预约表
+-- ----------------------------
+DROP TABLE IF EXISTS `call_record`;
+CREATE TABLE `call_record` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `student_id` bigint(20) NOT NULL COMMENT '发起学生ID',
+  `topic` varchar(100) NOT NULL COMMENT '通话事由',
+  `target_person` varchar(50) DEFAULT NULL COMMENT '联系人或房间',
+  `status` varchar(20) DEFAULT 'PENDING' COMMENT '状态(PENDING, ACCEPTED, FINISHED)',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '发起时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='智能通话预约表';
+
+-- ----------------------------
+-- 11. 意见反馈表
+-- ----------------------------
+DROP TABLE IF EXISTS `feedback`;
+CREATE TABLE `feedback` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `student_id` bigint(20) NOT NULL COMMENT '提交学生ID',
+  `type` varchar(50) NOT NULL COMMENT '反馈类型',
+  `content` text NOT NULL COMMENT '反馈内容',
+  `reply` text DEFAULT NULL COMMENT '宿管回复',
+  `status` varchar(20) DEFAULT 'UNREAD' COMMENT '状态(UNREAD, REPLIED)',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '提交时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='意见反馈表';
+
 -- 初始化测试数据
 INSERT INTO `sys_user` (`username`, `password`, `role`, `name`, `avatar`, `class_name`, `email`, `phone`) VALUES
 ('2022010001', '123456', 'student', '张伟', '/images/avatar.jpg', '计科2201', 'stu001@stu.edu.cn', '13800010001'),

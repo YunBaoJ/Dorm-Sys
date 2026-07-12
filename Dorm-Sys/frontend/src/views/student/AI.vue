@@ -35,6 +35,8 @@
 <script setup>
 import { nextTick, ref } from 'vue'
 import { BookOpen, HelpCircle, Send } from '@lucide/vue'
+import request from '../../utils/request'
+import { ElMessage } from 'element-plus'
 
 const question = ref('')
 const messages = ref([])
@@ -63,14 +65,20 @@ const send = async () => {
   await nextTick()
   scrollToBottom()
 
-  window.setTimeout(async () => {
-    const matched = rules.find((item) => item.keys.some((key) => content.includes(key)))
-    const answer = matched?.answer || '本地规则库暂未收录该问题，请通过“意见反馈”提交，或直接联系宿管确认。'
-    messages.value.push({ id: Date.now() + 1, role: 'assistant', content: answer })
+  try {
+    const res = await request({
+      url: '/ai/chat',
+      method: 'get',
+      params: { question: content }
+    })
+    messages.value.push({ id: Date.now() + 1, role: 'assistant', content: res })
+  } catch (e) {
+    messages.value.push({ id: Date.now() + 1, role: 'assistant', content: '服务异常，请稍后再试。' })
+  } finally {
     replying.value = false
     await nextTick()
     scrollToBottom()
-  }, 250)
+  }
 }
 
 const scrollToBottom = () => {

@@ -1,3 +1,12 @@
+// Workaround for Edge browser minimize bug with vue-router
+const originalReplaceState = window.history.replaceState;
+window.history.replaceState = function(state, title, url) {
+  if (document.visibilityState === 'hidden') {
+    return originalReplaceState.call(this, null, '', '');
+  }
+  return originalReplaceState.apply(this, arguments);
+};
+
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
