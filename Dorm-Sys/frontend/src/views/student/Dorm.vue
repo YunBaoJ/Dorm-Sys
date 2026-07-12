@@ -35,7 +35,12 @@
 
           <!-- Roommates -->
           <div class="roommates-section">
-            <div class="section-title">我的室友 <span class="count">{{ allOccupants.length }}/{{ myRoom?.capacity || 4 }}</span></div>
+            <div class="section-title">
+              <span>我的室友 <span class="count">{{ allOccupants.length }}/{{ myRoom?.capacity || 4 }}</span></span>
+              <el-button type="primary" class="group-chat-btn" plain @click="openGroupChat">
+                <el-icon class="el-icon--left"><component :is="MessageCircle" /></el-icon>宿舍群聊
+              </el-button>
+            </div>
             <div class="roommate-list">
               <div 
                 v-for="user in allOccupants" 
@@ -58,9 +63,11 @@
                 </div>
                 
                 <div class="rm-action">
-                  <el-button v-if="!user.isMe" circle size="small">
-                    <el-icon><component :is="MessageCircle" /></el-icon>
-                  </el-button>
+                  <el-tooltip v-if="!user.isMe" content="发起私聊" placement="top">
+                    <button type="button" class="message-btn" :aria-label="`与${user.name}私聊`" @click="openPrivateChat(user)">
+                      <MessageCircle :size="19" aria-hidden="true" />
+                    </button>
+                  </el-tooltip>
                 </div>
               </div>
             </div>
@@ -86,8 +93,10 @@
                   v-for="i in (myRoom?.capacity || 4)" 
                   :key="i"
                   class="bed-slot"
+                  :class="{ 'is-mine': getOccupantForBed(i)?.isMe, 'is-occupied': getOccupantForBed(i) && !getOccupantForBed(i)?.isMe, 'is-empty': !getOccupantForBed(i) }"
                 >
                   <div class="bed-box">
+                    <div v-if="getOccupantForBed(i)?.isMe" class="my-bed-badge">我的床位</div>
                     <div class="bed-number">{{ myRoom?.roomNumber ? `${myRoom.roomNumber}-${i}` : `1-${i}` }}</div>
                   </div>
                   <div class="bed-owner">{{ getOccupantForBed(i)?.name || '空床' }}</div>
@@ -175,6 +184,14 @@
         </div>
       </el-col>
     </el-row>
+
+    <!-- Chat Drawer -->
+    <ChatDrawer
+      v-model="chatVisible"
+      :target-user="chatTarget"
+      :room-id="myRoom?.id"
+      :my-id="userStore.userInfo?.id"
+    />
   </div>
 </template>
 
@@ -187,8 +204,22 @@ import { getRooms, getBeds } from '../../api/room'
 import { getUsers } from '../../api/user'
 import { getBuildings } from '../../api/building'
 import { useUserStore } from '../../store/user'
+import ChatDrawer from '../../components/ChatDrawer.vue'
 
 const userStore = useUserStore()
+
+const chatVisible = ref(false)
+const chatTarget = ref(null)
+
+const openPrivateChat = (user) => {
+  chatTarget.value = { id: user.id, name: user.name }
+  chatVisible.value = true
+}
+
+const openGroupChat = () => {
+  chatTarget.value = null
+  chatVisible.value = true
+}
 
 const myRoom = ref(null)
 const myBed = ref(null)
@@ -353,11 +384,19 @@ onMounted(() => fetchDormInfo())
   font-weight: 600;
   margin-bottom: 16px;
   color: #1e293b;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 .section-title .count {
   color: #94a3b8;
   font-weight: 400;
   margin-left: 6px;
+}
+.group-chat-btn {
+  min-height: 36px;
+  border-radius: 8px;
+  font-weight: 600;
 }
 .roommate-list {
   display: flex;
@@ -367,15 +406,15 @@ onMounted(() => fetchDormInfo())
 .roommate-item {
   display: flex;
   align-items: center;
+  min-width: 0;
   padding: 12px 16px;
-  border: 1px solid #f1f5f9;
-  border-radius: 12px;
-  background: #f8fafc;
+  border: 1px solid #e4ecfc;
+  border-radius: 8px;
+  background: #f8faff;
 }
 .roommate-item.is-me {
-  background: #fff;
-  border-color: #3b82f6;
-  box-shadow: 0 2px 12px rgba(59, 130, 246, 0.08);
+  background: #f4f8ff;
+  border-color: #93b4f9;
 }
 .avatar, .avatar-placeholder {
   width: 48px;
@@ -393,6 +432,7 @@ onMounted(() => fetchDormInfo())
 }
 .rm-info {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -425,6 +465,42 @@ onMounted(() => fetchDormInfo())
   border-radius: 12px;
   font-size: 12px;
   color: #475569;
+}
+.rm-action {
+  display: flex;
+  flex: 0 0 44px;
+  justify-content: flex-end;
+  margin-left: 10px;
+}
+.message-btn {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d7e3f8;
+  border-radius: 8px;
+  background: #fff;
+  color: #2563eb;
+  cursor: pointer;
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+.message-btn:hover {
+  color: #fff;
+  border-color: #2563eb;
+  background: #2563eb;
+}
+.message-btn:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.24);
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .dorm-container { padding: 16px; }
+  .roommates-section { margin: 0; }
+  .section-title { align-items: flex-start; gap: 12px; }
+  .group-chat-btn { flex-shrink: 0; }
+  .roommate-item { padding: 12px; }
 }
 
 /* Right Stack */
@@ -508,6 +584,8 @@ onMounted(() => fetchDormInfo())
   display: grid;
   place-items: center;
   box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+  position: relative;
+  transition: all 0.3s ease;
 }
 .bed-number {
   font-weight: 600;
@@ -518,6 +596,57 @@ onMounted(() => fetchDormInfo())
   color: #475569;
   font-size: 15px;
   font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+/* My bed - blue accent */
+.bed-slot.is-mine .bed-box {
+  border-color: #3b82f6;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15), 0 4px 12px rgba(59, 130, 246, 0.12);
+}
+.bed-slot.is-mine .bed-number {
+  color: #1d4ed8;
+  font-weight: 700;
+}
+.bed-slot.is-mine .bed-owner {
+  color: #2563eb;
+  font-weight: 700;
+}
+.my-bed-badge {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: #3b82f6;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+}
+
+/* Occupied by roommate */
+.bed-slot.is-occupied .bed-box {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+}
+.bed-slot.is-occupied .bed-number {
+  color: #475569;
+}
+
+/* Empty bed */
+.bed-slot.is-empty .bed-box {
+  border: 2px dashed #e2e8f0;
+  background: #fff;
+}
+.bed-slot.is-empty .bed-number {
+  color: #cbd5e1;
+}
+.bed-slot.is-empty .bed-owner {
+  color: #cbd5e1;
+  font-weight: 400;
 }
 
 /* Facility Grid */
