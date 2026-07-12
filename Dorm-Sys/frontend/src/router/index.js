@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useUserStore } from '../store/user'
 
 const routes = [
   {
@@ -45,6 +46,28 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+const homeByRole = {
+  student: '/student/desk',
+  dormmanager: '/dormmanager/workbench',
+  admin: '/admin/overview'
+}
+
+router.beforeEach((to) => {
+  const userStore = useUserStore()
+  if (to.path === '/login') {
+    return userStore.token ? homeByRole[userStore.role] || '/student/desk' : true
+  }
+  if (!userStore.token) {
+    return { path: '/login', query: { redirect: to.fullPath } }
+  }
+
+  const targetRole = to.path.split('/')[1]
+  if (['student', 'dormmanager', 'admin'].includes(targetRole) && targetRole !== userStore.role) {
+    return homeByRole[userStore.role] || '/student/desk'
+  }
+  return true
 })
 
 export default router

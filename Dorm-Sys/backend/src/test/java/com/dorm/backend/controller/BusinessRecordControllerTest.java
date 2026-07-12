@@ -6,6 +6,9 @@ import com.dorm.backend.service.BusinessRecordService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -28,6 +31,27 @@ class BusinessRecordControllerTest {
         ArgumentCaptor<QueryWrapper<BusinessRecord>> captor = ArgumentCaptor.forClass((Class) QueryWrapper.class);
         verify(service).list(captor.capture());
         assertThat(captor.getValue().getSqlSegment()).contains("type");
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void studentRecordListIsScopedToCurrentUser() {
+        BusinessRecordService service = mock(BusinessRecordService.class);
+        BusinessRecordController controller = new BusinessRecordController();
+        ReflectionTestUtils.setField(controller, "businessRecordService", service);
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute("currentUserId", 7L);
+        request.setAttribute("currentUserRole", "student");
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+
+        controller.list("student_feedback", null);
+
+        ArgumentCaptor<QueryWrapper<BusinessRecord>> captor = ArgumentCaptor.forClass((Class) QueryWrapper.class);
+        verify(service).list(captor.capture());
+        assertThat(captor.getValue().getSqlSegment()).contains("creator_id");
+        assertThat(captor.getValue().getParamNameValuePairs()).containsValue(7L);
+        RequestContextHolder.resetRequestAttributes();
     }
 
     @Test

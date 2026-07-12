@@ -1,228 +1,117 @@
 <template>
-  <div>
-    <!-- Hero Section -->
-    <div class="hero">
-      <div class="hero-title">
-        <div class="hero-icon">
-          <el-icon :size="28"><component :is="WalletCards" /></el-icon>
-        </div>
-        <div>
-          <h1>费用查询</h1>
-          <p class="subtitle">透明账单 · 智慧生活</p>
-        </div>
+  <div class="fees-page">
+    <el-card shadow="never" class="page-card">
+      <div class="page-heading">
+        <div><h2>费用查询</h2><p>查看当前宿舍的水电费账单与缴费状态。</p></div>
+        <el-button :loading="loading" @click="fetchFees"><RefreshCw :size="16" />刷新</el-button>
       </div>
-      <button class="primary-btn" @click="ElMessage.info('充值功能开发中')">
-        <el-icon :size="18"><component :is="Plus" /></el-icon> 账户充值
-      </button>
+    </el-card>
+
+    <div class="summary-grid">
+      <div class="summary-item"><span>待缴账单</span><strong>{{ unpaidBills.length }}</strong></div>
+      <div class="summary-item"><span>待缴金额</span><strong>¥ {{ unpaidTotal.toFixed(2) }}</strong></div>
+      <div class="summary-item"><span>账单总数</span><strong>{{ bills.length }}</strong></div>
     </div>
 
-    <div class="grid">
-      <!-- Left Stack -->
-      <div class="left-stack">
-        <!-- Wallets -->
-        <div class="wallets">
-          <div class="wallet">
-            <span style="opacity:.8">当前余额 (元)</span>
-            <strong>128.50</strong>
-            <p style="font-size:12px;opacity:.7;margin-top:8px">余额以财务系统为准</p>
-          </div>
-          <div class="wallet warn">
-            <span style="opacity:.8">待缴费用 (元)</span>
-            <strong>{{ unpaidTotal.toFixed(2) }}</strong>
-            <p style="font-size:12px;opacity:.7;margin-top:8px">共 {{ unpaidBills.length }} 笔未缴清</p>
-          </div>
-        </div>
+    <el-alert
+      title="线上充值与支付尚未开放"
+      description="本页面目前提供账单查询。需要缴费时，请携带学生证前往宿舍服务中心办理。"
+      type="info"
+      :closable="false"
+      show-icon
+      class="payment-notice"
+    />
 
-        <!-- Chart Placeholder -->
-        <div class="card">
-          <div class="card-head">
-            <h2>能耗支出趋势</h2>
-            <div>
-              <button class="ghost-btn">水费</button>
-              <button class="ghost-btn active-filter" style="margin-left:8px;">电费</button>
-            </div>
-          </div>
-          <div class="card-body">
-            <div style="display:flex;align-items:flex-end;gap:12px;height:140px;padding:16px 0">
-              <div v-for="(h, i) in [25, 32, 28, 35, 30, 28]" :key="i" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-                <span style="font-size:11px;color:var(--sub)">{{h}}°</span>
-                <div :style="`width:100%;height:${h * 3}px;background:linear-gradient(180deg,var(--primary),var(--primary-2));border-radius:4px 4px 0 0`"></div>
-                <span style="font-size:11px;color:var(--sub)">{{ ["10月","11月","12月","1月","2月","3月"][i] }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Fees Table -->
-        <div class="card">
-          <div class="card-head">
-            <h2>费用明细</h2>
-            <div>
-              <button class="ghost-btn active-filter">全部</button>
-              <button class="ghost-btn" style="margin-left:4px;">待缴</button>
-              <button class="ghost-btn" style="margin-left:4px;">已缴</button>
-            </div>
-          </div>
-          <div class="card-body table-wrap" style="padding:0; overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; text-align: left;">
-              <thead style="background: var(--muted); color: var(--sub); font-size: 13px;">
-                <tr>
-                  <th style="padding: 12px 20px; font-weight: 600;">账期</th>
-                  <th style="padding: 12px 20px; font-weight: 600;">类型</th>
-                  <th style="padding: 12px 20px; font-weight: 600;">金额</th>
-                  <th style="padding: 12px 20px; font-weight: 600;">状态</th>
-                  <th style="padding: 12px 20px; font-weight: 600;">时间</th>
-                  <th style="padding: 12px 20px; font-weight: 600;">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="b in bills" :key="b.id" style="border-bottom: 1px solid var(--line); font-size: 14px;">
-                  <td style="padding: 16px 20px;">{{ b.period }}</td>
-                  <td style="padding: 16px 20px;">{{ b.type }}</td>
-                  <td style="padding: 16px 20px;">¥ {{ b.amount.toFixed(2) }}</td>
-                  <td style="padding: 16px 20px;">
-                    <span class="tag" :class="b.status === 'unpaid' ? 'warn' : 'ok'">
-                      {{ b.status === 'unpaid' ? '待缴费' : '已缴费' }}
-                    </span>
-                  </td>
-                  <td style="padding: 16px 20px;">{{ b.payTime || "--" }}</td>
-                  <td style="padding: 16px 20px;">
-                    <a v-if="b.status === 'unpaid'" class="mini-link" style="cursor: pointer;" @click="ElMessage.success('前往支付...')">去缴纳</a>
-                    <span v-else class="muted">已结清</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right Stack -->
-      <div class="right-stack">
-        <!-- Guidelines -->
-        <div class="card">
-          <div class="card-head"><h2>缴费指引</h2></div>
-          <div class="card-body list">
-            <div style="display:flex; gap:16px;">
-              <div class="tile-icon" style="flex-shrink:0"><el-icon :size="20"><component :is="BadgeCheck" /></el-icon></div>
-              <div>
-                <strong style="display:block;margin-bottom:4px">确认账单</strong>
-                <span style="color:var(--sub);font-size:14px">每月 5 号生成上月水电费账单，请核对能耗数据。</span>
-              </div>
-            </div>
-            <div style="display:flex; gap:16px;">
-              <div class="tile-icon" style="flex-shrink:0"><el-icon :size="20"><component :is="Wallet" /></el-icon></div>
-              <div>
-                <strong style="display:block;margin-bottom:4px">账户充值</strong>
-                <span style="color:var(--sub);font-size:14px">支持微信/支付宝快捷支付。</span>
-              </div>
-            </div>
-            <div style="display:flex; gap:16px;">
-              <div class="tile-icon" style="flex-shrink:0"><el-icon :size="20"><component :is="MousePointerClick" /></el-icon></div>
-              <div>
-                <strong style="display:block;margin-bottom:4px">一键缴费</strong>
-                <span style="color:var(--sub);font-size:14px">在明细表中选择待缴项，点击去缴纳即可。</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Prices -->
-        <div class="card">
-          <div class="card-head">
-            <h2>校园价格标准</h2>
-            <el-icon :size="16" color="var(--sub)"><component :is="Info" /></el-icon>
-          </div>
-          <div class="card-body list">
-            <div style="display:flex;justify-content:space-between;padding:12px;background:var(--muted);border-radius:6px;font-size:14px">
-              <span>电费标准</span>
-              <strong style="color:var(--primary)">0.56 元/度</strong>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:12px;background:var(--muted);border-radius:6px;font-size:14px">
-              <span>水费标准</span>
-              <strong style="color:var(--primary)">3.20 元/吨</strong>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:12px;background:var(--muted);border-radius:6px;font-size:14px">
-              <span>热水标准</span>
-              <strong style="color:var(--primary)">0.15 元/升</strong>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <el-card shadow="never" class="bill-card">
+      <template #header><strong>宿舍账单</strong></template>
+      <el-table v-loading="loading" :data="bills" empty-text="暂无账单" style="width: 100%">
+        <el-table-column prop="period" label="账期" min-width="120" />
+        <el-table-column prop="type" label="费用类型" min-width="110" />
+        <el-table-column label="金额" min-width="100">
+          <template #default="scope"><strong>¥ {{ Number(scope.row.amount || 0).toFixed(2) }}</strong></template>
+        </el-table-column>
+        <el-table-column label="状态" min-width="100">
+          <template #default="scope">
+            <el-tag :type="scope.row.status === 'unpaid' ? 'warning' : 'success'" effect="plain">
+              {{ scope.row.status === 'unpaid' ? '待缴费' : '已缴费' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="payTime" label="缴费时间" min-width="160">
+          <template #default="scope">{{ scope.row.payTime || '--' }}</template>
+        </el-table-column>
+        <el-table-column label="办理方式" width="150" align="right">
+          <template #default="scope">
+            <span v-if="scope.row.status === 'paid'" class="settled">已结清</span>
+            <el-button v-else type="primary" link @click="showOfflineGuide">查看线下指引</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { WalletCards, Plus, BadgeCheck, Wallet, MousePointerClick, Info } from '@lucide/vue'
+import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { RefreshCw } from '@lucide/vue'
 import { getFeeBills } from '../../api/fee'
 import { getBeds } from '../../api/room'
 import { useUserStore } from '../../store/user'
 
 const userStore = useUserStore()
 const bills = ref([])
+const loading = ref(false)
+
+const unpaidBills = computed(() => bills.value.filter((bill) => bill.status === 'unpaid'))
+const unpaidTotal = computed(() => unpaidBills.value.reduce((sum, bill) => sum + Number(bill.amount || 0), 0))
 
 const fetchFees = async () => {
+  loading.value = true
   try {
-    const me = userStore.userInfo || {}
-    const bedsRes = await getBeds()
-    const beds = Array.isArray(bedsRes) ? bedsRes : (bedsRes.data || [])
-    const myBed = beds.find(b => b.studentId === me.id)
-    
-    if (myBed) {
-      const res = await getFeeBills(myBed.roomId)
-      bills.value = (Array.isArray(res) ? res : (res.data || [])).map(b => ({
-        ...b,
-        period: b.month,
-        type: b.type === 'WATER' ? '水费' : b.type === 'ELECTRICITY' ? '电费' : b.type,
-        amount: b.amount || 0,
-        status: b.status === 'UNPAID' ? 'unpaid' : 'paid',
-        payTime: b.status === 'PAID' ? b.updateTime?.replace('T', ' ')?.substring(0, 16) : null
-      }))
+    const beds = await getBeds()
+    const myBed = (beds || []).find((bed) => bed.studentId === userStore.userInfo?.id)
+    if (!myBed) {
+      bills.value = []
+      ElMessage.warning('尚未查询到您的住宿信息')
+      return
     }
-  } catch (e) {
+    const result = await getFeeBills(myBed.roomId)
+    bills.value = (result || []).map((bill) => ({
+      ...bill,
+      period: bill.month,
+      type: bill.type === 'WATER' ? '水费' : bill.type === 'ELECTRICITY' ? '电费' : bill.type,
+      status: bill.status === 'UNPAID' ? 'unpaid' : 'paid',
+      payTime: bill.status === 'PAID' ? bill.updateTime?.replace('T', ' ')?.slice(0, 16) : null
+    }))
+  } catch (error) {
     ElMessage.error('获取账单失败')
+  } finally {
+    loading.value = false
   }
 }
 
-onMounted(() => fetchFees())
+const showOfflineGuide = () => {
+  ElMessage.info('请前往宿舍服务中心缴费，线上支付功能尚未开放。')
+}
 
-const unpaidBills = computed(() => bills.value.filter(b => b.status === "unpaid"))
-const unpaidTotal = computed(() => unpaidBills.value.reduce((sum, b) => sum + b.amount, 0))
+onMounted(fetchFees)
 </script>
 
 <style scoped>
-/* Prototype Wallet Specific Styles */
-.wallets {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
-}
-
-.wallet {
-  padding: 24px;
-  border-radius: var(--radius-lg);
-  color: #fff;
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-  box-shadow: 0 10px 20px rgba(59, 130, 246, 0.25);
-}
-
-.wallet.warn {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  box-shadow: 0 10px 20px rgba(245, 158, 11, 0.25);
-}
-
-.wallet strong {
-  display: block;
-  font-size: 32px;
-  line-height: 1.2;
-  margin-top: 4px;
-  font-variant-numeric: tabular-nums;
-}
-
-.table-wrap table tbody tr:hover {
-  background: var(--muted);
+.fees-page { max-width: 1200px; margin: 0 auto; }
+.page-card, .payment-notice { margin-bottom: 20px; }
+.page-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.page-heading h2 { margin: 0 0 4px; color: var(--text); font-size: 20px; }
+.page-heading p { margin: 0; color: var(--sub); font-size: 14px; }
+.page-heading :deep(.el-button > span) { gap: 6px; }
+.summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px; }
+.summary-item { display: grid; gap: 8px; border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; background: var(--surface); }
+.summary-item span { color: var(--sub); font-size: 13px; }
+.summary-item strong { color: var(--text); font-size: 24px; }
+.settled { color: var(--sub); font-size: 13px; }
+@media (max-width: 700px) {
+  .summary-grid { grid-template-columns: 1fr; }
+  .page-heading { align-items: flex-start; }
 }
 </style>

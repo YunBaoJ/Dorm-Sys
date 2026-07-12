@@ -52,7 +52,7 @@
                     <span>{{ formatTime(record.eventTime || record.createTime || record.time) }}</span>
                   </div>
                 </div>
-                <div class="record-actions">
+                <div v-if="manageRecords" class="record-actions">
                   <el-button type="primary" link :disabled="isFinal(record.status)" @click="advance(record)">
                     {{ nextAction(record.status) }}
                   </el-button>
@@ -131,6 +131,7 @@ const props = defineProps({
   defaultRecords: { type: Array, default: () => [] },
   statuses: { type: Array, default: () => ['待处理', '处理中', '已完成'] },
   tips: { type: Array, default: () => [] },
+  manageRecords: { type: Boolean, default: true },
   titlePlaceholder: { type: String, default: '请输入标题' },
   ownerPlaceholder: { type: String, default: '请输入姓名、房间或对象' },
   descriptionPlaceholder: { type: String, default: '请输入详细说明' }
@@ -144,7 +145,6 @@ const dialogVisible = ref(false)
 const loading = ref(false)
 const submitting = ref(false)
 const form = reactive({ title: '', owner: '', description: '', status: props.statuses[0] })
-const seedFlagKey = `${props.storageKey}:seeded`
 
 onMounted(() => loadRecords())
 
@@ -160,25 +160,11 @@ const loadRecords = async () => {
   try {
     const data = await getBusinessRecords(props.recordType, statusFilter.value || null)
     records.value = data
-    if (records.value.length === 0 && !statusFilter.value && props.defaultRecords.length > 0 && !localStorage.getItem(seedFlagKey)) {
-      records.value = await seedDefaultRecords()
-      localStorage.setItem(seedFlagKey, '1')
-    }
   } catch (error) {
     ElMessage.error('获取记录失败')
   } finally {
     loading.value = false
   }
-}
-
-const seedDefaultRecords = async () => {
-  const seeded = []
-  for (const record of props.defaultRecords) {
-    const payload = toApiPayload(record)
-    await saveBusinessRecord(payload)
-    seeded.push(payload)
-  }
-  return getBusinessRecords(props.recordType)
 }
 
 const openCreate = () => {

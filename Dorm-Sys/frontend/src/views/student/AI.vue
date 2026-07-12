@@ -1,121 +1,52 @@
 <template>
-  <div>
-    <div class="grid col-2-right">
-      <div class="card chat-shell">
-        <div class="chat-panel">
-          <div v-if="messages.length === 0" class="chat-empty-state">
-            <div class="bulb">
-              <el-icon :size="44"><component :is="Lightbulb" /></el-icon>
-            </div>
-            <h2>您好，我是您的智慧宿舍助手</h2>
-            <p class="subtitle">您可以询问我任何关于宿舍生活、规定、费用或报修的问题</p>
+  <div class="assistant-page">
+    <section class="chat-card">
+      <header class="chat-header">
+        <div class="assistant-mark"><BookOpen :size="22" /></div>
+        <div><h2>宿舍自助问答</h2><p>基于校内常见事务规则提供参考，不替代人工处理。</p></div>
+      </header>
 
-            <div class="prompt-grid">
-              <button v-for="prompt in prompts" :key="prompt.text" @click="ask(prompt.text)">
-                <span class="tile-icon" :style="prompt.style">
-                  <el-icon><component :is="prompt.icon" /></el-icon>
-                </span>
-                <span>{{ prompt.text }}</span>
-              </button>
-            </div>
-          </div>
-
-          <div v-else class="message-list">
-            <div v-for="message in messages" :key="message.id" class="message" :class="message.role">
-              <div class="message-bubble">{{ message.content }}</div>
-            </div>
+      <div ref="messagePanel" class="message-panel" aria-live="polite">
+        <div v-if="messages.length === 0" class="empty-state">
+          <HelpCircle :size="34" />
+          <strong>请选择常见问题，或输入您想了解的内容</strong>
+          <div class="prompt-grid">
+            <button v-for="prompt in prompts" :key="prompt" type="button" @click="ask(prompt)">{{ prompt }}</button>
           </div>
         </div>
-
-        <div class="chat-input-bar">
-          <div class="input-shell">
-            <input
-              v-model="question"
-              type="text"
-              placeholder="询问我关于宿舍的任何问题..."
-              @keyup.enter="send"
-            />
-            <button class="primary-btn send-btn" @click="send">
-              <el-icon :size="20"><component :is="Send" /></el-icon>
-            </button>
+        <div v-else class="message-list">
+          <div v-for="message in messages" :key="message.id" class="message" :class="message.role">
+            <div class="bubble">{{ message.content }}</div>
           </div>
-          <div class="ai-note">由智慧宿舍知识库提供本地问答支持</div>
+          <div v-if="replying" class="message assistant"><div class="bubble muted">正在查询规则库...</div></div>
         </div>
       </div>
 
-      <div class="side-stack">
-        <div class="card">
-          <div class="card-head side-head">
-            <h2>智慧锦囊</h2>
-            <el-icon color="var(--primary)"><component :is="BookOpen" /></el-icon>
-          </div>
-          <div class="card-body list">
-            <div class="row" style="align-items: flex-start;">
-              <span class="tile-icon" style="background: var(--warn-2); color: var(--warn)">
-                <el-icon><component :is="AlertCircle" /></el-icon>
-              </span>
-              <div class="row-main">
-                <div class="row-title" style="margin-bottom: 8px;">核心管理规定</div>
-                <div class="rule-list">
-                  <div>门禁：每日 23:30 关闭大门</div>
-                  <div>用电：严禁使用 800W 以上电器</div>
-                  <div>访客：需在 22:00 前离开楼栋</div>
-                  <div>卫生：每周四下午进行宿舍检查</div>
-                </div>
-              </div>
-            </div>
-            <div class="row clickable" @click="ask('报修指引')">
-              <span class="tile-icon"><el-icon><component :is="Settings" /></el-icon></span>
-              <div class="row-main"><div class="row-title">报修小贴士</div></div>
-              <el-icon color="var(--sub)"><component :is="ChevronRight" /></el-icon>
-            </div>
-            <div class="row clickable" @click="ask('用电安全指南')">
-              <span class="tile-icon"><el-icon><component :is="Zap" /></el-icon></span>
-              <div class="row-main"><div class="row-title">用电安全指南</div></div>
-              <el-icon color="var(--sub)"><component :is="ChevronRight" /></el-icon>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-head">
-            <h2>热门咨询</h2>
-          </div>
-          <div class="card-body list">
-            <div v-for="item in hotQuestions" :key="item" class="row clickable" @click="ask(item)">
-              <div class="row-main"><div class="row-title">{{ item }}</div></div>
-              <el-icon color="var(--sub)"><component :is="ChevronRight" /></el-icon>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+      <form class="input-bar" @submit.prevent="send">
+        <label class="sr-only" for="question-input">宿舍问题</label>
+        <input id="question-input" v-model="question" maxlength="200" placeholder="例如：调宿需要准备什么？" />
+        <button type="submit" :disabled="replying || !question.trim()" aria-label="发送问题"><Send :size="19" /></button>
+      </form>
+      <p class="disclaimer">当前为本地规则库问答；紧急故障、安全问题或未匹配事项请联系宿管。</p>
+    </section>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { Lightbulb, Clock, Repeat, Settings, Wallet, Send, BookOpen, AlertCircle, ChevronRight, Zap } from '@lucide/vue'
+import { nextTick, ref } from 'vue'
+import { BookOpen, HelpCircle, Send } from '@lucide/vue'
 
 const question = ref('')
 const messages = ref([])
+const replying = ref(false)
+const messagePanel = ref(null)
 
-const prompts = [
-  { text: '门禁查询', icon: Clock, style: 'background: var(--info-2); color: var(--info)' },
-  { text: '调宿流程', icon: Repeat, style: 'background: var(--primary-2); color: var(--primary)' },
-  { text: '报修指引', icon: Settings, style: 'background: var(--orange-2); color: var(--orange)' },
-  { text: '缴费咨询', icon: Wallet, style: 'background: var(--ok-2); color: var(--ok)' }
-]
-
-const hotQuestions = ['水电费账单查询', '遥控器遗失处理', '调宿申请资格']
-
-const answers = [
-  { keys: ['门禁'], answer: '宿舍门禁通常为每日 23:30。晚归需要及时联系宿管，并在晚归登记中说明原因。' },
-  { keys: ['调宿'], answer: '调宿需要先提交申请，说明原因和目标宿舍；宿管审批通过后再进行床位调整。' },
-  { keys: ['报修'], answer: '报修时请填写房间、故障类型和详细描述。紧急水电故障建议同时联系宿管加急处理。' },
-  { keys: ['缴费', '水电费', '账单'], answer: '水电费可在费用查询中查看账单状态。未缴账单建议在截止日期前完成缴纳。' },
-  { keys: ['用电'], answer: '宿舍内禁止使用大功率电器，离开宿舍前请关闭插排和电源。' },
-  { keys: ['遥控器'], answer: '遥控器遗失可先在宿舍和公共区域查找，确认遗失后向宿管登记并按规定补办。' }
+const prompts = ['宿舍门禁时间', '调宿申请流程', '如何提交报修', '水电费如何查询']
+const rules = [
+  { keys: ['门禁', '晚归'], answer: '宿舍门禁通常为每日 23:30。晚归请及时联系宿管，并按要求完成晚归登记。' },
+  { keys: ['调宿'], answer: '请在“调宿申请”中填写原因并选择目标房间。宿管审批通过后，系统会同步更新床位和宿舍信息。' },
+  { keys: ['报修', '维修'], answer: '请在“报修申请”中选择故障类型并描述具体情况。提交后可在同一页面跟踪处理进度。' },
+  { keys: ['水电费', '费用', '账单'], answer: '可在“费用查询”中查看当前宿舍账单。线上缴费尚未开放，请按页面指引到服务中心办理。' }
 ]
 
 const ask = (text) => {
@@ -123,146 +54,59 @@ const ask = (text) => {
   send()
 }
 
-const send = () => {
+const send = async () => {
   const content = question.value.trim()
-  if (!content) return
+  if (!content || replying.value) return
   messages.value.push({ id: Date.now(), role: 'user', content })
   question.value = ''
-  window.setTimeout(() => {
-    messages.value.push({ id: Date.now() + 1, role: 'assistant', content: replyFor(content) })
-  }, 200)
+  replying.value = true
+  await nextTick()
+  scrollToBottom()
+
+  window.setTimeout(async () => {
+    const matched = rules.find((item) => item.keys.some((key) => content.includes(key)))
+    const answer = matched?.answer || '本地规则库暂未收录该问题，请通过“意见反馈”提交，或直接联系宿管确认。'
+    messages.value.push({ id: Date.now() + 1, role: 'assistant', content: answer })
+    replying.value = false
+    await nextTick()
+    scrollToBottom()
+  }, 250)
 }
 
-const replyFor = (content) => {
-  const matched = answers.find((item) => item.keys.some((key) => content.includes(key)))
-  return matched?.answer || '这个问题已记录。建议补充房间号、时间和具体情况，宿管会更容易判断处理路径。'
+const scrollToBottom = () => {
+  if (messagePanel.value) messagePanel.value.scrollTop = messagePanel.value.scrollHeight
 }
 </script>
 
 <style scoped>
-.chat-shell {
-  padding: 0;
-  display: grid;
-  grid-template-rows: 1fr auto;
-  overflow: hidden;
-  height: calc(100vh - 132px);
-  border: none;
-}
-
-.chat-panel {
-  background: var(--surface);
-  overflow-y: auto;
-  padding: 32px;
-}
-
-.chat-empty-state {
-  min-height: 100%;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  text-align: center;
-}
-
-.chat-empty-state h2 {
-  margin: 18px 0 8px;
-  color: var(--text);
-}
-
-.prompt-grid {
-  margin-top: 24px;
-}
-
-.message-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.message {
-  display: flex;
-}
-
-.message.user {
-  justify-content: flex-end;
-}
-
-.message-bubble {
-  max-width: 68%;
-  padding: 12px 16px;
-  border-radius: 14px;
-  background: var(--bg);
-  color: var(--text);
-  line-height: 1.6;
-}
-
-.message.user .message-bubble {
-  background: var(--primary);
-  color: #fff;
-}
-
-.chat-input-bar {
-  padding: 24px;
-  border-top: 1px solid var(--line);
-  background: var(--surface);
-}
-
-.input-shell {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  background: var(--bg);
-  border-radius: 28px;
-  padding: 6px 6px 6px 20px;
-  border: 1px solid var(--line);
-}
-
-.input-shell input {
-  flex: 1;
-  border: none;
-  background: transparent;
-  outline: none;
-  color: var(--text);
-  font-size: 15px;
-}
-
-.send-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  border: none;
-}
-
-.ai-note {
-  text-align: center;
-  font-size: 12px;
-  color: var(--sub);
-  margin-top: 16px;
-}
-
-.side-stack {
-  display: grid;
-  gap: 24px;
-  align-content: start;
-}
-
-.side-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.rule-list {
-  font-size: 13px;
-  color: var(--sub);
-  line-height: 1.8;
-}
-
-.clickable {
-  cursor: pointer;
+.assistant-page { max-width: 980px; margin: 0 auto; }
+.chat-card { display: grid; grid-template-rows: auto minmax(360px, 1fr) auto auto; min-height: calc(100dvh - 136px); overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.chat-header { display: flex; align-items: center; gap: 14px; padding: 20px 24px; border-bottom: 1px solid var(--line); }
+.assistant-mark { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 8px; background: var(--primary-2); color: var(--primary); }
+.chat-header h2 { margin: 0 0 4px; color: var(--text); font-size: 19px; }
+.chat-header p, .disclaimer { margin: 0; color: var(--sub); font-size: 13px; }
+.message-panel { overflow-y: auto; padding: 24px; background: var(--bg); }
+.empty-state { display: grid; min-height: 100%; place-content: center; justify-items: center; gap: 16px; color: var(--sub); text-align: center; }
+.empty-state strong { color: var(--text); }
+.prompt-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: min(100%, 480px); }
+.prompt-grid button { min-height: 44px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--text); cursor: pointer; }
+.prompt-grid button:hover { border-color: var(--primary); color: var(--primary); }
+.message-list { display: grid; gap: 12px; }
+.message { display: flex; }
+.message.user { justify-content: flex-end; }
+.bubble { max-width: min(72%, 560px); border-radius: 8px; padding: 11px 14px; background: var(--surface); color: var(--text); line-height: 1.65; }
+.message.user .bubble { background: var(--primary); color: #fff; }
+.bubble.muted { color: var(--sub); }
+.input-bar { display: flex; gap: 10px; padding: 16px 20px; border-top: 1px solid var(--line); }
+.input-bar input { flex: 1; min-width: 0; height: 44px; border: 1px solid var(--line); border-radius: 6px; padding: 0 14px; outline: none; color: var(--text); }
+.input-bar input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-2); }
+.input-bar button { display: grid; width: 44px; height: 44px; place-items: center; border: 0; border-radius: 6px; background: var(--primary); color: #fff; cursor: pointer; }
+.input-bar button:disabled { cursor: not-allowed; opacity: .5; }
+.disclaimer { padding: 0 20px 16px; text-align: center; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+@media (max-width: 600px) {
+  .chat-card { min-height: calc(100dvh - 112px); border-radius: 0; }
+  .prompt-grid { grid-template-columns: 1fr; }
+  .bubble { max-width: 88%; }
 }
 </style>

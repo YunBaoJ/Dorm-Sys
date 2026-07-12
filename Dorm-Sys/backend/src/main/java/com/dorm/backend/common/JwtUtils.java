@@ -7,14 +7,15 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @Component
 public class JwtUtils {
 
-    // 密钥需要至少 256 bit（32字符）
     private static final String SECRET_KEY_STRING = "dormitory_system_secret_key_1234567890";
     private static final SecretKey SECRET_KEY = Keys.hmacShaKeyFor(SECRET_KEY_STRING.getBytes(StandardCharsets.UTF_8));
-    private static final long EXPIRATION_TIME = 1000 * 60 * 60 * 24; // 24小时
+    private static final long EXPIRATION_TIME = 1000 * 60 * 60 * 24;
 
     public String generateToken(Long userId, String username, String role) {
         return Jwts.builder()
@@ -27,5 +28,17 @@ public class JwtUtils {
                 .compact();
     }
 
-    // 在实际项目中，这里可以添加解析 token 的方法
+    public Map<String, Object> parseToken(String token) {
+        var claims = Jwts.parser()
+                .verifyWith(SECRET_KEY)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("userId", ((Number) claims.get("userId")).longValue());
+        result.put("username", claims.getSubject());
+        result.put("role", claims.get("role", String.class));
+        return result;
+    }
 }

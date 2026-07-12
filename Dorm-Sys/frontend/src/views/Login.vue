@@ -1,120 +1,151 @@
 <template>
-  <div class="login-wrapper">
-    <!-- Animated background elements -->
-    <div class="bg-orb orb-1"></div>
-    <div class="bg-orb orb-2"></div>
-    <div class="bg-orb orb-3"></div>
-
-    <div class="glass-card">
-      <div class="card-inner">
-        <!-- Left Side: Brand Showcase -->
-        <div class="brand-panel">
-          <div class="brand-overlay"></div>
-          <div class="brand-content">
-            <div class="logo-box">
-              <el-icon :size="32" color="#fff"><component :is="Building2" /></el-icon>
-            </div>
-            <h1 class="brand-title">Dormitory<br/>Management</h1>
-            <p class="brand-subtitle">学生宿舍智能管理平台</p>
-            
-            <div class="brand-features">
-              <div class="feature-item">
-                <el-icon><component :is="CheckCircle2" /></el-icon>
-                <span>数字化协同流程</span>
-              </div>
-              <div class="feature-item">
-                <el-icon><component :is="CheckCircle2" /></el-icon>
-                <span>实时状态追踪</span>
-              </div>
-              <div class="feature-item">
-                <el-icon><component :is="CheckCircle2" /></el-icon>
-                <span>全角色数据互通</span>
-              </div>
-            </div>
-          </div>
+  <div class="login-page">
+    <section class="campus-panel" aria-labelledby="system-title">
+      <div class="campus-scrim"></div>
+      <div class="campus-content">
+        <div class="brand-lockup">
+          <span class="brand-mark" aria-hidden="true">
+            <el-icon :size="24"><Building2 /></el-icon>
+          </span>
+          <span>校园后勤服务</span>
         </div>
 
-        <!-- Right Side: Login Form -->
-        <div class="form-panel">
-          <div class="form-header">
-            <h2>欢迎登录</h2>
-            <p>请选择您的身份并输入凭证进入系统</p>
-          </div>
-
-          <!-- Modern Role Selector -->
-          <div class="role-segmented-control">
-            <div 
-              class="segment" 
-              :class="{ active: form.role === 'student' }"
-              @click="form.role = 'student'"
-            >
-              <el-icon><component :is="UserRound" /></el-icon>学生
-            </div>
-            <div 
-              class="segment" 
-              :class="{ active: form.role === 'dormmanager' }"
-              @click="form.role = 'dormmanager'"
-            >
-              <el-icon><component :is="ShieldCheck" /></el-icon>宿管
-            </div>
-            <div 
-              class="segment" 
-              :class="{ active: form.role === 'admin' }"
-              @click="form.role = 'admin'"
-            >
-              <el-icon><component :is="Settings" /></el-icon>管理员
-            </div>
-            <div class="active-indicator" :style="indicatorStyle"></div>
-          </div>
-
-          <el-form :model="form" class="login-form" @submit.prevent="handleLogin">
-            <div class="input-group">
-              <div class="input-field">
-                <el-icon class="input-icon"><component :is="User" /></el-icon>
-                <input 
-                  v-model="form.username" 
-                  type="text" 
-                  placeholder="学号 / 工号" 
-                />
-              </div>
-              
-              <div class="input-field">
-                <el-icon class="input-icon"><component :is="Lock" /></el-icon>
-                <input 
-                  v-model="form.password" 
-                  type="password" 
-                  placeholder="密码" 
-                />
-              </div>
-            </div>
-
-            <div class="form-options">
-              <el-checkbox v-model="form.remember">记住账号</el-checkbox>
-              <a href="#" class="forgot-link">忘记密码?</a>
-            </div>
-
-            <button type="button" class="login-btn" @click="handleLogin" :disabled="loading">
-              <span v-if="!loading">登录系统</span>
-              <el-icon v-else class="is-loading"><component :is="Loader2" /></el-icon>
-            </button>
-          </el-form>
+        <div class="campus-copy">
+          <p class="eyebrow">住宿服务平台</p>
+          <h1 id="system-title">学生宿舍<br />管理系统</h1>
+          <p>统一处理住宿信息、调宿申请和报修服务。</p>
         </div>
+
+        <ul class="service-list" aria-label="系统服务">
+          <li><CheckCircle2 :size="17" />住宿信息实时更新</li>
+          <li><CheckCircle2 :size="17" />多角色协同处理</li>
+          <li><CheckCircle2 :size="17" />报修进度全程可查</li>
+        </ul>
       </div>
-    </div>
+    </section>
+
+    <main class="login-surface">
+      <div class="mobile-brand" aria-hidden="true">
+        <Building2 :size="21" />
+        <span>学生宿舍管理系统</span>
+      </div>
+
+      <div class="form-content">
+        <header class="form-header">
+          <p class="eyebrow">账号验证</p>
+          <h2>用户登录</h2>
+          <p>选择身份后，使用您的账号进入系统。</p>
+        </header>
+
+        <div class="role-group" role="group" aria-label="登录身份">
+          <button
+            v-for="role in roles"
+            :key="role.value"
+            class="role-button"
+            :class="{ active: form.role === role.value }"
+            type="button"
+            :aria-pressed="form.role === role.value"
+            @click="form.role = role.value"
+          >
+            <component :is="role.icon" :size="17" />
+            <span>{{ role.label }}</span>
+          </button>
+        </div>
+
+        <form class="login-form" novalidate @submit.prevent="handleLogin">
+          <label class="field-label" for="login-username">学号 / 工号</label>
+          <div class="field-control" :class="{ invalid: errors.username }">
+            <User :size="19" aria-hidden="true" />
+            <input
+              id="login-username"
+              ref="usernameInput"
+              v-model.trim="form.username"
+              :aria-describedby="errors.username ? 'username-error' : undefined"
+              :aria-invalid="Boolean(errors.username)"
+              autocomplete="username"
+              placeholder="请输入学号或工号"
+              type="text"
+              @blur="validateField('username')"
+            />
+          </div>
+          <p v-if="errors.username" id="username-error" class="field-error" role="alert">{{ errors.username }}</p>
+
+          <label class="field-label" for="login-password">密码</label>
+          <div class="field-control" :class="{ invalid: errors.password }">
+            <LockKeyhole :size="19" aria-hidden="true" />
+            <input
+              id="login-password"
+              ref="passwordInput"
+              v-model="form.password"
+              :type="showPassword ? 'text' : 'password'"
+              :aria-describedby="errors.password ? 'password-error' : undefined"
+              :aria-invalid="Boolean(errors.password)"
+              autocomplete="current-password"
+              placeholder="请输入密码"
+              @blur="validateField('password')"
+            />
+            <button
+              class="password-toggle"
+              type="button"
+              :title="showPassword ? '隐藏密码' : '显示密码'"
+              :aria-label="showPassword ? '隐藏密码' : '显示密码'"
+              @click="showPassword = !showPassword"
+            >
+              <EyeOff v-if="showPassword" :size="19" />
+              <Eye v-else :size="19" />
+            </button>
+          </div>
+          <p v-if="errors.password" id="password-error" class="field-error" role="alert">{{ errors.password }}</p>
+
+          <div class="form-actions">
+            <el-checkbox v-model="form.remember">记住账号</el-checkbox>
+            <button class="help-link" type="button" @click="showResetTip">忘记密码？</button>
+          </div>
+
+          <button class="login-button" type="submit" :disabled="loading">
+            <LoaderCircle v-if="loading" class="is-loading" :size="20" />
+            <span v-else>登录系统</span>
+          </button>
+        </form>
+
+        <p class="security-note"><ShieldCheck :size="16" />请妥善保管账号信息，勿向他人透露密码。</p>
+      </div>
+    </main>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { nextTick, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
 import { loginApi } from '../api/auth'
-import { Building2, UserRound, ShieldCheck, Settings, User, Lock, CheckCircle2, Loader2 } from '@lucide/vue'
+import {
+  Building2,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  LoaderCircle,
+  LockKeyhole,
+  Settings,
+  ShieldCheck,
+  User,
+  UserRound
+} from '@lucide/vue'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
+const showPassword = ref(false)
+const usernameInput = ref(null)
+const passwordInput = ref(null)
+const errors = reactive({ username: '', password: '' })
+
+const roles = [
+  { value: 'student', label: '学生', icon: UserRound },
+  { value: 'dormmanager', label: '宿管', icon: ShieldCheck },
+  { value: 'admin', label: '管理员', icon: Settings }
+]
 
 const form = reactive({
   username: '2022010001',
@@ -123,44 +154,43 @@ const form = reactive({
   remember: true
 })
 
-const indicatorStyle = computed(() => {
-  const map = {
-    'student': '0%',
-    'dormmanager': '100%',
-    'admin': '200%'
-  }
-  return {
-    transform: `translateX(${map[form.role]})`
-  }
-})
+const showResetTip = () => {
+  ElMessage.info('请联系宿舍管理员重置密码。')
+}
+
+const validateField = (field) => {
+  errors[field] = form[field] ? '' : field === 'username' ? '请输入学号或工号。' : '请输入密码。'
+}
+
+const validateForm = () => {
+  validateField('username')
+  validateField('password')
+  return !errors.username && !errors.password
+}
 
 const handleLogin = async () => {
-  if (!form.username || !form.password) {
-    ElMessage.warning('请输入完整账号信息')
+  if (!validateForm()) {
+    await nextTick()
+    if (errors.username) usernameInput.value?.focus()
+    else passwordInput.value?.focus()
     return
   }
 
   loading.value = true
-  
+
   try {
-    // 调用我们在 api/auth.js 里封装的登录接口
     const res = await loginApi(form.username, form.password, form.role)
-    
-    // 登录成功，将 Token 和身份存入 Pinia (它会自动存入 localStorage)
     userStore.setToken(res.token)
     userStore.setRole(res.user.role)
     userStore.setUserInfo(res.user)
 
-    ElMessage.success({
-      message: `欢迎进入${form.role === 'student' ? '学生' : form.role === 'dormmanager' ? '宿管' : '管理'}端系统`,
-      duration: 2000
-    })
-    
+    const roleLabel = roles.find((role) => role.value === form.role)?.label || '用户'
+    ElMessage.success({ message: `欢迎进入${roleLabel}端系统`, duration: 2000 })
+
     if (form.role === 'student') router.push('/student/desk')
     else if (form.role === 'dormmanager') router.push('/dormmanager/workbench')
     else router.push('/admin/overview')
   } catch (error) {
-    // 失败时的提示已在拦截器或者 api 里处理，此处可以做一些补充
     console.error(error)
   } finally {
     loading.value = false
@@ -169,339 +199,468 @@ const handleLogin = async () => {
 </script>
 
 <style scoped>
-.login-wrapper {
-  min-height: 100vh;
-  width: 100vw;
+.login-page {
+  --ink: #0f172a;
+  --muted: #64748b;
+  --line: #dbe5f2;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-soft: #eff6ff;
+  --surface: #ffffff;
+  --surface-subtle: #f8faff;
+  --danger: #dc2626;
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(390px, 0.75fr);
+  min-height: 100dvh;
+  overflow: hidden;
+  background: url('../assets/login-campus.jpg') center / cover no-repeat;
+  color: var(--ink);
+  font-family: Inter, "Microsoft YaHei", "PingFang SC", sans-serif;
+}
+
+.login-page::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: rgba(9, 32, 62, 0.5);
+  content: '';
+}
+
+.campus-panel {
+  position: relative;
+  min-height: 100dvh;
+  color: #fff;
+}
+
+.campus-scrim {
+  display: none;
+}
+
+.campus-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  box-sizing: border-box;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 100dvh;
+  padding: clamp(30px, 5vw, 74px);
+}
+
+.brand-lockup,
+.mobile-brand,
+.security-note,
+.service-list li,
+.role-button,
+.field-control,
+.form-actions,
+.login-button {
   display: flex;
   align-items: center;
-  justify-content: center;
-  background-color: #f8fafc;
+}
+
+.brand-lockup {
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.brand-mark {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 6px;
+}
+
+.campus-copy {
+  max-width: 470px;
+  margin: auto 0;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.campus-copy h1 {
+  margin: 0;
+  color: #fff;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: clamp(36px, 3.9vw, 56px);
+  font-weight: 700;
+  line-height: 1.18;
+}
+
+.campus-copy > p:last-child {
+  margin: 20px 0 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.service-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 14px;
+}
+
+.service-list li {
+  gap: 9px;
+}
+
+.service-list svg {
+  color: #93c5fd;
+}
+
+.login-surface {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  background: transparent;
+}
+
+.form-content {
   position: relative;
-  overflow: hidden;
+  box-sizing: border-box;
+  width: min(100% - 64px, 440px);
+  border: 1px solid rgba(255, 255, 255, 0.56);
+  border-radius: 8px;
+  padding: 42px 36px 34px;
+  background: rgba(248, 251, 255, 0.78);
+  box-shadow: 0 24px 60px rgba(4, 24, 49, 0.24);
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
 }
 
-/* Ambient animated background orbs */
-.bg-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  z-index: 0;
-  animation: float 20s infinite ease-in-out;
-}
-
-.orb-1 {
-  width: 600px;
-  height: 600px;
-  background: rgba(59, 130, 246, 0.15); /* blue */
-  top: -100px;
-  left: -100px;
-  animation-delay: 0s;
-}
-
-.orb-2 {
-  width: 500px;
-  height: 500px;
-  background: rgba(139, 92, 246, 0.15); /* purple */
-  bottom: -100px;
-  right: -50px;
-  animation-delay: -5s;
-}
-
-.orb-3 {
-  width: 400px;
-  height: 400px;
-  background: rgba(14, 165, 233, 0.15); /* sky */
-  top: 40%;
-  left: 40%;
-  animation-delay: -10s;
-}
-
-@keyframes float {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(50px, -50px) scale(1.1); }
-  66% { transform: translate(-30px, 40px) scale(0.9); }
-}
-
-/* Central Glassmorphism Card */
-.glass-card {
-  position: relative;
-  z-index: 10;
-  width: 100%;
-  max-width: 1000px;
-  height: 600px;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 24px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
-  padding: 12px;
-}
-
-.card-inner {
-  display: flex;
-  width: 100%;
-  height: 100%;
-  border-radius: 16px;
-  overflow: hidden;
-  background: white;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-}
-
-/* Brand Panel (Left) */
-.brand-panel {
-  flex: 1;
-  position: relative;
-  background: linear-gradient(145deg, #1e3a8a 0%, #3b82f6 100%);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 60px;
-  color: white;
-  overflow: hidden;
-}
-
-.brand-overlay {
+.form-content::before {
   position: absolute;
   top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PHBhdGggZD0iTTAgMGgyMHYyMEgwem0xMCAxMGgxMHYxMEgxMHoiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wMykiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvc3ZnPg==') repeat;
-  opacity: 0.5;
+  left: 36px;
+  width: 36px;
+  height: 4px;
+  border-radius: 0 0 2px 2px;
+  background: var(--primary);
+  content: '';
 }
 
-.brand-content {
-  position: relative;
-  z-index: 2;
-}
-
-.logo-box {
-  width: 64px;
-  height: 64px;
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 32px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.brand-title {
-  font-size: 42px;
-  font-weight: 800;
-  line-height: 1.1;
-  margin: 0 0 16px 0;
-  letter-spacing: -1px;
-}
-
-.brand-subtitle {
-  font-size: 18px;
-  color: #bfdbfe;
-  margin: 0 0 48px 0;
-}
-
-.brand-features {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.feature-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 15px;
-  color: #e0e7ff;
-}
-
-.feature-item .el-icon {
-  color: #60a5fa;
-}
-
-/* Form Panel (Right) */
-.form-panel {
-  flex: 1;
-  padding: 60px 80px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  background: #ffffff;
+.mobile-brand {
+  display: none;
 }
 
 .form-header {
-  margin-bottom: 40px;
+  margin-bottom: 28px;
+}
+
+.form-header .eyebrow {
+  margin-bottom: 9px;
+  color: var(--primary);
 }
 
 .form-header h2 {
-  font-size: 28px;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0 0 8px 0;
-}
-
-.form-header p {
-  color: #64748b;
-  font-size: 15px;
   margin: 0;
+  color: var(--ink);
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.25;
 }
 
-/* iOS-style Segmented Control */
-.role-segmented-control {
-  position: relative;
-  display: flex;
-  background: #f1f5f9;
-  border-radius: 12px;
-  padding: 6px;
-  margin-bottom: 32px;
-}
-
-.segment {
-  flex: 1;
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  height: 40px;
+.form-header p:last-child {
+  margin: 11px 0 0;
+  color: var(--muted);
   font-size: 14px;
-  font-weight: 500;
-  color: #64748b;
-  cursor: pointer;
-  transition: color 0.3s;
+  line-height: 1.7;
 }
 
-.segment.active {
-  color: #0f172a;
-}
-
-.active-indicator {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  height: 40px;
-  width: calc(33.33% - 4px);
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.1);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 1;
-}
-
-/* Modern Inputs */
-.input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+.role-group {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   margin-bottom: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.42);
+  border-radius: 6px;
+  overflow: hidden;
 }
 
-.input-field {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.input-icon {
-  position: absolute;
-  left: 16px;
-  color: #94a3b8;
-  font-size: 18px;
-  pointer-events: none;
-}
-
-.input-field input {
-  width: 100%;
-  height: 52px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 0 16px 0 44px;
-  font-size: 15px;
-  color: #0f172a;
-  outline: none;
-  transition: all 0.2s ease;
-}
-
-.input-field input::placeholder {
-  color: #94a3b8;
-}
-
-.input-field input:focus {
-  background: white;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-}
-
-.form-options {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 32px;
-}
-
-.forgot-link {
-  color: #3b82f6;
+.role-button {
+  justify-content: center;
+  gap: 7px;
+  min-height: 48px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.64);
+  color: #526068;
+  cursor: pointer;
+  font: inherit;
   font-size: 14px;
-  font-weight: 500;
-  text-decoration: none;
+  font-weight: 650;
+  transition: background-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
 }
 
-.forgot-link:hover {
+.role-button:last-child {
+  border-right: 0;
+}
+
+.role-button:hover {
+  background: var(--primary-soft);
+}
+
+.role-button.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.role-button:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 3px solid rgba(37, 99, 235, 0.3);
+  outline-offset: -3px;
+}
+
+.login-form {
+  display: grid;
+  gap: 9px;
+}
+
+.field-label {
+  margin-top: 7px;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.field-control {
+  position: relative;
+  min-height: 48px;
+  gap: 11px;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 14px;
+  background: rgba(255, 255, 255, 0.68);
+  color: #819097;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.field-control:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.field-control.invalid {
+  border-color: var(--danger);
+}
+
+.field-control.invalid:focus-within {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+}
+
+.field-control input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+}
+
+.field-control input::placeholder {
+  color: #94a3b8;
+}
+
+.field-error {
+  margin: -2px 0 0;
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.password-toggle {
+  display: grid;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.password-toggle:hover,
+.password-toggle:focus-visible {
+  background: var(--primary-soft);
+  color: var(--primary);
+  outline: none;
+}
+
+.form-actions {
+  justify-content: space-between;
+  min-height: 28px;
+  margin: 6px 0 14px;
+}
+
+.form-actions :deep(.el-checkbox__label) {
+  color: #59666d;
+  font-size: 14px;
+}
+
+.form-actions :deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+.help-link {
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.help-link:hover,
+.help-link:focus-visible {
+  color: var(--primary-hover);
+  outline: none;
   text-decoration: underline;
 }
 
-.login-btn {
-  width: 100%;
-  height: 52px;
-  border: none;
-  border-radius: 12px;
-  background: #3b82f6;
-  color: white;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
+.login-button {
   justify-content: center;
+  min-height: 50px;
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+  background: var(--primary);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  transition: background-color 180ms ease, border-color 180ms ease, transform 180ms ease;
 }
 
-.login-btn:hover:not(:disabled) {
-  background: #2563eb;
+.login-button:hover:not(:disabled) {
+  border-color: var(--primary-hover);
+  background: var(--primary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
 }
 
-.login-btn:active:not(:disabled) {
-  transform: translateY(0);
+.login-button:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.25);
+  outline-offset: 3px;
 }
 
-.login-btn:disabled {
-  background: #93c5fd;
-  cursor: not-allowed;
+.login-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }
 
 .is-loading {
-  animation: spin 1s linear infinite;
+  animation: spin 0.8s linear infinite;
+}
+
+.security-note {
+  gap: 8px;
+  margin: 26px 0 0;
+  border-top: 1px solid #e9eef6;
+  padding-top: 19px;
+  color: #778187;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.security-note svg {
+  flex: 0 0 auto;
+  color: var(--primary);
 }
 
 @keyframes spin {
-  100% { transform: rotate(360deg); }
+  to { transform: rotate(360deg); }
 }
 
-@media (max-width: 900px) {
-  .brand-panel {
+@media (prefers-reduced-motion: reduce) {
+  .role-button,
+  .field-control,
+  .login-button,
+  .password-toggle,
+  .is-loading {
+    animation: none;
+    transition: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .login-page {
+    display: block;
+  }
+
+  .campus-panel {
     display: none;
   }
-  .form-panel {
-    padding: 40px;
+
+  .login-surface {
+    position: relative;
+    display: grid;
+    min-height: 100dvh;
+    box-sizing: border-box;
+    padding: 82px 24px 32px;
   }
-  .glass-card {
-    height: auto;
-    margin: 24px;
+
+  .mobile-brand {
+    display: flex;
+    position: absolute;
+    top: 28px;
+    left: 24px;
+    gap: 8px;
+    width: auto;
+    margin: 0;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .mobile-brand svg {
+    color: #bfdbfe;
+  }
+
+  .form-content {
+    width: min(100%, 400px);
+  }
+}
+
+@media (max-width: 430px) {
+  .role-button {
+    gap: 4px;
+    font-size: 13px;
+  }
+
+  .role-button svg {
+    display: none;
+  }
+
+  .form-content {
+    padding: 38px 24px 28px;
+  }
+
+  .form-content::before {
+    left: 24px;
   }
 }
 </style>

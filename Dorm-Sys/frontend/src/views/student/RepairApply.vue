@@ -100,13 +100,18 @@ const fetchMyRepairs = async () => {
 }
 
 const fetchCurrentRoom = async () => {
-  const beds = await getBeds()
-  const currentBed = (beds || []).find((bed) => bed.studentId === userStore.userInfo?.id)
-  currentRoomId.value = currentBed?.roomId || null
+  try {
+    const beds = await getBeds()
+    const currentBed = (beds || []).find((bed) => bed.studentId === userStore.userInfo?.id)
+    currentRoomId.value = currentBed?.roomId || null
+  } catch (error) {
+    currentRoomId.value = null
+    ElMessage.warning('当前房间信息加载失败，提交时将由系统重新匹配')
+  }
 }
 
-onMounted(async () => {
-  await fetchCurrentRoom()
+onMounted(() => {
+  fetchCurrentRoom()
   fetchMyRepairs()
 })
 
