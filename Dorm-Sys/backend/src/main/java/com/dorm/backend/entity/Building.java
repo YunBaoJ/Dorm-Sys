@@ -3,6 +3,7 @@ package com.dorm.backend.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.TableField;
 import lombok.Data;
 import java.time.LocalDateTime;
 
@@ -20,10 +21,15 @@ public class Building {
     private Boolean active;
     
     // 聚合统计字段（可选，在数据库可以有或者没有）
-    private Integer totalRooms;
-    private Integer occupiedRooms;
-    private Integer freeRooms;
-    
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
+    
+    @TableField(exist = false)
+    private Integer totalRooms;
+    
+    @TableField(exist = false)
+    private Integer occupiedRooms;
+    
+    @TableField(exist = false)
+    private Integer freeRooms;
 }

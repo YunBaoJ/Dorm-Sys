@@ -4,18 +4,17 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-import java.time.LocalDateTime;
+import java.util.Date;
 
 @Data
-@TableName("feedback")
-public class Feedback {
+@TableName("stay_history")
+public class StayHistory {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long studentId;
-    private String type;
-    private String content;
-    private String reply;
-    private String status;
-    private LocalDateTime createTime;
-    private LocalDateTime updateTime;
+    private Long bedId;
+    private Date checkInDate;
+    private Date checkOutDate;
+    private Date createTime;
+    private Date updateTime;
 }

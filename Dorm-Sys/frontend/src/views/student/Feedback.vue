@@ -49,14 +49,14 @@
             <el-empty v-if="myFeedbacks.length === 0" description="暂无历史反馈" />
             <div v-for="f in myFeedbacks" :key="f.id" class="feedback-item">
               <div class="feedback-head">
-                <div class="feedback-type">{{ f.type }}</div>
+                <div class="feedback-type">{{ f.title || f.type }}</div>
                 <el-tag size="small" :type="f.status === 'REPLIED' ? 'success' : 'info'" effect="plain" round>
                   {{ f.status === 'REPLIED' ? '已回复' : '未读' }}
                 </el-tag>
               </div>
-              <div class="feedback-content">{{ f.content }}</div>
+              <div class="feedback-content">{{ f.description }}</div>
               <div class="feedback-time">提交于 {{ f.createTime ? f.createTime.replace('T', ' ').substring(0, 16) : '' }}</div>
-              <div v-if="f.status === 'REPLIED'" class="feedback-reply">
+              <div v-if="f.status === 'REPLIED' && f.reply" class="feedback-reply">
                 <strong>宿管回复：</strong>
                 <p>{{ f.reply }}</p>
               </div>
@@ -84,8 +84,12 @@ const submitting = ref(false)
 const fetchMyFeedbacks = async () => {
   loading.value = true
   try {
-    const res = await request({ url: '/feedback/list', method: 'get', params: { studentId: userStore.userInfo?.id } })
-    myFeedbacks.value = res || []
+    const res = await request({ 
+      url: '/businessRecord/list', 
+      method: 'get', 
+      params: { creatorId: userStore.userInfo?.id } 
+    })
+    myFeedbacks.value = (res || []).filter(item => item.type === 'feedback')
   } catch (e) {
     ElMessage.error('获取反馈记录失败')
   } finally {
@@ -101,12 +105,14 @@ const handleSubmit = async () => {
   submitting.value = true
   try {
     await request({
-      url: '/feedback/add',
+      url: '/businessRecord/save',
       method: 'post',
       data: {
-        studentId: userStore.userInfo?.id,
-        type: form.value.type,
-        content: form.value.content
+        creatorId: userStore.userInfo?.id,
+        type: 'feedback',
+        title: form.value.type,
+        description: form.value.content,
+        status: 'PENDING'
       }
     })
     ElMessage.success('反馈提交成功')

@@ -28,7 +28,7 @@
           </div>
 
           <div class="building-list">
-            <div v-for="b in buildings" :key="b.id" class="building-item">
+            <div v-for="b in filteredBuildings" :key="b.id" class="building-item">
               <div class="building-icon" :class="b.type === '男生楼' ? 'bg-blue' : 'bg-orange'">
                 <el-icon :size="32"><component :is="Building" /></el-icon>
                 <el-tag size="small" :type="b.type === '男生楼' ? 'primary' : 'warning'" effect="plain" class="type-tag">{{ b.type }}</el-tag>
@@ -185,7 +185,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive } from 'vue'
+import { ref, computed, onMounted, reactive } from 'vue'
 import { Building2, Building, Home, Clock, Info, Search, RefreshCw as Refresh, Plus, MapPin, UserRound, Edit, Delete } from '@lucide/vue'
 import { getBuildingList, saveBuilding, deleteBuilding } from '../../api/building'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -198,6 +198,12 @@ const dialogVisible = ref(false)
 const isEdit = ref(false)
 const submitting = ref(false)
 const formRef = ref(null)
+
+const filteredBuildings = computed(() => {
+  if (!search.value) return buildings.value
+  const lowerSearch = search.value.toLowerCase()
+  return buildings.value.filter(b => b.name.toLowerCase().includes(lowerSearch))
+})
 
 const form = reactive({
   id: null,

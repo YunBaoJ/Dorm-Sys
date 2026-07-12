@@ -36,7 +36,7 @@
           </div>
 
           <div class="room-list" v-loading="loading">
-            <div v-for="room in rooms" :key="room.id" class="room-item">
+            <div v-for="room in filteredRooms" :key="room.id" class="room-item">
               <div class="room-badge bg-light-blue">
                 <span class="room-no">{{ room.roomNumber }}</span>
                 <span class="room-type">{{ room.capacity }}人间</span>
@@ -210,7 +210,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Home, Plus, Files, Search, RefreshCw as Refresh, Building, Edit, Eye, Trash2, Clock, Check, AlertCircle, Settings, Info } from '@lucide/vue'
 import { getRooms, saveRoom, deleteRoom, getBeds } from '../../api/room'
 import { getBuildings } from '../../api/building'
@@ -221,6 +221,12 @@ const search = ref('')
 const rooms = ref([])
 const buildings = ref([])
 const loading = ref(false)
+
+const filteredRooms = computed(() => {
+  if (!search.value) return rooms.value
+  const lowerSearch = search.value.toLowerCase()
+  return rooms.value.filter(r => (r.roomNumber || '').toLowerCase().includes(lowerSearch))
+})
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增房间')

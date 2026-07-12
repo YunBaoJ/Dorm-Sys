@@ -77,20 +77,22 @@
           <template #header>
             <div class="card-header">
               <span class="card-title">楼栋业务动态</span>
-              <el-radio-group v-model="dynamicsView" size="small">
-                <el-radio-button label="room">房间状态</el-radio-button>
-                <el-radio-button label="hygiene">卫生评比</el-radio-button>
-              </el-radio-group>
+              <div style="display: flex; gap: 12px; align-items: center;">
+                <el-select v-model="selectedBuilding" placeholder="选择楼栋查看" style="width: 150px" size="small" clearable>
+                  <el-option v-for="b in buildings" :key="b.id" :label="b.name" :value="b.id" />
+                </el-select>
+                <el-radio-group v-model="dynamicsView" size="small">
+                  <el-radio-button label="room">房间状态</el-radio-button>
+                  <el-radio-button label="hygiene">卫生评比</el-radio-button>
+                </el-radio-group>
+              </div>
             </div>
           </template>
           <div class="rooms-grid">
-            <div v-for="room in rooms" :key="room.number" class="room-box" :class="{'is-warning': room.warning}">
-              <div class="room-number">{{ room.number }}</div>
+            <div v-for="room in filteredRooms" :key="room.id" class="room-box" :class="{'is-warning': room.warning}">
+              <div class="room-number">{{ room.buildingName }}-{{ room.number }}</div>
               <div class="room-dots">
-                <span class="dot filled"></span>
-                <span class="dot filled"></span>
-                <span class="dot filled"></span>
-                <span class="dot"></span>
+                <span v-for="i in room.capacity" :key="i" class="dot" :class="{ filled: i <= room.occupied }"></span>
               </div>
               <div v-if="room.warning" class="room-warning-icon">!</div>
             </div>
@@ -218,10 +220,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Bell, RefreshCw as Refresh, User, Settings, UserCheck, Clock, ChevronRight, UserPlus, Medal, MessageCircle, Info, AlertCircle } from '@lucide/vue'
 import { getBeds, getRooms } from '../../api/room'
+import { getBuildings } from '../../api/building'
 import { getRepairs } from '../../api/repair'
 import { getVisitorRecords } from '../../api/visitor'
 import { useUserStore } from '../../store/user'
@@ -235,13 +238,22 @@ const pendingRepairCount = ref(0)
 const todayVisitorCount = ref(0)
 const lateReturnCount = ref(0)
 const rooms = ref([])
+const buildings = ref([])
+const selectedBuilding = ref('')
 const pendingRepairs = ref([])
+
+const filteredRooms = computed(() => {
+  if (!selectedBuilding.value) return rooms.value
+  return rooms.value.filter(r => r.buildingId === selectedBuilding.value)
+})
 
 const loadData = async () => {
   try {
-    const [beds, repairList, visitors, roomList] = await Promise.all([
-      getBeds(), getRepairs(), getVisitorRecords(), getRooms()
+    const [beds, repairList, visitors, roomList, buildingList] = await Promise.all([
+      getBeds(), getRepairs(), getVisitorRecords(), getRooms(), getBuildings()
     ])
+    
+    buildings.value = buildingList || []
     
     residentCount.value = beds.filter(b => b.status === 'OCCUPIED').length
     
@@ -259,7 +271,12 @@ const loadData = async () => {
     } catch (err) {}
     
     rooms.value = roomList.map(r => ({
+      id: r.id,
       number: r.roomNumber,
+      buildingId: r.buildingId,
+      buildingName: r.buildingName,
+      capacity: r.capacity || 4,
+      occupied: r.occupied || 0,
       warning: false // Simplified: no warning logic for now
     }))
   } catch (e) {

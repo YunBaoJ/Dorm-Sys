@@ -19,20 +19,20 @@
 
     <el-card shadow="never" class="list-card">
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
-        <el-tab-pane label="待回复" name="UNREAD"></el-tab-pane>
+        <el-tab-pane label="待回复" name="PENDING"></el-tab-pane>
         <el-tab-pane label="已回复" name="REPLIED"></el-tab-pane>
       </el-tabs>
 
       <el-table :data="filteredFeedbacks" style="width: 100%" v-loading="loading">
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="type" label="反馈类型" width="120" />
-        <el-table-column prop="content" label="反馈内容" min-width="250" show-overflow-tooltip />
+        <el-table-column prop="title" label="反馈类型" width="120" />
+        <el-table-column prop="description" label="反馈内容" min-width="250" show-overflow-tooltip />
         <el-table-column prop="createTime" label="提交时间" width="180">
           <template #default="scope">{{ scope.row.createTime ? scope.row.createTime.replace('T', ' ') : '' }}</template>
         </el-table-column>
         <el-table-column label="操作" width="120" fixed="right">
           <template #default="scope">
-            <el-button v-if="scope.row.status === 'UNREAD'" type="primary" link @click="openReplyDialog(scope.row)">回复</el-button>
+            <el-button v-if="scope.row.status === 'PENDING'" type="primary" link @click="openReplyDialog(scope.row)">回复</el-button>
             <el-button v-else type="primary" link @click="viewReply(scope.row)">查看</el-button>
           </template>
         </el-table-column>
@@ -44,11 +44,11 @@
       <div class="feedback-detail">
         <div class="detail-item">
           <span class="label">反馈类型：</span>
-          <span class="value">{{ currentRecord.type }}</span>
+          <span class="value">{{ currentRecord.title || currentRecord.type }}</span>
         </div>
         <div class="detail-item">
           <span class="label">反馈内容：</span>
-          <span class="value" style="white-space: pre-wrap;">{{ currentRecord.content }}</span>
+          <span class="value" style="white-space: pre-wrap;">{{ currentRecord.description }}</span>
         </div>
         
         <div class="reply-section" v-if="!isViewMode">
@@ -85,12 +85,12 @@ import { ElMessage } from 'element-plus'
 import request from '../../utils/request'
 
 const feedbacks = ref([])
-const activeTab = ref('UNREAD')
 const loading = ref(false)
 const dialogVisible = ref(false)
 const isViewMode = ref(false)
 const currentRecord = ref({})
 const replyContent = ref('')
+const activeTab = ref('PENDING')
 const submitting = ref(false)
 
 const filteredFeedbacks = computed(() => {
@@ -100,7 +100,7 @@ const filteredFeedbacks = computed(() => {
 const fetchFeedbacks = async () => {
   loading.value = true
   try {
-    const res = await request({ url: '/feedback/list', method: 'get' })
+    const res = await request({ url: '/businessRecord/list', method: 'get', params: { type: 'feedback' } })
     feedbacks.value = res || []
   } catch (e) {
     ElMessage.error('获取列表失败')
@@ -134,11 +134,12 @@ const submitReply = async () => {
   submitting.value = true
   try {
     await request({
-      url: '/feedback/reply',
+      url: '/businessRecord/save',
       method: 'post',
       data: {
-        id: currentRecord.value.id,
-        reply: replyContent.value
+        ...currentRecord.value,
+        reply: replyContent.value,
+        status: 'REPLIED'
       }
     })
     ElMessage.success('回复成功')

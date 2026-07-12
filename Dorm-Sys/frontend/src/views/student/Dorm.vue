@@ -1,207 +1,228 @@
 <template>
-  <div>
-    <!-- Standard Hero -->
-    <div class="hero">
-      <div class="hero-title">
-        <div class="hero-icon">
-          <el-icon :size="28"><component :is="Home" /></el-icon>
-        </div>
-        <div>
-          <h1>我的宿舍</h1>
-          <p class="subtitle">住宿信息 · 室友 · 生活服务</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid">
-      <!-- Left Stack -->
-      <div class="left-stack">
-        <!-- Room Stats -->
-        <div class="card">
-          <div class="card-head"><h2>寝室信息</h2></div>
-          <div class="card-body stats">
-            <div class="stat">
-              <div class="tile-icon"><el-icon :size="22"><component :is="Home" /></el-icon></div>
-              <div>
-                <span class="muted" style="font-size:13px">楼栋房间</span>
-                <span class="num" style="font-size:18px">{{ myBuilding ? myBuilding.name : '未知' }} {{ myRoom ? myRoom.roomNumber : '未知' }}</span>
-              </div>
+  <div class="dorm-container">
+    <el-row :gutter="24" class="main-row">
+      <!-- Left Column: Dorm Profile & Roommates -->
+      <el-col :span="8">
+        <el-card shadow="never" class="profile-card">
+          <!-- Top House Info -->
+          <div class="dorm-header">
+            <div class="dorm-icon-box">
+              <el-icon :size="40" color="var(--el-color-primary)"><component :is="Home" /></el-icon>
             </div>
-            <div class="stat">
-              <div class="tile-icon"><el-icon :size="22"><component :is="BedDouble" /></el-icon></div>
-              <div>
-                <span class="muted" style="font-size:13px">床位</span>
-                <span class="num" style="font-size:18px">{{ myBed ? myBed.bedNumber : '-' }}号床</span>
-              </div>
-            </div>
-            <div class="stat">
-              <div class="tile-icon"><el-icon :size="22"><component :is="Calendar" /></el-icon></div>
-              <div>
-                <span class="muted" style="font-size:13px">入住日期</span>
-                <span class="num" style="font-size:18px">2025/09/01</span>
-              </div>
-            </div>
-            <div class="stat">
-              <div class="tile-icon"><el-icon :size="22"><component :is="Medal" /></el-icon></div>
-              <div>
-                <span class="muted" style="font-size:13px">卫生评分</span>
-                <span class="num" style="font-size:18px">92 分</span>
-              </div>
+            <h2 class="dorm-title">{{ myBuilding?.name || '未知' }} · {{ myRoom?.roomNumber || '未知' }}</h2>
+            <div class="dorm-tags">
+              <el-tag size="small" effect="plain">{{ myRoom?.floor || '-' }}层</el-tag>
+              <el-tag size="small" effect="plain">{{ myRoom?.capacity || 4 }}人间</el-tag>
+              <el-tag size="small" type="primary" effect="dark">{{ myBed?.bedNumber ? myBed.bedNumber.split('-')[1] + '号床位' : '未分配' }}</el-tag>
             </div>
           </div>
-        </div>
 
-        <!-- Roommates List -->
-        <div class="card">
-          <div class="card-head"><h2>室友信息</h2></div>
-          <div class="card-body list">
-            <div class="row">
-              <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(145deg, #334155, #94a3b8); display: grid; place-items: center; color: white; font-size: 18px; font-weight: bold;">{{ userStore.userInfo?.name?.[0] || '我' }}</div>
-              <div class="row-main">
-                <div class="row-title">
-                  <span style="font-size:16px">{{ userStore.userInfo?.name || '我' }}</span>
-                  <span class="tag info">自己</span>
+          <!-- Dorm Meta Details -->
+          <div class="dorm-meta-list">
+            <div class="meta-item">
+              <span class="meta-label">入住日期</span>
+              <span class="meta-value">2025/9/1</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">所属校区</span>
+              <span class="meta-value">主校区 · 西区</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">责任宿管</span>
+              <span class="meta-value">{{ myBuilding?.manager || '未知' }}</span>
+            </div>
+          </div>
+
+          <!-- Roommates -->
+          <div class="roommates-section">
+            <div class="section-title">我的室友 <span class="count">{{ allOccupants.length }}/{{ myRoom?.capacity || 4 }}</span></div>
+            <div class="roommate-list">
+              <div 
+                v-for="user in allOccupants" 
+                :key="user.id" 
+                class="roommate-item"
+                :class="{ 'is-me': user.isMe }"
+              >
+                <img v-if="user.avatar" :src="user.avatar" class="avatar" />
+                <div v-else class="avatar-placeholder">{{ user.name?.[0] || '?' }}</div>
+                
+                <div class="rm-info">
+                  <div class="rm-name-row">
+                    <span class="rm-name">{{ user.name }}</span>
+                    <el-tag v-if="user.isMe" size="small" type="primary" effect="dark" class="me-tag">我</el-tag>
+                  </div>
+                  <div class="rm-sub">
+                    <span>{{ user.bedNumber }}号床</span>
+                    <span class="rm-status">外出</span>
+                  </div>
                 </div>
-                <div class="row-meta">
-                  <span>学号：{{ userStore.userInfo?.username || '-' }}</span>
-                  <span></span>
-                  <span>{{ myBed ? myBed.bedNumber : '-' }}号床</span>
+                
+                <div class="rm-action">
+                  <el-button v-if="!user.isMe" circle size="small">
+                    <el-icon><component :is="MessageCircle" /></el-icon>
+                  </el-button>
                 </div>
               </div>
-              <button class="ghost-btn">编辑</button>
             </div>
-            <div class="row" v-for="(rm, i) in roommates" :key="i">
-              <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--muted-2); display: grid; place-items: center; font-weight: bold; color: var(--text-secondary); font-size: 18px;">{{ rm.name?.[0] || '?' }}</div>
-              <div class="row-main">
-                <div class="row-title">
-                  <span style="font-size:16px">{{ rm.name }}</span>
+          </div>
+        </el-card>
+      </el-col>
+
+      <!-- Right Column: Layout & Facilities -->
+      <el-col :span="16">
+        <div class="right-stack">
+        <!-- Bed Layout -->
+        <el-card shadow="never" class="layout-card">
+          <div class="card-header">宿舍床位布局</div>
+          <div class="layout-wrapper">
+            <div class="floor-plan">
+              <div class="plan-border"></div>
+              <div class="door-label">大门</div>
+              <div class="balcony-label">阳台</div>
+              
+              <div class="beds-grid">
+                <!-- 4 Beds Layout Mapping -->
+                <div 
+                  v-for="i in (myRoom?.capacity || 4)" 
+                  :key="i"
+                  class="bed-slot"
+                >
+                  <div class="bed-box">
+                    <div class="bed-number">{{ myRoom?.roomNumber ? `${myRoom.roomNumber}-${i}` : `1-${i}` }}</div>
+                  </div>
+                  <div class="bed-owner">{{ getOccupantForBed(i)?.name || '空床' }}</div>
                 </div>
-                <div class="row-meta">
-                  <span>学号：{{ rm.sno }}</span>
-                  <span></span>
-                  <span>{{ rm.bedNumber }}号床</span>
+              </div>
+            </div>
+          </div>
+        </el-card>
+
+        <!-- Bottom Row -->
+        <el-row :gutter="24" style="margin-top: 24px">
+          <!-- Facilities -->
+          <el-col :span="14">
+            <el-card shadow="never" class="facility-card">
+              <div class="card-header">
+                <span>设施运行状态</span>
+                <el-button link type="primary" style="display:flex;align-items:center;gap:4px">
+                  <el-icon><component :is="RefreshCw" /></el-icon>刷新
+                </el-button>
+              </div>
+              <div class="facility-grid">
+                <div class="fac-item">
+                  <div class="fac-icon-box bg-blue"><el-icon><component :is="Lightbulb" /></el-icon></div>
+                  <div class="fac-info">
+                    <div class="fac-name">照明灯具</div>
+                    <div class="fac-status">运行中</div>
+                  </div>
+                </div>
+                <div class="fac-item">
+                  <div class="fac-icon-box bg-blue"><el-icon><component :is="Fan" /></el-icon></div>
+                  <div class="fac-info">
+                    <div class="fac-name">空调设备</div>
+                    <div class="fac-status">良好</div>
+                  </div>
+                </div>
+                <div class="fac-item">
+                  <div class="fac-icon-box bg-blue"><el-icon><component :is="Wifi" /></el-icon></div>
+                  <div class="fac-info">
+                    <div class="fac-name">宿舍网络</div>
+                    <div class="fac-status">已连接</div>
+                  </div>
+                </div>
+                <div class="fac-item">
+                  <div class="fac-icon-box bg-yellow"><el-icon><component :is="Droplet" /></el-icon></div>
+                  <div class="fac-info">
+                    <div class="fac-name">直饮水</div>
+                    <div class="fac-status text-yellow">滤芯待换</div>
+                  </div>
                 </div>
               </div>
-              <button class="ghost-btn">联系</button>
-            </div>
-          </div>
+            </el-card>
+          </el-col>
+          
+          <!-- Hygiene Metric -->
+          <el-col :span="10">
+            <el-card shadow="never" class="hygiene-card">
+              <div class="card-header">卫生月度指标</div>
+              <div class="hygiene-content">
+                <div class="chart-box">
+                  <el-progress type="dashboard" :percentage="95" :width="120" color="#3b82f6" :stroke-width="8">
+                    <template #default="{ percentage }">
+                      <div class="score-value">
+                        <span class="num">{{ percentage }}</span>
+                        <span class="unit">分</span>
+                      </div>
+                    </template>
+                  </el-progress>
+                  <div class="chart-label">本月平均得分</div>
+                </div>
+                <div class="hygiene-stats">
+                  <div class="h-stat-row">
+                    <span class="h-label">全楼排名</span>
+                    <span class="h-val">第 12 名</span>
+                  </div>
+                  <el-divider border-style="dashed" />
+                  <div class="h-stat-row">
+                    <span class="h-label">上次检查</span>
+                    <span class="h-val">98 (优秀)</span>
+                  </div>
+                </div>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
         </div>
-
-        <!-- Devices List -->
-        <div class="card">
-          <div class="card-head"><h2>设备状态</h2></div>
-          <div class="card-body list">
-            <div class="row" style="min-height:56px;border:1px solid var(--line);">
-              <span class="tile-icon" style="background:var(--ok-2);color:var(--ok)"><el-icon :size="20"><component :is="Zap" /></el-icon></span>
-              <div class="row-main">
-                <div class="row-title">空调</div>
-                <div class="row-meta"><span>运行正常</span></div>
-              </div>
-              <span class="status-dot" style="width:8px;height:8px;border-radius:50%;background:var(--ok);"></span>
-            </div>
-            <div class="row" style="min-height:56px;border:1px solid var(--line);">
-              <span class="tile-icon" style="background:var(--ok-2);color:var(--ok)"><el-icon :size="20"><component :is="Wifi" /></el-icon></span>
-              <div class="row-main">
-                <div class="row-title">网络</div>
-                <div class="row-meta"><span>信号良好</span></div>
-              </div>
-              <span class="status-dot" style="width:8px;height:8px;border-radius:50%;background:var(--ok);"></span>
-            </div>
-            <div class="row" style="min-height:56px;border:1px solid var(--line);">
-              <span class="tile-icon" style="background:var(--warn-2);color:var(--warn)"><el-icon :size="20"><component :is="Lightbulb" /></el-icon></span>
-              <div class="row-main">
-                <div class="row-title">热水器</div>
-                <div class="row-meta"><span>加热中</span></div>
-              </div>
-              <span class="status-dot" style="width:8px;height:8px;border-radius:50%;background:var(--warn);"></span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right Stack -->
-      <div class="right-stack">
-        <!-- Side Stats -->
-        <div class="card">
-          <div class="card-head"><h2>寝室状态</h2></div>
-          <div class="card-body list">
-            <div class="side-stat">
-              <el-icon :size="24" color="var(--primary)"><component :is="Users" /></el-icon>
-              <div>
-                <span class="muted" style="font-size:13px">当前人数</span>
-                <strong>{{ roommates.length + (myBed ? 1 : 0) }} 人</strong>
-              </div>
-            </div>
-            <div class="side-stat">
-              <el-icon :size="24" color="var(--primary)"><component :is="WalletCards" /></el-icon>
-              <div>
-                <span class="muted" style="font-size:13px">待缴费用</span>
-                <strong>120.80 元</strong>
-              </div>
-            </div>
-            <div class="side-stat">
-              <el-icon :size="24" color="var(--primary)"><component :is="Settings" /></el-icon>
-              <div>
-                <span class="muted" style="font-size:13px">待处理报修</span>
-                <strong>1 件</strong>
-              </div>
-            </div>
-            <div class="side-stat">
-              <el-icon :size="24" color="var(--primary)"><component :is="Trophy" /></el-icon>
-              <div>
-                <span class="muted" style="font-size:13px">卫生排名</span>
-                <strong>第 3 名</strong>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Quick Services -->
-        <div class="card">
-          <div class="card-head"><h2>常用服务</h2></div>
-          <div class="card-body quick-grid">
-            <button @click="router.push('/student/repair')">
-              <el-icon :size="24"><component :is="Settings" /></el-icon>
-              <span>申请报修</span>
-            </button>
-            <button @click="router.push('/student/visitor')">
-              <el-icon :size="24"><component :is="UserRoundCheck" /></el-icon>
-              <span>访客预约</span>
-            </button>
-            <button @click="router.push('/student/fees')">
-              <el-icon :size="24"><component :is="WalletCards" /></el-icon>
-              <span>费用查询</span>
-            </button>
-            <button>
-              <el-icon :size="24"><component :is="Phone" /></el-icon>
-              <span>联系宿管</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
 import { 
-  Home, BedDouble, Calendar, Medal,
-  Zap, Wifi, Lightbulb, Users, WalletCards, Settings, Trophy, UserRoundCheck, Phone
+  Home, MessageCircle, RefreshCw, Lightbulb, Fan, Wifi, Droplet
 } from '@lucide/vue'
 import { getRooms, getBeds } from '../../api/room'
 import { getUsers } from '../../api/user'
 import { getBuildings } from '../../api/building'
 import { useUserStore } from '../../store/user'
 
-const router = useRouter()
 const userStore = useUserStore()
 
 const myRoom = ref(null)
 const myBed = ref(null)
 const myBuilding = ref(null)
 const roommates = ref([])
+
+// Combine me + roommates into one list for rendering
+const allOccupants = computed(() => {
+  const list = []
+  const me = userStore.userInfo
+  if (me && myBed.value) {
+    list.push({
+      id: me.id,
+      name: me.name,
+      avatar: me.avatar,
+      bedNumber: myBed.value.bedNumber,
+      isMe: true
+    })
+  }
+  list.push(...roommates.value)
+  // Sort by bed number
+  list.sort((a, b) => {
+    const numA = parseInt(a.bedNumber.split('-')[1] || 0)
+    const numB = parseInt(b.bedNumber.split('-')[1] || 0)
+    return numA - numB
+  })
+  return list
+})
+
+const getOccupantForBed = (bedIndex) => {
+  if (!myRoom.value) return null
+  const targetBedSuffix = `-${bedIndex}`
+  return allOccupants.value.find(u => u.bedNumber.endsWith(targetBedSuffix))
+}
 
 const fetchDormInfo = async () => {
   try {
@@ -230,10 +251,12 @@ const fetchDormInfo = async () => {
       roommates.value = roomBeds.map(b => {
         const u = userMap[b.studentId] || {}
         return {
+          id: u.id,
           name: u.name || '未知',
+          avatar: u.avatar,
           sno: u.username || '',
           bedNumber: b.bedNumber,
-          role: 'member'
+          isMe: false
         }
       })
     }
@@ -244,3 +267,354 @@ const fetchDormInfo = async () => {
 
 onMounted(() => fetchDormInfo())
 </script>
+
+<style scoped>
+.dorm-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* Base Cards */
+.profile-card, .layout-card, .facility-card, .hygiene-card {
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04) !important;
+  background: #fff;
+}
+
+.card-header {
+  font-weight: 600;
+  font-size: 16px;
+  color: #1e293b;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+/* Profile Card */
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.dorm-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 0 30px;
+}
+.dorm-icon-box {
+  width: 90px;
+  height: 90px;
+  background: #eef2ff;
+  border-radius: 24px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 20px;
+}
+.dorm-title {
+  margin: 0 0 16px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.dorm-tags {
+  display: flex;
+  gap: 12px;
+}
+
+.dorm-meta-list {
+  margin: 0 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.meta-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+.meta-label {
+  color: #64748b;
+}
+.meta-value {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+/* Roommates Section */
+.roommates-section {
+  margin: 0 24px;
+}
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #1e293b;
+}
+.section-title .count {
+  color: #94a3b8;
+  font-weight: 400;
+  margin-left: 6px;
+}
+.roommate-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.roommate-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+.roommate-item.is-me {
+  background: #fff;
+  border-color: #3b82f6;
+  box-shadow: 0 2px 12px rgba(59, 130, 246, 0.08);
+}
+.avatar, .avatar-placeholder {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  margin-right: 14px;
+}
+.avatar-placeholder {
+  background: #e2e8f0;
+  color: #64748b;
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  font-size: 18px;
+}
+.rm-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rm-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rm-name {
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 15px;
+}
+.me-tag {
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 6px;
+}
+.rm-sub {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #64748b;
+}
+.rm-status {
+  background: #e2e8f0;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  color: #475569;
+}
+
+/* Right Stack */
+.right-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Bed Layout Card */
+.layout-wrapper {
+  padding: 40px 0;
+  display: flex;
+  justify-content: center;
+}
+.floor-plan {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+  height: 300px;
+}
+.plan-border {
+  position: absolute;
+  top: 0; left: 24px; right: 24px; bottom: 0;
+  border: 4px solid #cbd5e1;
+  border-radius: 12px;
+}
+.plan-border::before {
+  content: '';
+  position: absolute;
+  top: -4px; left: 10%; width: 60px; height: 8px;
+  background: #fff;
+}
+.plan-border::after {
+  content: '';
+  position: absolute;
+  bottom: -4px; right: 10%; width: 80px; height: 8px;
+  background: #fff;
+}
+.door-label {
+  position: absolute;
+  top: -12px;
+  left: calc(24px + 10% + 15px);
+  background: #fff;
+  padding: 0 12px;
+  color: #94a3b8;
+  font-weight: 500;
+  font-size: 14px;
+}
+.balcony-label {
+  position: absolute;
+  bottom: -12px;
+  right: calc(24px + 10% + 15px);
+  background: #fff;
+  padding: 0 12px;
+  color: #94a3b8;
+  font-weight: 500;
+  font-size: 14px;
+}
+.beds-grid {
+  position: absolute;
+  top: 50px; left: 60px; right: 60px; bottom: 50px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 50px 80px;
+  place-items: center;
+}
+.bed-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.bed-box {
+  width: 100px;
+  height: 56px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+}
+.bed-number {
+  font-weight: 600;
+  color: #64748b;
+  font-size: 16px;
+}
+.bed-owner {
+  color: #475569;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* Facility Grid */
+.facility-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.fac-item {
+  display: flex;
+  align-items: center;
+  padding: 20px;
+  background: #f8fafc;
+  border-radius: 16px;
+  gap: 16px;
+}
+.fac-icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+}
+.bg-blue {
+  background: #eef2ff;
+  color: #3b82f6;
+}
+.bg-yellow {
+  background: #fef3c7;
+  color: #d97706;
+}
+.text-yellow {
+  color: #d97706 !important;
+}
+.fac-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 6px;
+}
+.fac-status {
+  font-size: 14px;
+  color: #64748b;
+}
+
+/* Hygiene Card */
+.hygiene-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 10px 0;
+}
+.chart-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.score-value {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+}
+.score-value .num {
+  font-size: 40px;
+  font-weight: 800;
+  color: #1e293b;
+}
+.score-value .unit {
+  font-size: 16px;
+  color: #64748b;
+  margin-left: 4px;
+}
+.chart-label {
+  font-size: 14px;
+  color: #94a3b8;
+  margin-top: -12px;
+}
+.hygiene-stats {
+  flex: 1;
+  margin-left: 32px;
+  display: flex;
+  flex-direction: column;
+}
+.h-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+.h-label {
+  color: #64748b;
+  font-size: 15px;
+}
+.h-val {
+  color: #1e293b;
+  font-weight: 600;
+  font-size: 15px;
+}
+</style>

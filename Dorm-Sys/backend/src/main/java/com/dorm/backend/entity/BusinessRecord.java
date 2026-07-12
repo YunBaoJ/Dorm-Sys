@@ -18,6 +18,7 @@ public class BusinessRecord {
     private String description;
     private String status;
     private Long creatorId;
+    private String reply;
     private LocalDateTime eventTime;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
