@@ -76,7 +76,7 @@ const fetchMessages = async () => {
     // API in businessRecord.js
     const res = await request({ url: '/businessRecord/list', method: 'get', params: { type: 'manager_messages' } })
     messages.value = res || []
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('获取列表失败')
   } finally {
     loading.value = false
@@ -109,7 +109,7 @@ const submitAdd = async () => {
     ElMessage.success('发布成功')
     dialogVisible.value = false
     fetchMessages()
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('发布失败')
   } finally {
     submitting.value = false
@@ -124,7 +124,7 @@ const deleteMessage = async (id) => {
     })
     ElMessage.success('删除成功')
     fetchMessages()
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('删除失败')
   }
 }

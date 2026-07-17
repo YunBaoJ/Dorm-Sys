@@ -84,7 +84,7 @@ const fetchFees = async () => {
       status: bill.status === 'UNPAID' ? 'unpaid' : 'paid',
       payTime: bill.status === 'PAID' ? bill.updateTime?.replace('T', ' ')?.slice(0, 16) : null
     }))
-  } catch (error) {
+  } catch (error) { console.error(error);
     ElMessage.error('获取账单失败')
   } finally {
     loading.value = false

@@ -92,7 +92,7 @@ const fetchMyRepairs = async () => {
   try {
     const res = await getRepairs(userStore.userInfo?.id)
     myRepairs.value = res || []
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('获取报修记录失败')
   } finally {
     loading.value = false
@@ -104,7 +104,7 @@ const fetchCurrentRoom = async () => {
     const beds = await getBeds()
     const currentBed = (beds || []).find((bed) => bed.studentId === userStore.userInfo?.id)
     currentRoomId.value = currentBed?.roomId || null
-  } catch (error) {
+  } catch (error) { console.error(error);
     currentRoomId.value = null
     ElMessage.warning('当前房间信息加载失败，提交时将由系统重新匹配')
   }
@@ -132,7 +132,7 @@ const handleSubmit = async () => {
     ElMessage.success('报修提交成功！')
     form.value = { type: '', description: '' }
     fetchMyRepairs()
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('提交失败')
   } finally {
     submitting.value = false

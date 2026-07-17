@@ -10,20 +10,10 @@
           </div>
           <div>
             <h1 style="margin: 0; font-size: 22px;">早安，{{ userStore.userInfo?.name || '同学' }} 👋</h1>
-            <p style="margin: 4px 0 0; color: var(--sub); font-size: 14px;">今天是 2026年3月27日星期五，开启高效的一天吧！</p>
+            <p style="margin: 4px 0 0; color: var(--sub); font-size: 14px;">开启高效的一天吧！</p>
           </div>
         </div>
-        <div style="display: flex; align-items: center; gap: 16px; padding: 12px 20px; background: var(--muted); border-radius: 12px;">
-          <div style="text-align: center;">
-            <div style="font-size: 28px;">☀️</div>
-            <div style="font-size: 11px; color: var(--sub); margin-top: 2px;">晴</div>
-          </div>
-          <div style="width: 1px; height: 40px; background: var(--line);"></div>
-          <div>
-            <div style="font-size: 24px; font-weight: 700; color: var(--text);">22℃</div>
-            <div style="font-size: 12px; color: var(--ok); margin-top: 2px;">空气优</div>
-          </div>
-        </div>
+        <WeatherWidget />
       </div>
     </div>
 
@@ -70,8 +60,8 @@
                 <el-icon :size="22"><component :is="Wallet" /></el-icon>
               </div>
               <div>
-                <div style="color: var(--sub); font-size: 13px; margin-bottom: 2px;">账户余额</div>
-                <div style="font-weight: 700; font-size: 17px;">¥ 128.50</div>
+                <div style="color: var(--sub); font-size: 13px; margin-bottom: 2px;">待缴费金额</div>
+                <div style="font-weight: 700; font-size: 17px;">¥ {{ dash.unpaidAmount || '0.00' }}</div>
               </div>
             </div>
             <button class="ghost-btn" @click="router.push('/student/fees')">立即充值</button>
@@ -84,7 +74,7 @@
               </div>
               <div>
                 <div style="color: var(--sub); font-size: 13px; margin-bottom: 2px;">报修申请</div>
-                <div style="font-weight: 700; font-size: 17px;">1 件待处理</div>
+                <div style="font-weight: 700; font-size: 17px;">{{ dash.pendingRepairs || 0 }} 件待处理</div>
               </div>
             </div>
             <button class="ghost-btn" @click="router.push('/student/repair')">申请报修</button>
@@ -97,7 +87,7 @@
               </div>
               <div>
                 <div style="color: var(--sub); font-size: 13px; margin-bottom: 2px;">卫生评分</div>
-                <div style="font-weight: 700; font-size: 17px;">92 分</div>
+                <div style="font-weight: 700; font-size: 17px;">{{ dash.hygieneScore || '--' }} 分</div>
               </div>
             </div>
             <button class="ghost-btn" @click="router.push('/student/dorm')">查看详情</button>
@@ -108,41 +98,22 @@
         <div class="card">
           <div class="card-head">
             <h2>待办事项</h2>
-            <span class="tag info" style="border-radius: 12px; padding: 2px 8px;">3</span>
+            <span class="tag info" style="border-radius: 12px; padding: 2px 8px;" v-if="dash.todoList?.length">{{ dash.todoList?.length }}</span>
           </div>
           <div class="card-body list">
-            <div class="row" style="min-height: 60px;">
-              <span class="status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: var(--warn);"></span>
+            <div class="row" style="min-height: 60px;" v-for="t in dash.todoList" :key="t.id">
+              <span class="status-dot" :style="`width: 8px; height: 8px; border-radius: 50%; background: ${t.statusColor};`"></span>
               <div class="row-main">
-                <div class="row-title">缴纳12月电费</div>
+                <div class="row-title">{{ t.title }}</div>
                 <div class="row-meta">
-                  <span>金额：¥ 92.30</span>
-                  <span style="color: var(--danger);">明天截止</span>
+                  <span>{{ t.meta1 }}</span>
+                  <span :style="`color: ${t.statusColor};`">{{ t.meta2 }}</span>
                 </div>
               </div>
-              <button class="ghost-btn" @click="router.push('/student/fees')">去缴纳</button>
+              <button class="ghost-btn" @click="router.push(t.route)">{{ t.actionLabel }}</button>
             </div>
-            <div class="row" style="min-height: 60px;">
-              <span class="status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: var(--ok);"></span>
-              <div class="row-main">
-                <div class="row-title">报修工单待确认</div>
-                <div class="row-meta">
-                  <span>{{ currentDormLabel }} · 网络故障</span>
-                  <span>处理中</span>
-                </div>
-              </div>
-              <button class="ghost-btn" @click="router.push('/student/repair')">查看详情</button>
-            </div>
-            <div class="row" style="min-height: 60px;">
-              <span class="status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: var(--sub);"></span>
-              <div class="row-main">
-                <div class="row-title">访客预约审批</div>
-                <div class="row-meta">
-                  <span>张三 · 3月28日来访</span>
-                  <span>待审批</span>
-                </div>
-              </div>
-              <button class="ghost-btn" @click="router.push('/student/visitor')">查看</button>
+            <div v-if="!dash.todoList?.length" style="padding: 24px; text-align: center; color: var(--sub); font-size: 13px;">
+              暂无待办事项
             </div>
           </div>
         </div>
@@ -158,7 +129,7 @@
           </div>
           <div class="card-body">
             <div style="display: flex; align-items: flex-end; gap: 8px; height: 120px; padding: 16px 0;">
-              <div v-for="(h, i) in [45, 62, 38, 75, 55, 68, 42, 58, 72, 48, 65, 52]" :key="i" 
+              <div v-for="(h, i) in (dash.powerHistory || [])" :key="i" 
                    style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;">
                 <span style="font-size: 11px; color: var(--sub);">{{h}}</span>
                 <div :style="`width: 100%; height: ${h}px; background: linear-gradient(180deg, var(--primary), var(--primary-2)); border-radius: 4px 4px 0 0; transition: height .6s ease;`"></div>
@@ -166,8 +137,8 @@
               </div>
             </div>
             <div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line);">
-              <span style="font-size: 13px; color: var(--sub);">本月用电</span>
-              <span style="font-size: 13px; font-weight: 600; color: var(--primary);">186.5 度</span>
+              <span style="font-size: 13px; color: var(--sub);">本月总计预测估值</span>
+              <span style="font-size: 13px; font-weight: 600; color: var(--primary);">{{ dash.totalPower || 0 }} 度</span>
             </div>
           </div>
         </div>
@@ -256,11 +227,13 @@ import { getRooms, getBeds } from '../../api/room'
 import { getUsers } from '../../api/user'
 import { getBuildings } from '../../api/building'
 import { getBusinessRecords } from '../../api/businessRecord'
+import request from '../../utils/request'
 import { useUserStore } from '../../store/user'
 import { 
   Home, Wallet, Settings, Medal,
   UserRoundCheck, Repeat2, MessageCircle, Pencil, Newspaper, WalletCards
 } from '@lucide/vue'
+import WeatherWidget from '../../components/WeatherWidget.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -268,6 +241,18 @@ const hoverBanner = ref(false)
 const notices = ref([])
 const currentDormLabel = ref('加载中')
 const roommates = ref([])
+const dash = ref({})
+
+const fetchDashboard = async () => {
+  try {
+    const res = await request({ url: '/dashboard/student', method: 'get' })
+    if (res) {
+      dash.value = res
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
 
 const fetchDormSummary = async () => {
   try {
@@ -297,7 +282,7 @@ const fetchDormSummary = async () => {
         name: userMap[bed.studentId]?.name || '未知',
         bedNumber: bed.bedNumber
       }))
-  } catch (error) {
+  } catch (error) { console.error(error);
     currentDormLabel.value = '获取失败'
     roommates.value = []
   }
@@ -316,6 +301,7 @@ const fetchNotices = async () => {
 onMounted(() => {
   fetchDormSummary()
   fetchNotices()
+  fetchDashboard()
 })
 </script>
 

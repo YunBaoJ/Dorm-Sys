@@ -8,6 +8,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import java.util.List;
+import com.dorm.backend.common.AuthUtils;
 
 @RestController
 @RequestMapping("/api/stayHistory")
@@ -17,15 +18,15 @@ public class StayHistoryController {
 
     @GetMapping("/list")
     public Result<List<StayHistory>> list() {
-        Long userId = currentUserId();
+        Long userId = AuthUtils.getCurrentUserId();
         QueryWrapper<StayHistory> query = new QueryWrapper<>();
-        if ("student".equals(currentUserRole())) query.eq("student_id", userId);
+        if ("student".equals(AuthUtils.getCurrentUserRole())) query.eq("student_id", userId);
         return Result.success(stayHistoryService.list(query));
     }
 
     @GetMapping("/current")
     public Result<StayHistory> current() {
-        Long userId = currentUserId();
+        Long userId = AuthUtils.getCurrentUserId();
         if (userId == null) return Result.error(401, "未登录");
         QueryWrapper<StayHistory> query = new QueryWrapper<>();
         query.eq("student_id", userId)
@@ -35,7 +36,7 @@ public class StayHistoryController {
         return Result.success(stayHistoryService.getOne(query));
     }
 
-    private Long currentUserId() {
+    private Long AuthUtils.getCurrentUserId() {
         if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
             Object value = attributes.getRequest().getAttribute("currentUserId");
             return value instanceof Number number ? number.longValue() : null;
@@ -43,7 +44,7 @@ public class StayHistoryController {
         return null;
     }
 
-    private String currentUserRole() {
+    private String AuthUtils.getCurrentUserRole() {
         if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
             Object value = attributes.getRequest().getAttribute("currentUserRole");
             return value == null ? null : value.toString();

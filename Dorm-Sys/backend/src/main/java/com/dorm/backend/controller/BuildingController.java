@@ -13,6 +13,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.Map;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import com.dorm.backend.common.AuthUtils;
+import com.dorm.backend.entity.User;
+import com.dorm.backend.service.UserService;
 
 @RestController
 @RequestMapping("/api/building")
@@ -26,48 +31,25 @@ public class BuildingController {
     
     @Autowired
     private BedService bedService;
+    
+    @Autowired
+    private UserService userService;
 
     @GetMapping("/list")
     public Result<List<Building>> list() {
-        List<Building> buildings = buildingService.list();
-        List<Room> allRooms = roomService.list();
-        List<Bed> allBeds = bedService.list();
+        QueryWrapper<Building> bQw = new QueryWrapper<>();
         
-        // Group rooms by buildingId
-        Map<Long, List<Room>> roomsByBuilding = allRooms.stream()
-            .collect(Collectors.groupingBy(Room::getBuildingId));
-            
-        // Group beds by roomId
-        Map<Long, List<Bed>> bedsByRoom = allBeds.stream()
-            .collect(Collectors.groupingBy(Bed::getRoomId));
-
-        for (Building b : buildings) {
-            List<Room> bRooms = roomsByBuilding.get(b.getId());
-            if (bRooms == null || bRooms.isEmpty()) {
-                b.setTotalRooms(0);
-                b.setOccupiedRooms(0);
-                b.setFreeRooms(0);
-                continue;
+        String role = AuthUtils.getCurrentUserRole();
+        Long userId = AuthUtils.getCurrentUserId();
+        
+        if ("dormmanager".equals(role) && userId != null) {
+            User user = userService.getById(userId);
+            if (user != null && user.getName() != null) {
+                bQw.eq("manager", user.getName());
             }
-            int total = bRooms.size();
-            int occupied = 0;
-            for (Room r : bRooms) {
-                List<Bed> rBeds = bedsByRoom.get(r.getId());
-                boolean isRoomOccupied = false;
-                if (rBeds != null) {
-                    for (Bed bed : rBeds) {
-                        if (bed.getStudentId() != null) {
-                            isRoomOccupied = true;
-                            break;
-                        }
-                    }
-                }
-                if (isRoomOccupied) occupied++;
-            }
-            b.setTotalRooms(total);
-            b.setOccupiedRooms(occupied);
-            b.setFreeRooms(total - occupied);
         }
+        
+        List<Building> buildings = buildingService.getBuildingsWithStats(bQw);
 
         return Result.success(buildings);
     }

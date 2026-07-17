@@ -7,10 +7,11 @@
         <div class="hero-section">
           <div class="hero-content">
             <div class="hero-text">
-              <h2>您好，张宿管 老师</h2>
+              <h2>您好，{{ userStore.userInfo?.name || '宿管' }} 老师</h2>
               <p>今天是 2026年3月27日星期五，目前楼栋运行状态：<span class="text-blue">良好</span></p>
             </div>
-            <div class="hero-actions">
+            <div class="hero-actions" style="display: flex; align-items: center; gap: 16px;">
+              <WeatherWidget />
               <el-button type="primary" @click="loadData"><el-icon class="el-icon--left"><component :is="Refresh" /></el-icon>刷新数据</el-button>
             </div>
           </div>
@@ -89,7 +90,7 @@
             </div>
           </template>
           <div class="rooms-grid">
-            <div v-for="room in filteredRooms" :key="room.id" class="room-box" :class="{'is-warning': room.warning}">
+            <div v-for="room in filteredRooms" :key="room.id" class="room-box" :class="{'is-warning': room.warning}" @click="openRoomDetail(room)">
               <div class="room-number">{{ room.buildingName }}-{{ room.number }}</div>
               <div class="room-dots">
                 <span v-for="i in room.capacity" :key="i" class="dot" :class="{ filled: i <= room.occupied }"></span>
@@ -98,6 +99,31 @@
             </div>
           </div>
         </el-card>
+
+        <!-- Room Detail Dialog -->
+        <el-dialog v-model="roomDialogVisible" :title="`${selectedRoom?.buildingName} - ${selectedRoom?.number} 房间床位布局`" width="700px" destroy-on-close>
+          <div class="layout-wrapper" v-loading="roomDetailLoading">
+            <div class="floor-plan">
+              <div class="plan-border"></div>
+              <div class="door-label">大门</div>
+              <div class="balcony-label">阳台</div>
+              
+              <div class="beds-grid">
+                <div 
+                  v-for="i in (selectedRoom?.capacity || 4)" 
+                  :key="i"
+                  class="bed-slot"
+                  :class="{ 'is-occupied': getOccupantForBed(i), 'is-empty': !getOccupantForBed(i) }"
+                >
+                  <div class="bed-box">
+                    <div class="bed-number">{{ selectedRoom?.number ? `${selectedRoom.number}-${i}` : `1-${i}` }}</div>
+                  </div>
+                  <div class="bed-owner">{{ getOccupantForBed(i)?.studentName || '空床' }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-dialog>
 
         <!-- Bottom Two Lists -->
         <el-row :gutter="20">
@@ -173,27 +199,14 @@
             <div class="card-header"><span class="card-title">管理备忘</span></div>
           </template>
           <div class="memos-list">
-            <div class="memo-item">
-              <div class="memo-dot dot-orange"></div>
+            <div v-for="m in memos" :key="m.id" class="memo-item">
+              <div class="memo-dot" :class="m.urgent ? 'dot-orange' : 'dot-blue'"></div>
               <div class="memo-content">
-                <div class="memo-title">周四卫生大检查</div>
-                <div class="memo-time">14:00 - 16:00</div>
+                <div class="memo-title">{{ m.title }}</div>
+                <div class="memo-time">{{ m.time }}</div>
               </div>
             </div>
-            <div class="memo-item">
-              <div class="memo-dot dot-blue"></div>
-              <div class="memo-content">
-                <div class="memo-title">毕业生离宿手续办理</div>
-                <div class="memo-time">全天</div>
-              </div>
-            </div>
-            <div class="memo-item">
-              <div class="memo-dot dot-blue"></div>
-              <div class="memo-content">
-                <div class="memo-title">消防器材例行抽检</div>
-                <div class="memo-time">10:00</div>
-              </div>
-            </div>
+            <el-empty v-if="memos.length === 0" description="暂无备忘" :image-size="40"></el-empty>
             <el-button class="add-memo-btn" plain>+ 添加备忘</el-button>
           </div>
         </el-card>
@@ -204,14 +217,13 @@
             <div class="card-header"><span class="card-title">系统通知</span></div>
           </template>
           <div class="notice-list">
-            <div class="notice-item">
-              <el-icon color="#3b82f6"><component :is="Info" /></el-icon>
-              <span>系统预计于周六凌晨 2:00 进行维护更新</span>
+            <div v-for="n in notices" :key="n.id" class="notice-item">
+              <el-icon :color="n.type === 'alert' ? '#f59e0b' : '#3b82f6'">
+                <component :is="n.type === 'alert' ? 'AlertCircle' : 'Info'" />
+              </el-icon>
+              <span>{{ n.title }}</span>
             </div>
-            <div class="notice-item">
-              <el-icon color="#f59e0b"><component :is="AlertCircle" /></el-icon>
-              <span>发现 3 号楼有 2 间寝室电费余额不足</span>
-            </div>
+            <el-empty v-if="notices.length === 0" description="暂无通知" :image-size="40"></el-empty>
           </div>
         </el-card>
       </el-col>
@@ -227,7 +239,10 @@ import { getBeds, getRooms } from '../../api/room'
 import { getBuildings } from '../../api/building'
 import { getRepairs } from '../../api/repair'
 import { getVisitorRecords } from '../../api/visitor'
+import { getBusinessRecords } from '../../api/businessRecord'
 import { useUserStore } from '../../store/user'
+import request from '../../utils/request'
+import WeatherWidget from '../../components/WeatherWidget.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -241,21 +256,64 @@ const rooms = ref([])
 const buildings = ref([])
 const selectedBuilding = ref('')
 const pendingRepairs = ref([])
+const memos = ref([])
+const notices = ref([])
+
+const roomDialogVisible = ref(false)
+const selectedRoom = ref(null)
+const roomDetailBeds = ref([])
+const roomDetailLoading = ref(false)
 
 const filteredRooms = computed(() => {
   if (!selectedBuilding.value) return rooms.value
   return rooms.value.filter(r => r.buildingId === selectedBuilding.value)
 })
 
+const openRoomDetail = async (room) => {
+  selectedRoom.value = room
+  roomDialogVisible.value = true
+  roomDetailLoading.value = true
+  try {
+    const beds = await request({ url: `/bed/list?roomId=${room.id}`, method: 'get' })
+    roomDetailBeds.value = (beds || [])
+  } catch (e) { console.error(e);
+    ElMessage.error('获取房间详情失败')
+  } finally {
+    roomDetailLoading.value = false
+  }
+}
+
+const getOccupantForBed = (index) => {
+  const suffix = `-${index}`
+  return roomDetailBeds.value.find(b => b.bedNumber && b.bedNumber.endsWith(suffix) && b.studentId)
+}
+
 const loadData = async () => {
   try {
-    const [beds, repairList, visitors, roomList, buildingList] = await Promise.all([
-      getBeds(), getRepairs(), getVisitorRecords(), getRooms(), getBuildings()
+    const [repairList, visitors, buildingList, buildingStatsRes, memoRecords, noticeRecords] = await Promise.all([
+      getRepairs(), getVisitorRecords(), getBuildings(), request({ url: '/dashboard/buildings', method: 'get' }),
+      getBusinessRecords('manager_memos'), getBusinessRecords('system_notices')
     ])
+    
+    memos.value = (memoRecords || []).slice(0, 3).map((r, i) => ({
+      id: r.id,
+      title: r.title,
+      time: r.status || '全天',
+      urgent: i === 0
+    }))
+    
+    notices.value = (noticeRecords || []).slice(0, 3).map((r, i) => ({
+      id: r.id,
+      title: r.title,
+      type: i === 1 ? 'alert' : 'info'
+    }))
     
     buildings.value = buildingList || []
     
-    residentCount.value = beds.filter(b => b.status === 'OCCUPIED').length
+    // Calculate resident count from building stats
+    if (buildingStatsRes) {
+      residentCount.value = buildingStatsRes.reduce((acc, curr) => acc + (curr.occupiedBeds || 0), 0)
+    }
     
     const pendings = repairList.filter(r => r.status === 'PENDING')
     pendingRepairCount.value = pendings.length
@@ -268,23 +326,45 @@ const loadData = async () => {
     try {
       const lateRes = await request({ url: '/lateReturnRecord/list', method: 'get' })
       lateReturnCount.value = lateRes ? lateRes.filter(r => r.status === 'PENDING').length : 0
-    } catch (err) {}
+    } catch (err) {
+      console.error('Failed to fetch late returns', err)
+    }
     
-    rooms.value = roomList.map(r => ({
+    // Initial rooms load for the first building
+    if (buildings.value.length > 0) {
+      selectedBuilding.value = buildings.value[0].id
+      await fetchRoomsForBuilding(selectedBuilding.value)
+    }
+  } catch (e) {
+    console.error('Failed to load workbench data', e)
+  }
+}
+
+const fetchRoomsForBuilding = async (bId) => {
+  if (!bId) {
+    rooms.value = []
+    return
+  }
+  try {
+    const roomList = await getRooms(bId)
+    rooms.value = (roomList || []).map(r => ({
       id: r.id,
       number: r.roomNumber,
       buildingId: r.buildingId,
       buildingName: r.buildingName,
       capacity: r.capacity || 4,
       occupied: r.occupied || 0,
-      warning: false // Simplified: no warning logic for now
+      warning: false
     }))
-  } catch (e) {
-    console.error('Failed to load workbench data', e)
+  } catch(e) {
+    console.error('Failed to load rooms for building', e)
   }
 }
 
-import request from '../../utils/request'
+import { watch } from 'vue'
+watch(selectedBuilding, (newVal) => {
+  fetchRoomsForBuilding(newVal)
+})
 
 onMounted(() => loadData())
 </script>
@@ -431,6 +511,13 @@ onMounted(() => loadData())
   align-items: center;
   gap: 8px;
   position: relative;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.room-box:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
 }
 
 .room-box.is-warning {
@@ -583,7 +670,108 @@ onMounted(() => loadData())
   align-items: flex-start;
   gap: 8px;
   font-size: 13px;
-  color: var(--text-secondary);
   line-height: 1.5;
+}
+
+/* Bed Layout Styles */
+.layout-wrapper {
+  padding: 20px 0 40px;
+  display: flex;
+  justify-content: center;
+}
+.floor-plan {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  height: 260px;
+}
+.plan-border {
+  position: absolute;
+  top: 0; left: 24px; right: 24px; bottom: 0;
+  border: 4px solid #cbd5e1;
+  border-radius: 12px;
+}
+.plan-border::before {
+  content: '';
+  position: absolute;
+  top: -4px; left: 10%; width: 60px; height: 8px;
+  background: #fff;
+}
+.plan-border::after {
+  content: '';
+  position: absolute;
+  bottom: -4px; right: 10%; width: 80px; height: 8px;
+  background: #fff;
+}
+.door-label {
+  position: absolute;
+  top: -12px;
+  left: calc(24px + 10% + 15px);
+  background: #fff;
+  padding: 0 12px;
+  color: #94a3b8;
+  font-weight: 500;
+  font-size: 14px;
+}
+.balcony-label {
+  position: absolute;
+  bottom: -12px;
+  right: calc(24px + 10% + 15px);
+  background: #fff;
+  padding: 0 12px;
+  color: #94a3b8;
+  font-weight: 500;
+  font-size: 14px;
+}
+.beds-grid {
+  position: absolute;
+  top: 40px; left: 50px; right: 50px; bottom: 40px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 30px 60px;
+  place-items: center;
+}
+.bed-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.bed-box {
+  width: 80px;
+  height: 48px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+  transition: all 0.3s ease;
+}
+.bed-number {
+  font-weight: 600;
+  color: #64748b;
+  font-size: 14px;
+}
+.bed-owner {
+  color: #475569;
+  font-size: 14px;
+  font-weight: 500;
+}
+.bed-slot.is-occupied .bed-box {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+}
+.bed-slot.is-occupied .bed-number {
+  color: #475569;
+}
+.bed-slot.is-empty .bed-box {
+  border: 2px dashed #e2e8f0;
+  background: #fff;
+}
+.bed-slot.is-empty .bed-number,
+.bed-slot.is-empty .bed-owner {
+  color: #cbd5e1;
 }
 </style>

@@ -96,7 +96,7 @@ const fetchMyVisitors = async () => {
   try {
     const res = await request({ url: '/visitorRecord/list', method: 'get', params: { studentId: userStore.userInfo?.id } })
     myVisitors.value = res || []
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('获取来访记录失败')
   } finally {
     loading.value = false
@@ -127,7 +127,7 @@ const handleSubmit = async () => {
     ElMessage.success('来访登记提交成功！')
     form.value = { visitorName: '', phone: '', relation: '朋友', visitTime: '' }
     fetchMyVisitors()
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('提交失败')
   } finally {
     submitting.value = false

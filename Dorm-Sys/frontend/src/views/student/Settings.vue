@@ -88,7 +88,7 @@ const resetForm = () => {
 const saveProfile = async () => {
   try {
     await formRef.value?.validate()
-  } catch (error) {
+  } catch (error) { console.error(error);
     return
   }
   saving.value = true
@@ -96,7 +96,7 @@ const saveProfile = async () => {
     await saveUser({ id: userStore.userInfo?.id, ...form })
     userStore.setUserInfo({ ...userStore.userInfo, ...form })
     ElMessage.success('个人资料已更新')
-  } catch (error) {
+  } catch (error) { console.error(error);
     // The request interceptor displays the server error.
   } finally {
     saving.value = false

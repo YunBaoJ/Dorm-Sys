@@ -13,7 +13,7 @@
                 <p>工单审计 · 维护效能分析</p>
               </div>
             </div>
-            <el-button type="primary"><el-icon class="el-icon--left"><component :is="Refresh" /></el-icon>同步工单池</el-button>
+            <el-button type="primary" :loading="loading" @click="fetchTickets"><el-icon class="el-icon--left"><component :is="Refresh" /></el-icon>同步工单池</el-button>
           </div>
         </el-card>
 
@@ -32,15 +32,14 @@
             <div class="list-actions">
               <el-select v-model="categoryFilter" placeholder="报修分类" style="width: 140px; margin-right: 12px;">
                 <el-option label="全部分类" value="all" />
-                <el-option label="水暖" value="water" />
-                <el-option label="强弱电" value="elec" />
-                <el-option label="门窗" value="door" />
+                <el-option v-for="category in categories" :key="category" :label="category" :value="category" />
               </el-select>
-              <el-button circle><el-icon><component :is="Refresh" /></el-icon></el-button>
+              <el-button circle @click="fetchTickets"><el-icon><component :is="Refresh" /></el-icon></el-button>
             </div>
           </div>
 
-          <div class="ticket-list">
+          <div class="ticket-list" v-loading="loading">
+            <el-empty v-if="tickets.length === 0" description="暂无符合条件的报修工单" />
             <div v-for="t in tickets" :key="t.id" class="ticket-item">
               <div class="ticket-icon">
                 <el-icon :size="24"><component :is="Settings" /></el-icon>
@@ -80,21 +79,21 @@
               <div class="dash-icon bg-light-orange"><el-icon><component :is="AlertCircle" /></el-icon></div>
               <div class="dash-info">
                 <div class="dash-label">积压待办</div>
-                <div class="dash-value">1 <span>单</span></div>
+                <div class="dash-value">{{ pendingCount }} <span>单</span></div>
               </div>
             </div>
             <div class="dash-item">
               <div class="dash-icon bg-light-blue"><el-icon><component :is="Timer" /></el-icon></div>
               <div class="dash-info">
                 <div class="dash-label">进行中</div>
-                <div class="dash-value">1 <span>单</span></div>
+                <div class="dash-value">{{ processingCount }} <span>单</span></div>
               </div>
             </div>
             <div class="dash-item">
               <div class="dash-icon bg-gray"><el-icon><component :is="CheckCircle" /></el-icon></div>
               <div class="dash-info">
                 <div class="dash-label">今日已结</div>
-                <div class="dash-value">2 <span>单</span></div>
+                <div class="dash-value">{{ todayCompletedCount }} <span>单</span></div>
               </div>
             </div>
           </div>
@@ -143,18 +142,53 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Settings, RefreshCw as Refresh, User, Clock, CheckCircle, AlertCircle, Timer, Info } from '@lucide/vue'
+import { getRepairs } from '../../api/repair'
+import { ElMessage } from 'element-plus'
 
-const categoryFilter = ref('')
+const categoryFilter = ref('all')
 const statusFilter = ref('all')
+const records = ref([])
+const loading = ref(false)
 
-const tickets = ref([
-  { id: 1, room: '至善楼 · 101', category: '水管', status: '待处理', statusType: 'warning', description: '卫生间水龙头漏水', reporter: '陈欣', assignee: '张宿管', time: '2026-01-05T09:00:00' },
-  { id: 2, room: '明德楼 · 101', category: '网络', status: '维修中', statusType: 'primary', description: '网络信号时断时续，无法正常上网', reporter: '李明', assignee: '张宿管', time: '2025-12-10T14:30:00' },
-  { id: 3, room: '明德楼 · 101', category: '电器', status: '已办结', statusType: 'info', description: '空调不制冷，开机后只有风扇转动', reporter: '张伟', assignee: '张宿管', time: '2025-12-01T10:00:00' },
-  { id: 4, room: '明德楼 · 102', category: '门窗', status: '已办结', statusType: 'info', description: '窗户关不严，有风漏进来', reporter: '吴刚', assignee: '张宿管', time: '2025-11-20T11:00:00' },
-])
+const statusMeta = {
+  PENDING: { label: '待处理', type: 'warning' },
+  PROCESSING: { label: '维修中', type: 'primary' },
+  COMPLETED: { label: '已办结', type: 'info' }
+}
+
+const categories = computed(() => [...new Set(records.value.map(item => item.type).filter(Boolean))])
+const tickets = computed(() => records.value
+  .filter(item => statusFilter.value === 'all' || item.status?.toLowerCase() === statusFilter.value)
+  .filter(item => categoryFilter.value === 'all' || item.type === categoryFilter.value)
+  .map(item => ({
+    ...item,
+    room: item.roomName || '未关联房间',
+    category: item.type || '其他',
+    status: statusMeta[item.status]?.label || item.status,
+    statusType: statusMeta[item.status]?.type || 'info',
+    reporter: item.submitterName || '未知',
+    assignee: item.handlerName || '待分配',
+    time: item.createTime?.replace('T', ' ').slice(0, 16) || '-'
+  })))
+
+const pendingCount = computed(() => records.value.filter(item => item.status === 'PENDING').length)
+const processingCount = computed(() => records.value.filter(item => item.status === 'PROCESSING').length)
+const todayCompletedCount = computed(() => records.value.filter(item => item.status === 'COMPLETED' && new Date(item.updateTime || item.createTime).toDateString() === new Date().toDateString()).length)
+
+async function fetchTickets() {
+  loading.value = true
+  try {
+    records.value = await getRepairs()
+  } catch (error) { console.error(error);
+    ElMessage.error('获取报修工单失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(fetchTickets)
 </script>
 
 <style scoped>

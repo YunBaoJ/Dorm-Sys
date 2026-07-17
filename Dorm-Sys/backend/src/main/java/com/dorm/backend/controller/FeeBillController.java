@@ -14,6 +14,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import com.dorm.backend.common.AuthUtils;
+import com.dorm.backend.entity.User;
+import com.dorm.backend.service.UserService;
 
 @RestController
 @RequestMapping("/api/feeBill")
@@ -27,6 +32,9 @@ public class FeeBillController {
     
     @Autowired
     private BuildingService buildingService;
+    
+    @Autowired
+    private UserService userService;
 
     @GetMapping("/list")
     public Result<List<FeeBill>> list(@RequestParam(required = false) Long roomId,
@@ -34,8 +42,33 @@ public class FeeBillController {
         QueryWrapper<FeeBill> qw = new QueryWrapper<>();
         if (roomId != null) qw.eq("room_id", roomId);
         if (status != null && !status.isEmpty()) qw.eq("status", status);
-        qw.orderByDesc("create_time");
         
+        // Filter by manager's buildings
+        String role = AuthUtils.getCurrentUserRole();
+        Long userId = AuthUtils.getCurrentUserId();
+        
+        if ("dormmanager".equals(role) && userId != null) {
+            User user = userService.getById(userId);
+            if (user != null && user.getName() != null) {
+                List<Long> bIds = buildingService.list(new QueryWrapper<Building>().eq("manager", user.getName()))
+                    .stream().map(Building::getId).collect(Collectors.toList());
+                if (bIds.isEmpty()) {
+                    return Result.success(List.of()); // Manager has no buildings
+                }
+                List<Long> rIds = roomService.list(new QueryWrapper<Room>().in("building_id", bIds))
+                    .stream().map(Room::getId).collect(Collectors.toList());
+                if (rIds.isEmpty()) {
+                    return Result.success(List.of());
+                }
+                if (roomId == null) {
+                    qw.in("room_id", rIds);
+                } else if (!rIds.contains(roomId)) {
+                    return Result.success(List.of()); // Not allowed
+                }
+            }
+        }
+        
+        qw.orderByDesc("create_time");
         List<FeeBill> list = feeBillService.list(qw);
         
         Map<Long, Room> roomMap = roomService.list().stream()

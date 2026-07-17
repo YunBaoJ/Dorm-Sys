@@ -34,8 +34,8 @@
           </div>
 
           <div class="visitor-list" v-loading="loading">
-            <el-empty v-if="visitors.length === 0" description="暂无访客记录" />
-            <div v-for="v in visitors" :key="v.id" class="visitor-item">
+            <el-empty v-if="filteredVisitors.length === 0" description="暂无访客记录" />
+            <div v-for="v in pagedVisitors" :key="v.id" class="visitor-item">
               <div class="visitor-avatar" :class="v.avatarClass">
                 {{ v.name?.[0] }}
               </div>
@@ -65,8 +65,8 @@
           </div>
           
           <div class="pagination-wrapper">
-             <span class="total-text">Total 3</span>
-             <el-pagination background layout="prev, pager, next" :total="3" :page-size="3" />
+             <span class="total-text">共 {{ filteredVisitors.length }} 条</span>
+             <el-pagination v-model:current-page="currentPage" background layout="prev, pager, next" :total="filteredVisitors.length" :page-size="pageSize" />
           </div>
         </el-card>
       </el-col>
@@ -90,7 +90,7 @@
               <div class="dash-icon bg-light-blue"><el-icon><component :is="User" /></el-icon></div>
               <div class="dash-info">
                 <div class="dash-label">当前在馆</div>
-                <div class="dash-value">0 <span>位</span></div>
+                <div class="dash-value">{{ activeCount }} <span>位</span></div>
               </div>
             </div>
             <div class="dash-item">
@@ -108,7 +108,13 @@
           <template #header>
             <div class="card-header"><span>最近签入</span></div>
           </template>
-          <el-empty description="暂无签入记录" :image-size="60"></el-empty>
+          <div v-if="recentCheckins.length" class="recent-list">
+            <div v-for="item in recentCheckins" :key="item.id" class="recent-item">
+              <strong>{{ item.name }}</strong>
+              <span>{{ item.target }} · {{ item.time }}</span>
+            </div>
+          </div>
+          <el-empty v-else description="暂无签入记录" :image-size="60" />
         </el-card>
 
         <!-- Visitor Rules -->
@@ -139,6 +145,8 @@ import { ElMessage } from 'element-plus'
 
 const search = ref('')
 const statusFilter = ref('all')
+const currentPage = ref(1)
+const pageSize = 3
 
 const visitors = ref([])
 const loading = ref(false)
@@ -154,7 +162,7 @@ const fetchVisitors = async () => {
       time: v.visitTime ? v.visitTime.replace('T', ' ').substring(0, 16) : '',
       avatarClass: ['av-blue', 'av-green', 'av-yellow', 'av-red'][v.id % 4]
     }))
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('获取访客记录失败')
   } finally {
     loading.value = false
@@ -168,7 +176,7 @@ const handleApprove = async (v) => {
     await saveVisitorRecord({ id: v.id, status: 'APPROVED' })
     ElMessage.success('已批准进入')
     fetchVisitors()
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('操作失败')
   }
 }
@@ -178,13 +186,24 @@ const handleLeave = async (v) => {
     await saveVisitorRecord({ id: v.id, status: 'LEFT', leaveTime: new Date().toISOString() })
     ElMessage.success('已登记离开')
     fetchVisitors()
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('操作失败')
   }
 }
 
 const pendingCount = computed(() => visitors.value.filter(v => v.status === 'PENDING').length)
+const activeCount = computed(() => visitors.value.filter(v => v.status === 'APPROVED' && !v.leaveTime).length)
 const todayCount = computed(() => visitors.value.filter(v => new Date(v.createTime).toDateString() === new Date().toDateString()).length)
+const filteredVisitors = computed(() => visitors.value.filter(v => {
+  const keyword = search.value.trim().toLowerCase()
+  const matchesKeyword = !keyword || v.name?.toLowerCase().includes(keyword) || v.phone?.includes(keyword)
+  const matchesStatus = statusFilter.value === 'all'
+    || (statusFilter.value === 'pending' && v.status === 'PENDING')
+    || (statusFilter.value === 'active' && v.status === 'APPROVED' && !v.leaveTime)
+  return matchesKeyword && matchesStatus
+}))
+const pagedVisitors = computed(() => filteredVisitors.value.slice((currentPage.value - 1) * pageSize, currentPage.value * pageSize))
+const recentCheckins = computed(() => visitors.value.filter(v => v.status === 'APPROVED' || v.status === 'LEFT').slice(0, 3))
 </script>
 
 <style scoped>
@@ -419,6 +438,11 @@ const todayCount = computed(() => visitors.value.filter(v => new Date(v.createTi
 .recent-card {
   min-height: 200px;
 }
+
+.recent-list { display: grid; gap: 10px; }
+.recent-item { display: grid; gap: 3px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+.recent-item strong { color: var(--text); font-size: 13px; }
+.recent-item span { color: var(--sub); font-size: 12px; }
 
 .rules-card {
   background-color: var(--primary-2);

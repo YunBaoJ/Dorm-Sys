@@ -64,7 +64,7 @@ const handleSave = async () => {
       data: form.value
     })
     ElMessage.success('保存成功！下次重新登录时生效。')
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('保存失败')
   } finally {
     saving.value = false

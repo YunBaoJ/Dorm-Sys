@@ -80,7 +80,6 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
         if ("admin".equals(role) || "GET".equalsIgnoreCase(request.getMethod())) return false;
         String path = request.getRequestURI();
         return path.startsWith("/api/building/")
-                || path.startsWith("/api/room/")
-                || path.startsWith("/api/feeBill/");
+                || path.startsWith("/api/room/");
     }
 }

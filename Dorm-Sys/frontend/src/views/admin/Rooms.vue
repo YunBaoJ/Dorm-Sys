@@ -263,7 +263,7 @@ const fetchRooms = async () => {
   try {
     const res = await getRooms(buildingFilter.value || null)
     rooms.value = res || []
-  } catch (error) {
+  } catch (error) { console.error(error);
     ElMessage.error('获取房间列表失败')
   } finally {
     loading.value = false
@@ -299,7 +299,7 @@ const handleSubmit = async () => {
     ElMessage.success('保存成功')
     dialogVisible.value = false
     fetchRooms()
-  } catch (error) {
+  } catch (error) { console.error(error);
     ElMessage.error('保存失败')
   }
 }
@@ -310,7 +310,7 @@ const handleDelete = async (id) => {
     await deleteRoom(id)
     ElMessage.success('删除成功')
     fetchRooms()
-  } catch (error) {
+  } catch (error) { console.error(error);
     if (error !== 'cancel') ElMessage.error('删除失败')
   }
 }
@@ -322,7 +322,7 @@ const handleViewBeds = async (room) => {
   try {
     const res = await getBeds(room.id)
     beds.value = res || []
-  } catch (error) {
+  } catch (error) { console.error(error);
     ElMessage.error('获取床位信息失败')
   } finally {
     bedLoading.value = false

@@ -103,7 +103,7 @@ const send = async () => {
       params: { question: content }
     })
     messages.value.push({ id: Date.now() + 1, role: 'assistant', content: res })
-  } catch (e) {
+  } catch (e) { console.error(e);
     messages.value.push({ id: Date.now() + 1, role: 'assistant', content: '服务异常，请稍后再试。' })
   } finally {
     replying.value = false

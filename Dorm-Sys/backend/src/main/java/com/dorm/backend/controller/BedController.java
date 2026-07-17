@@ -30,10 +30,13 @@ public class BedController {
     private StayHistoryService stayHistoryService;
 
     @GetMapping("/list")
-    public Result<List<Bed>> list(@RequestParam(required = false) Long roomId) {
+    public Result<List<Bed>> list(@RequestParam(required = false) Long roomId, @RequestParam(required = false) String status) {
         QueryWrapper<Bed> queryWrapper = new QueryWrapper<>();
         if (roomId != null) {
             queryWrapper.eq("room_id", roomId);
+        }
+        if (status != null) {
+            queryWrapper.eq("status", status);
         }
         List<Bed> beds = bedService.list(queryWrapper);
         
@@ -81,6 +84,23 @@ public class BedController {
                     }
                     // Someone is moving in
                     if (newStudentId != null) {
+                        // Clear the student's previous bed if any
+                        bedService.update(new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Bed>()
+                            .set("student_id", null)
+                            .set("status", "EMPTY")
+                            .eq("student_id", newStudentId)
+                            .ne("id", bed.getId()));
+                            
+                        StayHistory oldHistory = stayHistoryService.getOne(new QueryWrapper<StayHistory>()
+                             .eq("student_id", newStudentId)
+                             .isNull("check_out_date")
+                             .orderByDesc("check_in_date")
+                             .last("LIMIT 1"));
+                        if (oldHistory != null) {
+                            oldHistory.setCheckOutDate(new Date());
+                            stayHistoryService.updateById(oldHistory);
+                        }
+
                         StayHistory newHistory = new StayHistory();
                         newHistory.setStudentId(newStudentId);
                         newHistory.setBedId(bed.getId());
@@ -89,8 +109,22 @@ public class BedController {
                     }
                 }
             }
+            
+            com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Bed> updateWrapper = new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+            updateWrapper.eq("id", bed.getId());
+            if (bed.getStudentId() == null) {
+                updateWrapper.set("student_id", null);
+            } else {
+                updateWrapper.set("student_id", bed.getStudentId());
+            }
+            if (bed.getStatus() != null) updateWrapper.set("status", bed.getStatus());
+            if (bed.getRoomId() != null) updateWrapper.set("room_id", bed.getRoomId());
+            if (bed.getBedNumber() != null) updateWrapper.set("bed_number", bed.getBedNumber());
+            
+            bedService.update(updateWrapper);
+            return Result.success(true);
         }
-        return Result.success(bedService.saveOrUpdate(bed));
+        return Result.success(bedService.save(bed));
     }
 
     @DeleteMapping("/{id}")

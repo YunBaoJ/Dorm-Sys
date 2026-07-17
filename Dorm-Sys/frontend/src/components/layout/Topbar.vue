@@ -12,7 +12,7 @@
       <el-icon class="action-icon" @click="refreshPage"><component :is="RefreshCw" :class="{'is-rotating': isRefreshing}" /></el-icon>
       <el-icon class="action-icon" @click="toggleTheme"><component :is="appStore.theme === 'dark' ? Sun : Moon" /></el-icon>
       
-      <el-badge :value="3" class="bell-badge">
+      <el-badge :hidden="true" class="bell-badge">
         <el-icon class="action-icon"><component :is="Bell" /></el-icon>
       </el-badge>
       
@@ -24,10 +24,7 @@
         </div>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item command="student">切换为 学生端</el-dropdown-item>
-            <el-dropdown-item command="dormmanager">切换为 宿管端</el-dropdown-item>
-            <el-dropdown-item command="admin">切换为 管理端</el-dropdown-item>
-            <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
+            <el-dropdown-item command="logout">退出登录</el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>
@@ -49,11 +46,18 @@ const userStore = useUserStore()
 
 const roles = {
   admin: { brand: "宿舍管理 · 管理端", user: "系统管理员", avatarText: "管" },
-  dormmanager: { brand: "宿舍管理 · 宿管端", user: "周强", avatarText: "周" },
-  student: { brand: "学生宿舍管理系统", user: "张伟", avatarText: "张", avatarImg: "/images/avatar.jpg" },
+  dormmanager: { brand: "宿舍管理 · 宿管端", user: "宿管", avatarText: "管" },
+  student: { brand: "学生宿舍管理系统", user: "学生", avatarText: "学", avatarImg: "/images/avatar.jpg" },
 }
 
-const roleInfo = computed(() => roles[userStore.role] || roles.student)
+const roleInfo = computed(() => {
+  const base = roles[userStore.role] || roles.student
+  return {
+    ...base,
+    user: userStore.userInfo?.name || base.user,
+    avatarText: userStore.userInfo?.name ? userStore.userInfo.name.charAt(0) : base.avatarText
+  }
+})
 
 const groupMap = { admin: "系统管理", dormmanager: "宿管服务", student: "学生服务" }
 const groupName = computed(() => groupMap[userStore.role])
@@ -86,12 +90,7 @@ function refreshPage() {
 }
 
 function handleCommand(cmd) {
-  if (['student', 'admin', 'dormmanager'].includes(cmd)) {
-    userStore.setRole(cmd)
-    if (cmd === 'admin') router.push('/admin/overview')
-    if (cmd === 'student') router.push('/student/desk')
-    if (cmd === 'dormmanager') router.push('/dormmanager/workbench')
-  } else if (cmd === 'logout') {
+  if (cmd === 'logout') {
     userStore.logout()
     router.push('/login')
     ElMessage.info('已退出登录')

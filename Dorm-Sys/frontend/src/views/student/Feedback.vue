@@ -90,7 +90,7 @@ const fetchMyFeedbacks = async () => {
       params: { creatorId: userStore.userInfo?.id } 
     })
     myFeedbacks.value = (res || []).filter(item => item.type === 'feedback')
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('获取反馈记录失败')
   } finally {
     loading.value = false
@@ -118,7 +118,7 @@ const handleSubmit = async () => {
     ElMessage.success('反馈提交成功')
     form.value.content = ''
     fetchMyFeedbacks()
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('反馈提交失败')
   } finally {
     submitting.value = false

@@ -23,6 +23,7 @@ const routes = [
   // Dorm Manager Routes
   { path: '/dormmanager/workbench', component: () => import('../views/manager/Workbench.vue') },
   { path: '/dormmanager/checkin', component: () => import('../views/manager/Checkin.vue') },
+  { path: '/dormmanager/fee', component: () => import('../views/manager/Fee.vue') },
   { path: '/dormmanager/repair', component: () => import('../views/manager/Repair.vue') },
   { path: '/dormmanager/visitor', component: () => import('../views/manager/Visitor.vue') },
   { path: '/dormmanager/hygiene', component: () => import('../views/manager/Hygiene.vue') },

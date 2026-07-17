@@ -66,9 +66,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Bot, Plus } from '@lucide/vue'
+import { ShieldCheck, Plus } from '@lucide/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import request from '../../utils/request'
+import { getPatrols, savePatrol } from '../../api/patrol'
 
 const records = ref([])
 const activeTab = ref('PENDING')
@@ -84,9 +84,9 @@ const filteredRecords = computed(() => {
 const fetchRecords = async () => {
   loading.value = true
   try {
-    const res = await request({ url: '/patrolRecord/list', method: 'get' })
+    const res = await getPatrols()
     records.value = res || []
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('获取列表失败')
   } finally {
     loading.value = false
@@ -105,20 +105,16 @@ const submitAdd = async () => {
   }
   submitting.value = true
   try {
-    await request({
-      url: '/patrolRecord/add',
-      method: 'post',
-      data: {
-        buildingName: form.value.buildingName,
-        area: form.value.area,
-        issue: form.value.issue,
-        status: 'PENDING'
-      }
+    await savePatrol({
+      buildingName: form.value.buildingName,
+      area: form.value.area,
+      issue: form.value.issue,
+      status: 'PENDING'
     })
-    ElMessage.success('上报成功')
+    ElMessage.success('打卡成功')
     dialogVisible.value = false
     fetchRecords()
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('上报失败')
   } finally {
     submitting.value = false
@@ -126,17 +122,12 @@ const submitAdd = async () => {
 }
 
 const updateStatus = async (row, newStatus) => {
-  const actionText = newStatus === 'PROCESSING' ? '确认开始处理该异常？' : '确认已解决该异常？'
   try {
-    await ElMessageBox.confirm(actionText, '提示', { type: 'warning' })
-    await request({
-      url: '/patrolRecord/update',
-      method: 'post',
-      data: { id: row.id, status: newStatus }
-    })
+    await ElMessageBox.confirm('确认该巡查问题已解决？', '提示', { type: 'warning' })
+    await savePatrol({ id: row.id, status: newStatus })
     ElMessage.success('操作成功')
     fetchRecords()
-  } catch (e) {
+  } catch (e) { console.error(e);
     if (e !== 'cancel') ElMessage.error('操作失败')
   }
 }

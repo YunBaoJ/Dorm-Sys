@@ -92,7 +92,7 @@ const fetchMyTransfers = async () => {
   try {
     const res = await getTransfers(userStore.userInfo?.id)
     myTransfers.value = res || []
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('获取调宿记录失败')
   } finally {
     loading.value = false
@@ -138,7 +138,7 @@ const handleSubmit = async () => {
     ElMessage.success('调宿申请提交成功！')
     form.value = { reason: '', targetRoomId: null }
     fetchMyTransfers()
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('提交失败')
   } finally {
     submitting.value = false

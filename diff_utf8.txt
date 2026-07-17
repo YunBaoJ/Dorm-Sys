@@ -1,0 +1,2157 @@
+﻿diff --git a/Dorm-Sys/backend/src/main/java/com/dorm/backend/config/JwtAuthInterceptor.java b/Dorm-Sys/backend/src/main/java/com/dorm/backend/config/JwtAuthInterceptor.java
+index a9c0d0d..29cdd5b 100644
+--- a/Dorm-Sys/backend/src/main/java/com/dorm/backend/config/JwtAuthInterceptor.java
++++ b/Dorm-Sys/backend/src/main/java/com/dorm/backend/config/JwtAuthInterceptor.java
+@@ -80,7 +80,6 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
+         if ("admin".equals(role) || "GET".equalsIgnoreCase(request.getMethod())) return false;
+         String path = request.getRequestURI();
+         return path.startsWith("/api/building/")
+-                || path.startsWith("/api/room/")
+-                || path.startsWith("/api/feeBill/");
++                || path.startsWith("/api/room/");
+     }
+ }
+diff --git a/Dorm-Sys/backend/src/main/java/com/dorm/backend/controller/BedController.java b/Dorm-Sys/backend/src/main/java/com/dorm/backend/controller/BedController.java
+index 6f3d72b..4b92054 100644
+--- a/Dorm-Sys/backend/src/main/java/com/dorm/backend/controller/BedController.java
++++ b/Dorm-Sys/backend/src/main/java/com/dorm/backend/controller/BedController.java
+@@ -30,11 +30,14 @@ public class BedController {
+     private StayHistoryService stayHistoryService;
+ 
+     @GetMapping("/list")
+-    public Result<List<Bed>> list(@RequestParam(required = false) Long roomId) {
++    public Result<List<Bed>> list(@RequestParam(required = false) Long roomId, @RequestParam(required = false) String status) {
+         QueryWrapper<Bed> queryWrapper = new QueryWrapper<>();
+         if (roomId != null) {
+             queryWrapper.eq("room_id", roomId);
+         }
++        if (status != null) {
++            queryWrapper.eq("status", status);
++        }
+         List<Bed> beds = bedService.list(queryWrapper);
+         
+         // Populate student names
+@@ -81,6 +84,23 @@ public class BedController {
+                     }
+                     // Someone is moving in
+                     if (newStudentId != null) {
++                        // Clear the student's previous bed if any
++                        bedService.update(new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Bed>()
++                            .set("student_id", null)
++                            .set("status", "EMPTY")
++                            .eq("student_id", newStudentId)
++                            .ne("id", bed.getId()));
++                            
++                        StayHistory oldHistory = stayHistoryService.getOne(new QueryWrapper<StayHistory>()
++                             .eq("student_id", newStudentId)
++                             .isNull("check_out_date")
++                             .orderByDesc("check_in_date")
++                             .last("LIMIT 1"));
++                        if (oldHistory != null) {
++                            oldHistory.setCheckOutDate(new Date());
++                            stayHistoryService.updateById(oldHistory);
++                        }
++
+                         StayHistory newHistory = new StayHistory();
+                         newHistory.setStudentId(newStudentId);
+                         newHistory.setBedId(bed.getId());
+@@ -89,8 +109,22 @@ public class BedController {
+                     }
+                 }
+             }
++            
++            com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Bed> updateWrapper = new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
++            updateWrapper.eq("id", bed.getId());
++            if (bed.getStudentId() == null) {
++                updateWrapper.set("student_id", null);
++            } else {
++                updateWrapper.set("student_id", bed.getStudentId());
++            }
++            if (bed.getStatus() != null) updateWrapper.set("status", bed.getStatus());
++            if (bed.getRoomId() != null) updateWrapper.set("room_id", bed.getRoomId());
++            if (bed.getBedNumber() != null) updateWrapper.set("bed_number", bed.getBedNumber());
++            
++            bedService.update(updateWrapper);
++            return Result.success(true);
+         }
+-        return Result.success(bedService.saveOrUpdate(bed));
++        return Result.success(bedService.save(bed));
+     }
+ 
+     @DeleteMapping("/{id}")
+diff --git a/Dorm-Sys/backend/src/main/java/com/dorm/backend/controller/BuildingController.java b/Dorm-Sys/backend/src/main/java/com/dorm/backend/controller/BuildingController.java
+index 7e56296..cc832b5 100644
+--- a/Dorm-Sys/backend/src/main/java/com/dorm/backend/controller/BuildingController.java
++++ b/Dorm-Sys/backend/src/main/java/com/dorm/backend/controller/BuildingController.java
+@@ -13,6 +13,10 @@ import org.springframework.web.bind.annotation.*;
+ import java.util.List;
+ import java.util.stream.Collectors;
+ import java.util.Map;
++import org.springframework.web.context.request.RequestContextHolder;
++import org.springframework.web.context.request.ServletRequestAttributes;
++import com.dorm.backend.entity.User;
++import com.dorm.backend.service.UserService;
+ 
+ @RestController
+ @RequestMapping("/api/building")
+@@ -26,10 +30,28 @@ public class BuildingController {
+     
+     @Autowired
+     private BedService bedService;
++    
++    @Autowired
++    private UserService userService;
+ 
+     @GetMapping("/list")
+     public Result<List<Building>> list() {
+-        List<Building> buildings = buildingService.list();
++        QueryWrapper<Building> bQw = new QueryWrapper<>();
++        
++        ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
++        if (attr != null) {
++            Object roleObj = attr.getRequest().getAttribute("currentUserRole");
++            Object idObj = attr.getRequest().getAttribute("currentUserId");
++            if (roleObj != null && "dormmanager".equals(roleObj.toString()) && idObj != null) {
++                Long userId = idObj instanceof Number ? ((Number) idObj).longValue() : Long.parseLong(idObj.toString());
++                User user = userService.getById(userId);
++                if (user != null && user.getName() != null) {
++                    bQw.eq("manager", user.getName());
++                }
++            }
++        }
++        
++        List<Building> buildings = buildingService.list(bQw);
+         List<Room> allRooms = roomService.list();
+         List<Bed> allBeds = bedService.list();
+         
+diff --git a/Dorm-Sys/backend/src/main/java/com/dorm/backend/controller/FeeBillController.java b/Dorm-Sys/backend/src/main/java/com/dorm/backend/controller/FeeBillController.java
+index 7532769..218ca5e 100644
+--- a/Dorm-Sys/backend/src/main/java/com/dorm/backend/controller/FeeBillController.java
++++ b/Dorm-Sys/backend/src/main/java/com/dorm/backend/controller/FeeBillController.java
+@@ -14,6 +14,10 @@ import org.springframework.web.bind.annotation.*;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.stream.Collectors;
++import org.springframework.web.context.request.RequestContextHolder;
++import org.springframework.web.context.request.ServletRequestAttributes;
++import com.dorm.backend.entity.User;
++import com.dorm.backend.service.UserService;
+ 
+ @RestController
+ @RequestMapping("/api/feeBill")
+@@ -27,6 +31,9 @@ public class FeeBillController {
+     
+     @Autowired
+     private BuildingService buildingService;
++    
++    @Autowired
++    private UserService userService;
+ 
+     @GetMapping("/list")
+     public Result<List<FeeBill>> list(@RequestParam(required = false) Long roomId,
+@@ -34,8 +41,36 @@ public class FeeBillController {
+         QueryWrapper<FeeBill> qw = new QueryWrapper<>();
+         if (roomId != null) qw.eq("room_id", roomId);
+         if (status != null && !status.isEmpty()) qw.eq("status", status);
+-        qw.orderByDesc("create_time");
+         
++        // Filter by manager's buildings
++        ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
++        if (attr != null) {
++            Object roleObj = attr.getRequest().getAttribute("currentUserRole");
++            Object idObj = attr.getRequest().getAttribute("currentUserId");
++            if (roleObj != null && "dormmanager".equals(roleObj.toString()) && idObj != null) {
++                Long userId = idObj instanceof Number ? ((Number) idObj).longValue() : Long.parseLong(idObj.toString());
++                User user = userService.getById(userId);
++                if (user != null && user.getName() != null) {
++                    List<Long> bIds = buildingService.list(new QueryWrapper<Building>().eq("manager", user.getName()))
++                        .stream().map(Building::getId).collect(Collectors.toList());
++                    if (bIds.isEmpty()) {
++                        return Result.success(List.of()); // Manager has no buildings
++                    }
++                    List<Long> rIds = roomService.list(new QueryWrapper<Room>().in("building_id", bIds))
++                        .stream().map(Room::getId).collect(Collectors.toList());
++                    if (rIds.isEmpty()) {
++                        return Result.success(List.of());
++                    }
++                    if (roomId == null) {
++                        qw.in("room_id", rIds);
++                    } else if (!rIds.contains(roomId)) {
++                        return Result.success(List.of()); // Not allowed
++                    }
++                }
++            }
++        }
++        
++        qw.orderByDesc("create_time");
+         List<FeeBill> list = feeBillService.list(qw);
+         
+         Map<Long, Room> roomMap = roomService.list().stream()
+diff --git a/Dorm-Sys/backend/src/main/java/com/dorm/backend/entity/User.java b/Dorm-Sys/backend/src/main/java/com/dorm/backend/entity/User.java
+index a091a0e..266ed2f 100644
+--- a/Dorm-Sys/backend/src/main/java/com/dorm/backend/entity/User.java
++++ b/Dorm-Sys/backend/src/main/java/com/dorm/backend/entity/User.java
+@@ -16,6 +16,7 @@ public class User {
+     private String password;
+     private String role; // student, dormmanager, admin
+     private String name;
++    private String gender;
+     private String avatar;
+     private String email;
+     private String phone;
+diff --git a/Dorm-Sys/frontend/src/components/layout/Sidebar.vue b/Dorm-Sys/frontend/src/components/layout/Sidebar.vue
+index b185887..e38200d 100644
+--- a/Dorm-Sys/frontend/src/components/layout/Sidebar.vue
++++ b/Dorm-Sys/frontend/src/components/layout/Sidebar.vue
+@@ -87,6 +87,7 @@ const navMap = {
+   dormmanager: [
+     { path: '/dormmanager/workbench', label: '宸ヤ綔鍙?, icon: ClipboardList },
+     { path: '/dormmanager/checkin', label: '鍏ヤ綇绠＄悊', icon: UserPlus },
++    { path: '/dormmanager/fee', label: '姘寸數璁¤垂', icon: WalletCards },
+     { path: '/dormmanager/repair', label: '鎶ヤ慨澶勭悊', icon: Settings },
+     { path: '/dormmanager/visitor', label: '璁垮鐧昏', icon: UserCheck },
+     { path: '/dormmanager/hygiene', label: '鍗敓妫€鏌?, icon: FileCheck },
+diff --git a/Dorm-Sys/frontend/src/components/layout/Topbar.vue b/Dorm-Sys/frontend/src/components/layout/Topbar.vue
+index f035a3b..1e55916 100644
+--- a/Dorm-Sys/frontend/src/components/layout/Topbar.vue
++++ b/Dorm-Sys/frontend/src/components/layout/Topbar.vue
+@@ -12,7 +12,7 @@
+       <el-icon class="action-icon" @click="refreshPage"><component :is="RefreshCw" :class="{'is-rotating': isRefreshing}" /></el-icon>
+       <el-icon class="action-icon" @click="toggleTheme"><component :is="appStore.theme === 'dark' ? Sun : Moon" /></el-icon>
+       
+-      <el-badge :value="3" class="bell-badge">
++      <el-badge :hidden="true" class="bell-badge">
+         <el-icon class="action-icon"><component :is="Bell" /></el-icon>
+       </el-badge>
+       
+@@ -24,10 +24,7 @@
+         </div>
+         <template #dropdown>
+           <el-dropdown-menu>
+-            <el-dropdown-item command="student">鍒囨崲涓?瀛︾敓绔?/el-dropdown-item>
+-            <el-dropdown-item command="dormmanager">鍒囨崲涓?瀹跨绔?/el-dropdown-item>
+-            <el-dropdown-item command="admin">鍒囨崲涓?绠＄悊绔?/el-dropdown-item>
+-            <el-dropdown-item divided command="logout">閫€鍑虹櫥褰?/el-dropdown-item>
++            <el-dropdown-item command="logout">閫€鍑虹櫥褰?/el-dropdown-item>
+           </el-dropdown-menu>
+         </template>
+       </el-dropdown>
+@@ -49,11 +46,18 @@ const userStore = useUserStore()
+ 
+ const roles = {
+   admin: { brand: "瀹胯垗绠＄悊 路 绠＄悊绔?, user: "绯荤粺绠＄悊鍛?, avatarText: "绠? },
+-  dormmanager: { brand: "瀹胯垗绠＄悊 路 瀹跨绔?, user: "鍛ㄥ己", avatarText: "鍛? },
+-  student: { brand: "瀛︾敓瀹胯垗绠＄悊绯荤粺", user: "寮犱紵", avatarText: "寮?, avatarImg: "/images/avatar.jpg" },
++  dormmanager: { brand: "瀹胯垗绠＄悊 路 瀹跨绔?, user: "瀹跨", avatarText: "绠? },
++  student: { brand: "瀛︾敓瀹胯垗绠＄悊绯荤粺", user: "瀛︾敓", avatarText: "瀛?, avatarImg: "/images/avatar.jpg" },
+ }
+ 
+-const roleInfo = computed(() => roles[userStore.role] || roles.student)
++const roleInfo = computed(() => {
++  const base = roles[userStore.role] || roles.student
++  return {
++    ...base,
++    user: userStore.userInfo?.name || base.user,
++    avatarText: userStore.userInfo?.name ? userStore.userInfo.name.charAt(0) : base.avatarText
++  }
++})
+ 
+ const groupMap = { admin: "绯荤粺绠＄悊", dormmanager: "瀹跨鏈嶅姟", student: "瀛︾敓鏈嶅姟" }
+ const groupName = computed(() => groupMap[userStore.role])
+@@ -86,12 +90,7 @@ function refreshPage() {
+ }
+ 
+ function handleCommand(cmd) {
+-  if (['student', 'admin', 'dormmanager'].includes(cmd)) {
+-    userStore.setRole(cmd)
+-    if (cmd === 'admin') router.push('/admin/overview')
+-    if (cmd === 'student') router.push('/student/desk')
+-    if (cmd === 'dormmanager') router.push('/dormmanager/workbench')
+-  } else if (cmd === 'logout') {
++  if (cmd === 'logout') {
+     userStore.logout()
+     router.push('/login')
+     ElMessage.info('宸查€€鍑虹櫥褰?)
+diff --git a/Dorm-Sys/frontend/src/router/index.js b/Dorm-Sys/frontend/src/router/index.js
+index 4e1c4b6..ec415a5 100644
+--- a/Dorm-Sys/frontend/src/router/index.js
++++ b/Dorm-Sys/frontend/src/router/index.js
+@@ -23,6 +23,7 @@ const routes = [
+   // Dorm Manager Routes
+   { path: '/dormmanager/workbench', component: () => import('../views/manager/Workbench.vue') },
+   { path: '/dormmanager/checkin', component: () => import('../views/manager/Checkin.vue') },
++  { path: '/dormmanager/fee', component: () => import('../views/manager/Fee.vue') },
+   { path: '/dormmanager/repair', component: () => import('../views/manager/Repair.vue') },
+   { path: '/dormmanager/visitor', component: () => import('../views/manager/Visitor.vue') },
+   { path: '/dormmanager/hygiene', component: () => import('../views/manager/Hygiene.vue') },
+diff --git a/Dorm-Sys/frontend/src/views/admin/Overview.vue b/Dorm-Sys/frontend/src/views/admin/Overview.vue
+index 649facd..240b21f 100644
+--- a/Dorm-Sys/frontend/src/views/admin/Overview.vue
++++ b/Dorm-Sys/frontend/src/views/admin/Overview.vue
+@@ -13,39 +13,33 @@
+                 <p>鍏ㄥ眬鏁版嵁鐩戞帶 路 璧勬簮鍔ㄦ€佽皟搴?/p>
+               </div>
+             </div>
+-            <div class="hero-time">
+-              <div class="time-main">22:18</div>
+-              <div class="time-sub">3鏈?7鏃ユ槦鏈熶簲</div>
++            <div class="hero-actions" style="display: flex; align-items: center; gap: 24px;">
++              <WeatherWidget />
++              <div class="hero-time">
++                <div class="time-main">22:18</div>
++                <div class="time-sub">3鏈?7鏃ユ槦鏈熶簲</div>
++              </div>
+             </div>
+           </div>
+         </el-card>
+ 
+         <!-- Alerts -->
+-        <div class="alerts-wrapper">
+-          <el-alert
+-            title="3鍙锋ゼ褰撳墠鏈?12 涓數鍔涙晠闅滄姤淇秴杩?24 灏忔椂鏈鐞嗐€?
+-            type="warning"
+-            show-icon
+-            :closable="false"
+-            class="custom-alert"
+-          >
+-            <template #title>
+-              <span class="alert-text">3鍙锋ゼ褰撳墠鏈?12 涓數鍔涙晠闅滄姤淇秴杩?24 灏忔椂鏈鐞嗐€?/span>
+-              <el-button size="small" type="warning" plain class="alert-btn">绔嬪嵆澶勭悊</el-button>
+-            </template>
+-          </el-alert>
++        <div class="alerts-wrapper" v-loading="loading">
+           <el-alert
+-            title="寮傚父鏅氬綊棰勮"
+-            type="error"
++            v-for="(alert, index) in alerts"
++            :key="index"
++            :title="alert.title"
++            :type="alert.type"
+             show-icon
+             :closable="false"
+             class="custom-alert"
+           >
+             <template #title>
+-              <span class="alert-text">寮傚父鏅氬綊棰勮</span>
+-              <el-button size="small" type="danger" plain class="alert-btn">绔嬪嵆澶勭悊</el-button>
++              <span class="alert-text">{{ alert.title }}</span>
++              <el-button size="small" :type="alert.type" plain class="alert-btn" @click="$router.push(alert.url)">{{ alert.action }}</el-button>
+             </template>
+           </el-alert>
++          <el-empty v-if="alerts.length === 0" description="鏆傛棤绯荤粺寮傚父棰勮" :image-size="60"></el-empty>
+         </div>
+ 
+         <!-- Building Distribution -->
+@@ -60,34 +54,31 @@
+             </div>
+           </template>
+           
+-          <el-row :gutter="20">
+-            <el-col :span="12">
+-              <div class="building-item">
+-                <div class="building-head">
+-                  <span class="building-name">鏄庡痉妤?/span>
+-                  <span class="building-percent">60%</span>
+-                </div>
+-                <el-progress :percentage="60" :show-text="false" :stroke-width="8" color="#3b82f6" />
+-                <div class="building-foot">
+-                  <span class="building-meta">12/20 搴?/span>
+-                  <el-tag size="small" type="primary" effect="plain">杩愯姝ｅ父</el-tag>
+-                </div>
+-              </div>
+-            </el-col>
+-            <el-col :span="12">
+-              <div class="building-item">
+-                <div class="building-head">
+-                  <span class="building-name">鑷冲杽妤?/span>
+-                  <span class="building-percent">33%</span>
++          <el-row :gutter="20" v-loading="loading">
++            <el-col :span="viewMode === 'grid' ? 12 : 24" v-for="b in pagedBuildings" :key="b.id" style="margin-bottom: 16px;">
++              <div class="building-item" :style="viewMode === 'list' ? 'display: flex; align-items: center; gap: 20px;' : ''">
++                <div class="building-head" :style="viewMode === 'list' ? 'margin-bottom: 0; min-width: 120px;' : ''">
++                  <span class="building-name">{{ b.name }}</span>
++                  <span class="building-percent">{{ b.percentage }}%</span>
+                 </div>
+-                <el-progress :percentage="33" :show-text="false" :stroke-width="8" color="#3b82f6" />
+-                <div class="building-foot">
+-                  <span class="building-meta">4/12 搴?/span>
+-                  <el-tag size="small" type="primary" effect="plain">杩愯姝ｅ父</el-tag>
++                <el-progress :percentage="b.percentage" :show-text="false" :stroke-width="8" color="#3b82f6" :style="viewMode === 'list' ? 'flex: 1;' : ''" />
++                <div class="building-foot" :style="viewMode === 'list' ? 'margin-top: 0; min-width: 150px; justify-content: flex-end; gap: 12px;' : ''">
++                  <span class="building-meta">{{ b.occupiedBeds }}/{{ b.totalBeds }} 搴?/span>
++                  <el-tag size="small" type="primary" effect="plain">{{ b.status }}</el-tag>
+                 </div>
+               </div>
+             </el-col>
+           </el-row>
++          <div style="display: flex; justify-content: flex-end; margin-top: 8px;" v-if="buildings.length > pageSize">
++            <el-pagination
++              background
++              layout="prev, pager, next"
++              :total="buildings.length"
++              :page-size="pageSize"
++              v-model:current-page="currentPage"
++              @current-change="handleCurrentChange"
++            />
++          </div>
+         </el-card>
+ 
+         <!-- System Dynamics -->
+@@ -95,7 +86,7 @@
+           <template #header>
+             <div class="card-header">
+               <span>鏈€杩戠郴缁熷姩鎬?/span>
+-              <el-button type="primary" link>鏌ョ湅鍏ㄩ儴</el-button>
++              <el-button type="primary" link @click="ElMessage.info('绯荤粺鍔ㄦ€佹棩蹇楅〉闈㈡鍦ㄥ紑鍙戜腑')">鏌ョ湅鍏ㄩ儴</el-button>
+             </div>
+           </template>
+           <el-timeline>
+@@ -127,33 +118,33 @@
+           <template #header>
+             <div class="card-header"><span>涓氬姟姒傝</span></div>
+           </template>
+-          <div class="biz-list">
++          <div class="biz-list" v-loading="loading">
+             <div class="biz-item">
+               <div class="biz-icon bg-blue"><el-icon><component :is="User" /></el-icon></div>
+               <div class="biz-info">
+                 <div class="biz-label">娉ㄥ唽瀛︾敓</div>
+-                <div class="biz-value">16 <span>浜?/span></div>
++                <div class="biz-value">{{ stats.studentCount || 0 }} <span>浜?/span></div>
+               </div>
+             </div>
+             <div class="biz-item">
+               <div class="biz-icon bg-orange"><el-icon><component :is="Users" /></el-icon></div>
+               <div class="biz-info">
+                 <div class="biz-label">瀹跨鍥㈤槦</div>
+-                <div class="biz-value">2 <span>浣?/span></div>
++                <div class="biz-value">{{ stats.managerCount || 0 }} <span>浣?/span></div>
+               </div>
+             </div>
+             <div class="biz-item">
+               <div class="biz-icon bg-cyan"><el-icon><component :is="Building" /></el-icon></div>
+               <div class="biz-info">
+                 <div class="biz-label">绠¤緰妤兼爧</div>
+-                <div class="biz-value">2 <span>鏍?/span></div>
++                <div class="biz-value">{{ stats.buildingCount || 0 }} <span>鏍?/span></div>
+               </div>
+             </div>
+             <div class="biz-item">
+               <div class="biz-icon bg-yellow"><el-icon><component :is="Home" /></el-icon></div>
+               <div class="biz-info">
+                 <div class="biz-label">瀹胯垗鎴块棿</div>
+-                <div class="biz-value">20 <span>闂?/span></div>
++                <div class="biz-value">{{ stats.roomCount || 0 }} <span>闂?/span></div>
+               </div>
+             </div>
+           </div>
+@@ -195,15 +186,15 @@
+             <div class="card-header"><span>绠＄悊宸ヤ綔鍙?/span></div>
+           </template>
+           <div class="workbench-grid">
+-            <div class="wb-btn">
++            <div class="wb-btn" @click="router.push('/admin/users/list')">
+               <el-icon :size="24" color="#3b82f6"><component :is="User" /></el-icon>
+               <span>鐢ㄦ埛</span>
+             </div>
+-            <div class="wb-btn">
++            <div class="wb-btn" @click="router.push('/admin/resources/buildings')">
+               <el-icon :size="24" color="#3b82f6"><component :is="Building" /></el-icon>
+               <span>妤兼爧</span>
+             </div>
+-            <div class="wb-btn">
++            <div class="wb-btn" @click="router.push('/admin/resources/rooms')">
+               <el-icon :size="24" color="#3b82f6"><component :is="Home" /></el-icon>
+               <span>鎴块棿</span>
+             </div>
+@@ -216,10 +207,34 @@
+ </template>
+ 
+ <script setup>
+-import { ref } from 'vue'
+-import { Monitor, User, Users, Building, Home } from '@lucide/vue'
+-
++import { ref, computed, onMounted } from 'vue'
++import { useRouter } from 'vue-router'
++import { Monitor, AlertTriangle, Info, MapPin, Search, ArrowRight, ShieldCheck, Download, CalendarDays, Key, CreditCard, User, Users, Building, Home } from '@lucide/vue'
++import request from '../../utils/request'
++import WeatherWidget from '../../components/WeatherWidget.vue'
++import { ElMessage } from 'element-plus'
++import { getStats, getBuildingStats, getAlerts } from '../../api/dashboard'
++
++const router = useRouter()
+ const viewMode = ref('grid')
++const loading = ref(false)
++
++const stats = ref({})
++const buildings = ref([])
++const alerts = ref([])
++
++const currentPage = ref(1)
++const pageSize = ref(4)
++
++const pagedBuildings = computed(() => {
++  const start = (currentPage.value - 1) * pageSize.value
++  const end = start + pageSize.value
++  return buildings.value.slice(start, end)
++})
++
++const handleCurrentChange = (val) => {
++  currentPage.value = val
++}
+ 
+ const activities = [
+   {
+@@ -247,6 +262,28 @@ const activities = [
+     tag: 'admin'
+   }
+ ]
++
++const fetchData = async () => {
++  loading.value = true
++  try {
++    const [statsRes, buildingsRes, alertsRes] = await Promise.all([
++      getStats(),
++      getBuildingStats(),
++      getAlerts()
++    ])
++    stats.value = statsRes || {}
++    buildings.value = buildingsRes || []
++    alerts.value = alertsRes || []
++  } catch (error) {
++    console.error('Failed to fetch dashboard data', error)
++  } finally {
++    loading.value = false
++  }
++}
++
++onMounted(() => {
++  fetchData()
++})
+ </script>
+ 
+ <style scoped>
+diff --git a/Dorm-Sys/frontend/src/views/admin/Repairs.vue b/Dorm-Sys/frontend/src/views/admin/Repairs.vue
+index 288d504..77913d3 100644
+--- a/Dorm-Sys/frontend/src/views/admin/Repairs.vue
++++ b/Dorm-Sys/frontend/src/views/admin/Repairs.vue
+@@ -13,7 +13,7 @@
+                 <p>宸ュ崟瀹¤ 路 缁存姢鏁堣兘鍒嗘瀽</p>
+               </div>
+             </div>
+-            <el-button type="primary"><el-icon class="el-icon--left"><component :is="Refresh" /></el-icon>鍚屾宸ュ崟姹?/el-button>
++            <el-button type="primary" :loading="loading" @click="fetchTickets"><el-icon class="el-icon--left"><component :is="Refresh" /></el-icon>鍚屾宸ュ崟姹?/el-button>
+           </div>
+         </el-card>
+ 
+@@ -32,15 +32,14 @@
+             <div class="list-actions">
+               <el-select v-model="categoryFilter" placeholder="鎶ヤ慨鍒嗙被" style="width: 140px; margin-right: 12px;">
+                 <el-option label="鍏ㄩ儴鍒嗙被" value="all" />
+-                <el-option label="姘存殩" value="water" />
+-                <el-option label="寮哄急鐢? value="elec" />
+-                <el-option label="闂ㄧ獥" value="door" />
++                <el-option v-for="category in categories" :key="category" :label="category" :value="category" />
+               </el-select>
+-              <el-button circle><el-icon><component :is="Refresh" /></el-icon></el-button>
++              <el-button circle @click="fetchTickets"><el-icon><component :is="Refresh" /></el-icon></el-button>
+             </div>
+           </div>
+ 
+-          <div class="ticket-list">
++          <div class="ticket-list" v-loading="loading">
++            <el-empty v-if="tickets.length === 0" description="鏆傛棤绗﹀悎鏉′欢鐨勬姤淇伐鍗? />
+             <div v-for="t in tickets" :key="t.id" class="ticket-item">
+               <div class="ticket-icon">
+                 <el-icon :size="24"><component :is="Settings" /></el-icon>
+@@ -80,21 +79,21 @@
+               <div class="dash-icon bg-light-orange"><el-icon><component :is="AlertCircle" /></el-icon></div>
+               <div class="dash-info">
+                 <div class="dash-label">绉帇寰呭姙</div>
+-                <div class="dash-value">1 <span>鍗?/span></div>
++                <div class="dash-value">{{ pendingCount }} <span>鍗?/span></div>
+               </div>
+             </div>
+             <div class="dash-item">
+               <div class="dash-icon bg-light-blue"><el-icon><component :is="Timer" /></el-icon></div>
+               <div class="dash-info">
+                 <div class="dash-label">杩涜涓?/div>
+-                <div class="dash-value">1 <span>鍗?/span></div>
++                <div class="dash-value">{{ processingCount }} <span>鍗?/span></div>
+               </div>
+             </div>
+             <div class="dash-item">
+               <div class="dash-icon bg-gray"><el-icon><component :is="CheckCircle" /></el-icon></div>
+               <div class="dash-info">
+                 <div class="dash-label">浠婃棩宸茬粨</div>
+-                <div class="dash-value">2 <span>鍗?/span></div>
++                <div class="dash-value">{{ todayCompletedCount }} <span>鍗?/span></div>
+               </div>
+             </div>
+           </div>
+@@ -143,18 +142,53 @@
+ </template>
+ 
+ <script setup>
+-import { ref } from 'vue'
++import { ref, computed, onMounted } from 'vue'
+ import { Settings, RefreshCw as Refresh, User, Clock, CheckCircle, AlertCircle, Timer, Info } from '@lucide/vue'
++import { getRepairs } from '../../api/repair'
++import { ElMessage } from 'element-plus'
+ 
+-const categoryFilter = ref('')
++const categoryFilter = ref('all')
+ const statusFilter = ref('all')
+-
+-const tickets = ref([
+-  { id: 1, room: '鑷冲杽妤?路 101', category: '姘寸', status: '寰呭鐞?, statusType: 'warning', description: '鍗敓闂存按榫欏ご婕忔按', reporter: '闄堟', assignee: '寮犲绠?, time: '2026-01-05T09:00:00' },
+-  { id: 2, room: '鏄庡痉妤?路 101', category: '缃戠粶', status: '缁翠慨涓?, statusType: 'primary', description: '缃戠粶淇″彿鏃舵柇鏃剁画锛屾棤娉曟甯镐笂缃?, reporter: '鏉庢槑', assignee: '寮犲绠?, time: '2025-12-10T14:30:00' },
+-  { id: 3, room: '鏄庡痉妤?路 101', category: '鐢靛櫒', status: '宸插姙缁?, statusType: 'info', description: '绌鸿皟涓嶅埗鍐凤紝寮€鏈哄悗鍙湁椋庢墖杞姩', reporter: '寮犱紵', assignee: '寮犲绠?, time: '2025-12-01T10:00:00' },
+-  { id: 4, room: '鏄庡痉妤?路 102', category: '闂ㄧ獥', status: '宸插姙缁?, statusType: 'info', description: '绐楁埛鍏充笉涓ワ紝鏈夐婕忚繘鏉?, reporter: '鍚村垰', assignee: '寮犲绠?, time: '2025-11-20T11:00:00' },
+-])
++const records = ref([])
++const loading = ref(false)
++
++const statusMeta = {
++  PENDING: { label: '寰呭鐞?, type: 'warning' },
++  PROCESSING: { label: '缁翠慨涓?, type: 'primary' },
++  COMPLETED: { label: '宸插姙缁?, type: 'info' }
++}
++
++const categories = computed(() => [...new Set(records.value.map(item => item.type).filter(Boolean))])
++const tickets = computed(() => records.value
++  .filter(item => statusFilter.value === 'all' || item.status?.toLowerCase() === statusFilter.value)
++  .filter(item => categoryFilter.value === 'all' || item.type === categoryFilter.value)
++  .map(item => ({
++    ...item,
++    room: item.roomName || '鏈叧鑱旀埧闂?,
++    category: item.type || '鍏朵粬',
++    status: statusMeta[item.status]?.label || item.status,
++    statusType: statusMeta[item.status]?.type || 'info',
++    reporter: item.submitterName || '鏈煡',
++    assignee: item.handlerName || '寰呭垎閰?,
++    time: item.createTime?.replace('T', ' ').slice(0, 16) || '-'
++  })))
++
++const pendingCount = computed(() => records.value.filter(item => item.status === 'PENDING').length)
++const processingCount = computed(() => records.value.filter(item => item.status === 'PROCESSING').length)
++const todayCompletedCount = computed(() => records.value.filter(item => item.status === 'COMPLETED' && new Date(item.updateTime || item.createTime).toDateString() === new Date().toDateString()).length)
++
++async function fetchTickets() {
++  loading.value = true
++  try {
++    records.value = await getRepairs()
++  } catch (error) {
++    ElMessage.error('鑾峰彇鎶ヤ慨宸ュ崟澶辫触')
++  } finally {
++    loading.value = false
++  }
++}
++
++onMounted(fetchTickets)
+ </script>
+ 
+ <style scoped>
+diff --git a/Dorm-Sys/frontend/src/views/manager/Call.vue b/Dorm-Sys/frontend/src/views/manager/Call.vue
+index 1cb0f3c..c06e9eb 100644
+--- a/Dorm-Sys/frontend/src/views/manager/Call.vue
++++ b/Dorm-Sys/frontend/src/views/manager/Call.vue
+@@ -48,7 +48,7 @@
+ import { ref, computed, onMounted } from 'vue'
+ import { Video, RefreshCw } from '@lucide/vue'
+ import { ElMessage, ElMessageBox } from 'element-plus'
+-import request from '../../utils/request'
++import { getCalls, saveCall } from '../../api/call'
+ 
+ const calls = ref([])
+ const activeTab = ref('PENDING')
+@@ -61,7 +61,7 @@ const filteredCalls = computed(() => {
+ const fetchCalls = async () => {
+   loading.value = true
+   try {
+-    const res = await request({ url: '/callRecord/list', method: 'get' })
++    const res = await getCalls()
+     calls.value = res || []
+   } catch (e) {
+     ElMessage.error('鑾峰彇鍒楄〃澶辫触')
+@@ -75,13 +75,9 @@ const updateStatus = async (row, newStatus) => {
+   try {
+     await ElMessageBox.confirm(actionText, '鎻愮ず', { confirmButtonText: '纭畾', cancelButtonText: '鍙栨秷', type: 'warning' })
+     
+-    await request({
+-      url: '/callRecord/update',
+-      method: 'post',
+-      data: {
+-        id: row.id,
+-        status: newStatus
+-      }
++    await saveCall({
++      id: row.id,
++      status: newStatus
+     })
+     ElMessage.success('鎿嶄綔鎴愬姛')
+     fetchCalls()
+diff --git a/Dorm-Sys/frontend/src/views/manager/Checkin.vue b/Dorm-Sys/frontend/src/views/manager/Checkin.vue
+index 9e09751..d99f25d 100644
+--- a/Dorm-Sys/frontend/src/views/manager/Checkin.vue
++++ b/Dorm-Sys/frontend/src/views/manager/Checkin.vue
+@@ -13,10 +13,42 @@
+                 <p>瑙勮寖鐧昏 路 鍔ㄦ€佹祦杞?/p>
+               </div>
+             </div>
+-            <el-button type="primary"><el-icon class="el-icon--left"><component :is="Plus" /></el-icon>鍔炵悊鏂板叆浣?/el-button>
++            <el-button type="primary" @click="openCheckinDialog"><el-icon class="el-icon--left"><component :is="Plus" /></el-icon>鍔炵悊鏂板叆浣?/el-button>
+           </div>
+         </el-card>
+ 
++        <!-- Checkin Dialog -->
++        <el-dialog v-model="checkinVisible" title="鍔炵悊鏂板叆浣? width="500px" destroy-on-close>
++          <el-form :model="form" label-width="90px">
++            <el-form-item label="閫夋嫨瀛︾敓" required>
++              <el-select v-model="form.studentId" placeholder="璇烽€夋嫨鏈叆浣忓鐢? filterable style="width: 100%" @change="onStudentChange">
++                <el-option v-for="u in unassignedStudents" :key="u.id" :label="`${u.name} (${u.gender}) - ${u.username}`" :value="u.id" />
++              </el-select>
++            </el-form-item>
++            <el-form-item label="鐩爣妤兼爧" required>
++              <el-select v-model="form.buildingId" placeholder="閫夋嫨妤兼爧" @change="onBuildingChange" style="width: 100%" :disabled="!form.studentId">
++                <el-option v-for="b in availableBuildings" :key="b.id" :label="b.name" :value="b.id" />
++              </el-select>
++            </el-form-item>
++            <el-form-item label="鐩爣鎴块棿" required>
++              <el-select v-model="form.roomId" placeholder="閫夋嫨鎴块棿" @change="onRoomChange" style="width: 100%" :disabled="!form.buildingId">
++                <el-option v-for="r in currentRooms" :key="r.id" :label="r.roomNumber" :value="r.id" />
++              </el-select>
++            </el-form-item>
++            <el-form-item label="绌洪棽搴婁綅" required>
++              <el-select v-model="form.bedId" placeholder="閫夋嫨搴婁綅" style="width: 100%" :disabled="!form.roomId">
++                <el-option v-for="b in currentBeds" :key="b.id" :label="`${b.bedNumber}鍙峰簥`" :value="b.id" />
++              </el-select>
++            </el-form-item>
++          </el-form>
++          <template #footer>
++            <span class="dialog-footer">
++              <el-button @click="checkinVisible = false">鍙栨秷</el-button>
++              <el-button type="primary" @click="submitCheckin" :loading="submitting">纭鍏ヤ綇</el-button>
++            </span>
++          </template>
++        </el-dialog>
++
+         <!-- Resident List Section -->
+         <el-card shadow="never" class="list-card">
+           <div class="list-header">
+@@ -66,22 +98,22 @@
+             <div class="dash-item">
+               <div class="dash-icon bg-light-blue"><el-icon><component :is="User" /></el-icon></div>
+               <div class="dash-info">
+-                <div class="dash-label">绱鍏ヤ綇</div>
+-                <div class="dash-value">16 <span>浜?/span></div>
++                <div class="dash-label">绯荤粺鍐呮€诲鐢?/div>
++                <div class="dash-value">{{ totalStudents }} <span>浜?/span></div>
+               </div>
+             </div>
+             <div class="dash-item">
+               <div class="dash-icon bg-light-orange"><el-icon><component :is="Check" /></el-icon></div>
+               <div class="dash-info">
+                 <div class="dash-label">褰撳墠鍦ㄤ綇</div>
+-                <div class="dash-value">10 <span>浜?/span></div>
++                <div class="dash-value">{{ currentOccupied }} <span>浜?/span></div>
+               </div>
+             </div>
+             <div class="dash-item">
+               <div class="dash-icon bg-gray"><el-icon><component :is="X" /></el-icon></div>
+               <div class="dash-info">
+-                <div class="dash-label">宸查€€瀹?/div>
+-                <div class="dash-value">6 <span>浜?/span></div>
++                <div class="dash-label">鏈垎閰嶅簥浣?绌洪棽)</div>
++                <div class="dash-value">{{ unassignedCount }} <span>浜?/span></div>
+               </div>
+             </div>
+           </div>
+@@ -93,20 +125,14 @@
+             <div class="card-header"><span>妤兼爧鍗犵敤鎯呭喌</span></div>
+           </template>
+           <div class="occupation-list">
+-            <div class="occ-item">
++            <div class="occ-item" v-for="occ in buildingOccupations" :key="occ.id">
+               <div class="occ-head">
+-                <span>鏄庡痉妤?/span>
+-                <span class="text-blue">92%</span>
++                <span>{{ occ.name }}</span>
++                <span class="text-blue">{{ occ.percentage }}%</span>
+               </div>
+-              <el-progress :percentage="92" :show-text="false" color="#3b82f6" />
+-            </div>
+-            <div class="occ-item">
+-              <div class="occ-head">
+-                <span>鑷冲杽妤?/span>
+-                <span class="text-blue">92%</span>
+-              </div>
+-              <el-progress :percentage="92" :show-text="false" color="#3b82f6" />
++              <el-progress :percentage="occ.percentage" :show-text="false" color="#3b82f6" />
+             </div>
++            <div v-if="buildingOccupations.length === 0" style="color:var(--sub); font-size:13px">鏆傛棤妤兼爧鏁版嵁</div>
+           </div>
+         </el-card>
+ 
+@@ -130,46 +156,80 @@
+ </template>
+ 
+ <script setup>
+-import { ref, onMounted } from 'vue'
++import { ref, computed, onMounted } from 'vue'
+ import { User, Plus, Search, RefreshCw as Refresh, Home, CalendarDays, Check, X, Info } from '@lucide/vue'
+-import { getBeds, saveBed } from '../../api/room'
+-import { getUsers } from '../../api/user'
+ import { getBuildings } from '../../api/building'
+ import { getRooms } from '../../api/room'
++import request from '../../utils/request'
+ import { ElMessage, ElMessageBox } from 'element-plus'
++import { useUserStore } from '../../store/user'
+ 
++const userStore = useUserStore()
+ const search = ref('')
+ const statusFilter = ref('active')
+ const residents = ref([])
+ const loading = ref(false)
+ 
++const checkinVisible = ref(false)
++const submitting = ref(false)
++const form = ref({ studentId: null, buildingId: null, roomId: null, bedId: null })
++
++const buildings = ref([])
++const allRooms = ref([])
++const allBeds = ref([])
++const unassignedStudents = ref([])
++const currentRooms = ref([])
++const currentBeds = ref([])
++
++const totalStudents = ref(0)
++const currentOccupied = ref(0)
++const unassignedCount = ref(0)
++
+ const fetchResidents = async () => {
+   loading.value = true
+   try {
+-    const [bedsRes, usersRes, roomsRes, buildingsRes] = await Promise.all([
+-      getBeds(), getUsers(), getRooms(), getBuildings()
++    const [bedsRes, roomsRes, buildingsRes, usersRes] = await Promise.all([
++      request({ url: '/bed/list', method: 'get' }),
++      getRooms(), 
++      getBuildings(),
++      request({ url: '/user/list', method: 'get' })
+     ])
+     const beds = bedsRes || []
+-    const users = usersRes || []
+     const rooms = roomsRes || []
+-    const buildings = buildingsRes || []
++    allBeds.value = beds
++    allRooms.value = rooms
++    buildings.value = buildingsRes || []
++    const users = usersRes || []
++    const me = userStore.userInfo || {}
++    const managerGender = (me.role === 'dormmanager' && me.gender) ? me.gender : null
+     
+-    const userMap = Object.fromEntries(users.map(u => [u.id, u]))
+     const roomMap = Object.fromEntries(rooms.map(r => [r.id, r]))
+-    const buildingMap = Object.fromEntries(buildings.map(b => [b.id, b.name]))
++    const buildingMap = Object.fromEntries(buildings.value.map(b => [b.id, b.name]))
+     
+     const occupiedBeds = beds.filter(b => b.studentId && b.status === 'OCCUPIED')
+-    residents.value = occupiedBeds.map(bed => {
+-      const student = userMap[bed.studentId] || {}
++    const assignedStudentIds = new Set(occupiedBeds.map(b => b.studentId))
++    
++    // Find students who are not assigned, filtered by manager gender
++    const studentUsers = users.filter(u => u.role === 'student' && (!managerGender || u.gender === managerGender))
++    const validStudentIds = new Set(studentUsers.map(u => u.id))
++    unassignedStudents.value = studentUsers.filter(u => !assignedStudentIds.has(u.id))
++    
++    const myOccupiedBeds = occupiedBeds.filter(b => validStudentIds.has(b.studentId))
++    
++    totalStudents.value = studentUsers.length
++    currentOccupied.value = myOccupiedBeds.length
++    unassignedCount.value = unassignedStudents.value.length
++    
++    residents.value = myOccupiedBeds.map(bed => {
+       const room = roomMap[bed.roomId] || {}
+       const bName = buildingMap[room.buildingId] || ''
+       return {
+-        id: student.username || student.id,
+-        name: student.name || '鏈煡',
++        id: bed.studentId || '鏈煡',
++        name: bed.studentName || '鏈煡',
+         room: `${bName} 路 ${room.roomNumber || '?'} 路 ${bed.bedNumber}`,
+         date: bed.createTime ? bed.createTime.substring(5, 10) : '09/01',
+         status: '鍦ㄤ綇',
+-        avatar: student.avatar || '',
++        avatar: '',
+         bedId: bed.id
+       }
+     })
+@@ -180,12 +240,108 @@ const fetchResidents = async () => {
+   }
+ }
+ 
++const buildingOccupations = computed(() => {
++  if (!buildings.value.length || !allRooms.value.length || !allBeds.value.length) return []
++  return buildings.value.map(b => {
++    const bRooms = allRooms.value.filter(r => r.buildingId === b.id).map(r => r.id)
++    const bBeds = allBeds.value.filter(bed => bRooms.includes(bed.roomId))
++    const total = bBeds.length
++    const occupied = bBeds.filter(bed => bed.studentId && bed.status === 'OCCUPIED').length
++    const percentage = total === 0 ? 0 : Math.round((occupied / total) * 100)
++    return {
++      id: b.id,
++      name: b.name,
++      percentage
++    }
++  })
++})
++
+ onMounted(() => fetchResidents())
+ 
++const openCheckinDialog = () => {
++  form.value = { studentId: null, buildingId: null, roomId: null, bedId: null }
++  currentRooms.value = []
++  currentBeds.value = []
++  checkinVisible.value = true
++}
++
++const availableBuildings = computed(() => {
++  if (!form.value.studentId) return []
++  const student = unassignedStudents.value.find(s => s.id === form.value.studentId)
++  if (student && student.gender) {
++    if (student.gender === '鐢?) {
++      return buildings.value.filter(b => (b.type || '').includes('鐢?))
++    } else if (student.gender === '濂?) {
++      return buildings.value.filter(b => (b.type || '').includes('濂?))
++    }
++  }
++  return buildings.value
++})
++
++const onStudentChange = () => {
++  form.value.buildingId = null
++  form.value.roomId = null
++  form.value.bedId = null
++  currentRooms.value = []
++  currentBeds.value = []
++}
++
++const onBuildingChange = async (val) => {
++  form.value.roomId = null
++  form.value.bedId = null
++  currentBeds.value = []
++  if (!val) {
++    currentRooms.value = []
++    return
++  }
++  try {
++    const rooms = await getRooms(val)
++    currentRooms.value = rooms || []
++  } catch (e) {
++    ElMessage.error('鑾峰彇鎴块棿澶辫触')
++  }
++}
++
++const onRoomChange = async (val) => {
++  form.value.bedId = null
++  if (!val) {
++    currentBeds.value = []
++    return
++  }
++  try {
++    const beds = await request({ url: `/bed/list?roomId=${val}`, method: 'get' })
++    currentBeds.value = (beds || []).filter(b => b.status === 'EMPTY' || !b.studentId)
++  } catch (e) {
++    ElMessage.error('鑾峰彇搴婁綅澶辫触')
++  }
++}
++
++const submitCheckin = async () => {
++  if (!form.value.studentId || !form.value.bedId) {
++    ElMessage.warning('璇峰畬鏁撮€夋嫨瀛︾敓鍜屽簥浣?)
++    return
++  }
++  submitting.value = true
++  try {
++    await request({ 
++      url: '/bed/save', 
++      method: 'post', 
++      data: { id: form.value.bedId, studentId: form.value.studentId, status: 'OCCUPIED' } 
++    })
++    ElMessage.success('鍔炵悊鍏ヤ綇鎴愬姛')
++    checkinVisible.value = false
++    fetchResidents()
++  } catch (e) {
++    ElMessage.error('鍏ヤ綇鍔炵悊澶辫触')
++  } finally {
++    submitting.value = false
++  }
++}
++
+ const handleCheckout = async (r) => {
+   try {
+     await ElMessageBox.confirm(`纭畾瑕佷负 ${r.name} 鍔炵悊閫€瀹垮悧锛焋, '閫€瀹跨‘璁?, { type: 'warning' })
+-    await saveBed({ id: r.bedId, status: 'EMPTY', studentId: null })
++    await request({ url: '/bed/save', method: 'post', data: { id: r.bedId, status: 'EMPTY', studentId: null } })
+     ElMessage.success('閫€瀹垮姙鐞嗘垚鍔?)
+     fetchResidents()
+   } catch (e) {
+diff --git a/Dorm-Sys/frontend/src/views/manager/Items.vue b/Dorm-Sys/frontend/src/views/manager/Items.vue
+index 62c1441..425b754 100644
+--- a/Dorm-Sys/frontend/src/views/manager/Items.vue
++++ b/Dorm-Sys/frontend/src/views/manager/Items.vue
+@@ -66,9 +66,9 @@
+ 
+ <script setup>
+ import { ref, computed, onMounted } from 'vue'
+-import { Package, Plus } from '@lucide/vue'
++import { PackageSearch, Plus } from '@lucide/vue'
+ import { ElMessage, ElMessageBox } from 'element-plus'
+-import request from '../../utils/request'
++import { getItems, saveItem } from '../../api/item'
+ 
+ const items = ref([])
+ const activeTab = ref('PENDING')
+@@ -84,7 +84,7 @@ const filteredItems = computed(() => {
+ const fetchItems = async () => {
+   loading.value = true
+   try {
+-    const res = await request({ url: '/itemRecord/list', method: 'get' })
++    const res = await getItems()
+     items.value = res || []
+   } catch (e) {
+     ElMessage.error('鑾峰彇鍒楄〃澶辫触')
+@@ -105,15 +105,10 @@ const submitAdd = async () => {
+   }
+   submitting.value = true
+   try {
+-    await request({
+-      url: '/itemRecord/add',
+-      method: 'post',
+-      data: {
+-        title: form.value.title,
+-        owner: form.value.owner,
+-        description: form.value.description,
+-        status: 'PENDING'
+-      }
++    await saveItem({
++      itemName: form.value.title,
++      studentName: form.value.owner,
++      status: 'BORROWED'
+     })
+     ElMessage.success('鐧昏鎴愬姛')
+     dialogVisible.value = false
+@@ -126,14 +121,9 @@ const submitAdd = async () => {
+ }
+ 
+ const updateStatus = async (row, newStatus) => {
+-  const actionText = newStatus === 'RELEASED' ? '纭鏀捐璇ョ墿鍝侊紵' : '纭鐗╁搧宸插綊杩橈紵'
+   try {
+-    await ElMessageBox.confirm(actionText, '鎻愮ず', { type: 'warning' })
+-    await request({
+-      url: '/itemRecord/update',
+-      method: 'post',
+-      data: { id: row.id, status: newStatus }
+-    })
++    await ElMessageBox.confirm('纭璇ョ墿鍝佸凡褰掕繕锛?, '鎻愮ず', { type: 'warning' })
++    await saveItem({ id: row.id, status: 'RETURNED' })
+     ElMessage.success('鎿嶄綔鎴愬姛')
+     fetchItems()
+   } catch (e) {
+diff --git a/Dorm-Sys/frontend/src/views/manager/LateReturn.vue b/Dorm-Sys/frontend/src/views/manager/LateReturn.vue
+index 60c0f56..19539af 100644
+--- a/Dorm-Sys/frontend/src/views/manager/LateReturn.vue
++++ b/Dorm-Sys/frontend/src/views/manager/LateReturn.vue
+@@ -71,7 +71,7 @@
+ import { ref, computed, onMounted } from 'vue'
+ import { Clock, Plus } from '@lucide/vue'
+ import { ElMessage, ElMessageBox } from 'element-plus'
+-import request from '../../utils/request'
++import { getLateReturns, saveLateReturn } from '../../api/lateReturn'
+ 
+ const records = ref([])
+ const activeTab = ref('PENDING')
+@@ -87,7 +87,7 @@ const filteredRecords = computed(() => {
+ const fetchRecords = async () => {
+   loading.value = true
+   try {
+-    const res = await request({ url: '/lateReturnRecord/list', method: 'get' })
++    const res = await getLateReturns()
+     records.value = res || []
+   } catch (e) {
+     ElMessage.error('鑾峰彇鍒楄〃澶辫触')
+@@ -112,17 +112,13 @@ const submitAdd = async () => {
+     // format as ISO without Z to match LocalDateTime roughly
+     const returnTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, -1)
+     
+-    await request({
+-      url: '/lateReturnRecord/add',
+-      method: 'post',
+-      data: {
+-        studentName: form.value.studentName,
+-        studentId: form.value.studentId ? parseInt(form.value.studentId) : null,
+-        roomNumber: form.value.roomNumber,
+-        reason: form.value.reason,
+-        status: 'PENDING',
+-        returnTime: returnTime
+-      }
++    await saveLateReturn({
++      studentName: form.value.studentName,
++      studentId: form.value.studentId ? parseInt(form.value.studentId) : null,
++      roomNumber: form.value.roomNumber,
++      reason: form.value.reason,
++      status: 'PENDING',
++      returnTime: returnTime
+     })
+     ElMessage.success('鐧昏鎴愬姛')
+     dialogVisible.value = false
+@@ -138,11 +134,7 @@ const updateStatus = async (row, newStatus) => {
+   const actionText = newStatus === 'NOTIFIED' ? '纭閫氭姤璇ヨ褰曪紵' : '纭褰掓。璇ヨ褰曪紵'
+   try {
+     await ElMessageBox.confirm(actionText, '鎻愮ず', { type: 'warning' })
+-    await request({
+-      url: '/lateReturnRecord/update',
+-      method: 'post',
+-      data: { id: row.id, status: newStatus }
+-    })
++    await saveLateReturn({ id: row.id, status: newStatus })
+     ElMessage.success('鎿嶄綔鎴愬姛')
+     fetchRecords()
+   } catch (e) {
+diff --git a/Dorm-Sys/frontend/src/views/manager/Patrol.vue b/Dorm-Sys/frontend/src/views/manager/Patrol.vue
+index f6ee25b..5ecfa47 100644
+--- a/Dorm-Sys/frontend/src/views/manager/Patrol.vue
++++ b/Dorm-Sys/frontend/src/views/manager/Patrol.vue
+@@ -66,9 +66,9 @@
+ 
+ <script setup>
+ import { ref, computed, onMounted } from 'vue'
+-import { Bot, Plus } from '@lucide/vue'
++import { ShieldCheck, Plus } from '@lucide/vue'
+ import { ElMessage, ElMessageBox } from 'element-plus'
+-import request from '../../utils/request'
++import { getPatrols, savePatrol } from '../../api/patrol'
+ 
+ const records = ref([])
+ const activeTab = ref('PENDING')
+@@ -84,7 +84,7 @@ const filteredRecords = computed(() => {
+ const fetchRecords = async () => {
+   loading.value = true
+   try {
+-    const res = await request({ url: '/patrolRecord/list', method: 'get' })
++    const res = await getPatrols()
+     records.value = res || []
+   } catch (e) {
+     ElMessage.error('鑾峰彇鍒楄〃澶辫触')
+@@ -105,17 +105,13 @@ const submitAdd = async () => {
+   }
+   submitting.value = true
+   try {
+-    await request({
+-      url: '/patrolRecord/add',
+-      method: 'post',
+-      data: {
+-        buildingName: form.value.buildingName,
+-        area: form.value.area,
+-        issue: form.value.issue,
+-        status: 'PENDING'
+-      }
++    await savePatrol({
++      buildingName: form.value.buildingName,
++      area: form.value.area,
++      issue: form.value.issue,
++      status: 'PENDING'
+     })
+-    ElMessage.success('涓婃姤鎴愬姛')
++    ElMessage.success('鎵撳崱鎴愬姛')
+     dialogVisible.value = false
+     fetchRecords()
+   } catch (e) {
+@@ -126,14 +122,9 @@ const submitAdd = async () => {
+ }
+ 
+ const updateStatus = async (row, newStatus) => {
+-  const actionText = newStatus === 'PROCESSING' ? '纭寮€濮嬪鐞嗚寮傚父锛? : '纭宸茶В鍐宠寮傚父锛?
+   try {
+-    await ElMessageBox.confirm(actionText, '鎻愮ず', { type: 'warning' })
+-    await request({
+-      url: '/patrolRecord/update',
+-      method: 'post',
+-      data: { id: row.id, status: newStatus }
+-    })
++    await ElMessageBox.confirm('纭璇ュ贰鏌ラ棶棰樺凡瑙ｅ喅锛?, '鎻愮ず', { type: 'warning' })
++    await savePatrol({ id: row.id, status: newStatus })
+     ElMessage.success('鎿嶄綔鎴愬姛')
+     fetchRecords()
+   } catch (e) {
+diff --git a/Dorm-Sys/frontend/src/views/manager/Visitor.vue b/Dorm-Sys/frontend/src/views/manager/Visitor.vue
+index 0cf2f27..72d4b8b 100644
+--- a/Dorm-Sys/frontend/src/views/manager/Visitor.vue
++++ b/Dorm-Sys/frontend/src/views/manager/Visitor.vue
+@@ -34,8 +34,8 @@
+           </div>
+ 
+           <div class="visitor-list" v-loading="loading">
+-            <el-empty v-if="visitors.length === 0" description="鏆傛棤璁垮璁板綍" />
+-            <div v-for="v in visitors" :key="v.id" class="visitor-item">
++            <el-empty v-if="filteredVisitors.length === 0" description="鏆傛棤璁垮璁板綍" />
++            <div v-for="v in pagedVisitors" :key="v.id" class="visitor-item">
+               <div class="visitor-avatar" :class="v.avatarClass">
+                 {{ v.name?.[0] }}
+               </div>
+@@ -65,8 +65,8 @@
+           </div>
+           
+           <div class="pagination-wrapper">
+-             <span class="total-text">Total 3</span>
+-             <el-pagination background layout="prev, pager, next" :total="3" :page-size="3" />
++             <span class="total-text">鍏?{{ filteredVisitors.length }} 鏉?/span>
++             <el-pagination v-model:current-page="currentPage" background layout="prev, pager, next" :total="filteredVisitors.length" :page-size="pageSize" />
+           </div>
+         </el-card>
+       </el-col>
+@@ -90,7 +90,7 @@
+               <div class="dash-icon bg-light-blue"><el-icon><component :is="User" /></el-icon></div>
+               <div class="dash-info">
+                 <div class="dash-label">褰撳墠鍦ㄩ</div>
+-                <div class="dash-value">0 <span>浣?/span></div>
++                <div class="dash-value">{{ activeCount }} <span>浣?/span></div>
+               </div>
+             </div>
+             <div class="dash-item">
+@@ -108,7 +108,13 @@
+           <template #header>
+             <div class="card-header"><span>鏈€杩戠鍏?/span></div>
+           </template>
+-          <el-empty description="鏆傛棤绛惧叆璁板綍" :image-size="60"></el-empty>
++          <div v-if="recentCheckins.length" class="recent-list">
++            <div v-for="item in recentCheckins" :key="item.id" class="recent-item">
++              <strong>{{ item.name }}</strong>
++              <span>{{ item.target }} 路 {{ item.time }}</span>
++            </div>
++          </div>
++          <el-empty v-else description="鏆傛棤绛惧叆璁板綍" :image-size="60" />
+         </el-card>
+ 
+         <!-- Visitor Rules -->
+@@ -139,6 +145,8 @@ import { ElMessage } from 'element-plus'
+ 
+ const search = ref('')
+ const statusFilter = ref('all')
++const currentPage = ref(1)
++const pageSize = 3
+ 
+ const visitors = ref([])
+ const loading = ref(false)
+@@ -184,7 +192,18 @@ const handleLeave = async (v) => {
+ }
+ 
+ const pendingCount = computed(() => visitors.value.filter(v => v.status === 'PENDING').length)
++const activeCount = computed(() => visitors.value.filter(v => v.status === 'APPROVED' && !v.leaveTime).length)
+ const todayCount = computed(() => visitors.value.filter(v => new Date(v.createTime).toDateString() === new Date().toDateString()).length)
++const filteredVisitors = computed(() => visitors.value.filter(v => {
++  const keyword = search.value.trim().toLowerCase()
++  const matchesKeyword = !keyword || v.name?.toLowerCase().includes(keyword) || v.phone?.includes(keyword)
++  const matchesStatus = statusFilter.value === 'all'
++    || (statusFilter.value === 'pending' && v.status === 'PENDING')
++    || (statusFilter.value === 'active' && v.status === 'APPROVED' && !v.leaveTime)
++  return matchesKeyword && matchesStatus
++}))
++const pagedVisitors = computed(() => filteredVisitors.value.slice((currentPage.value - 1) * pageSize, currentPage.value * pageSize))
++const recentCheckins = computed(() => visitors.value.filter(v => v.status === 'APPROVED' || v.status === 'LEFT').slice(0, 3))
+ </script>
+ 
+ <style scoped>
+@@ -420,6 +439,11 @@ const todayCount = computed(() => visitors.value.filter(v => new Date(v.createTi
+   min-height: 200px;
+ }
+ 
++.recent-list { display: grid; gap: 10px; }
++.recent-item { display: grid; gap: 3px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
++.recent-item strong { color: var(--text); font-size: 13px; }
++.recent-item span { color: var(--sub); font-size: 12px; }
++
+ .rules-card {
+   background-color: var(--primary-2);
+   border: 1px solid var(--primary-2) !important;
+diff --git a/Dorm-Sys/frontend/src/views/manager/Workbench.vue b/Dorm-Sys/frontend/src/views/manager/Workbench.vue
+index cdfd82a..2606911 100644
+--- a/Dorm-Sys/frontend/src/views/manager/Workbench.vue
++++ b/Dorm-Sys/frontend/src/views/manager/Workbench.vue
+@@ -7,10 +7,11 @@
+         <div class="hero-section">
+           <div class="hero-content">
+             <div class="hero-text">
+-              <h2>鎮ㄥソ锛屽紶瀹跨 鑰佸笀</h2>
++              <h2>鎮ㄥソ锛寋{ userStore.userInfo?.name || '瀹跨' }} 鑰佸笀</h2>
+               <p>浠婂ぉ鏄?2026骞?鏈?7鏃ユ槦鏈熶簲锛岀洰鍓嶆ゼ鏍嬭繍琛岀姸鎬侊細<span class="text-blue">鑹ソ</span></p>
+             </div>
+-            <div class="hero-actions">
++            <div class="hero-actions" style="display: flex; align-items: center; gap: 16px;">
++              <WeatherWidget />
+               <el-button type="primary" @click="loadData"><el-icon class="el-icon--left"><component :is="Refresh" /></el-icon>鍒锋柊鏁版嵁</el-button>
+             </div>
+           </div>
+@@ -89,7 +90,7 @@
+             </div>
+           </template>
+           <div class="rooms-grid">
+-            <div v-for="room in filteredRooms" :key="room.id" class="room-box" :class="{'is-warning': room.warning}">
++            <div v-for="room in filteredRooms" :key="room.id" class="room-box" :class="{'is-warning': room.warning}" @click="openRoomDetail(room)">
+               <div class="room-number">{{ room.buildingName }}-{{ room.number }}</div>
+               <div class="room-dots">
+                 <span v-for="i in room.capacity" :key="i" class="dot" :class="{ filled: i <= room.occupied }"></span>
+@@ -99,6 +100,31 @@
+           </div>
+         </el-card>
+ 
++        <!-- Room Detail Dialog -->
++        <el-dialog v-model="roomDialogVisible" :title="`${selectedRoom?.buildingName} - ${selectedRoom?.number} 鎴块棿搴婁綅甯冨眬`" width="700px" destroy-on-close>
++          <div class="layout-wrapper" v-loading="roomDetailLoading">
++            <div class="floor-plan">
++              <div class="plan-border"></div>
++              <div class="door-label">澶ч棬</div>
++              <div class="balcony-label">闃冲彴</div>
++              
++              <div class="beds-grid">
++                <div 
++                  v-for="i in (selectedRoom?.capacity || 4)" 
++                  :key="i"
++                  class="bed-slot"
++                  :class="{ 'is-occupied': getOccupantForBed(i), 'is-empty': !getOccupantForBed(i) }"
++                >
++                  <div class="bed-box">
++                    <div class="bed-number">{{ selectedRoom?.number ? `${selectedRoom.number}-${i}` : `1-${i}` }}</div>
++                  </div>
++                  <div class="bed-owner">{{ getOccupantForBed(i)?.studentName || '绌哄簥' }}</div>
++                </div>
++              </div>
++            </div>
++          </div>
++        </el-dialog>
++
+         <!-- Bottom Two Lists -->
+         <el-row :gutter="20">
+           <el-col :span="12">
+@@ -173,27 +199,14 @@
+             <div class="card-header"><span class="card-title">绠＄悊澶囧繕</span></div>
+           </template>
+           <div class="memos-list">
+-            <div class="memo-item">
+-              <div class="memo-dot dot-orange"></div>
+-              <div class="memo-content">
+-                <div class="memo-title">鍛ㄥ洓鍗敓澶ф鏌?/div>
+-                <div class="memo-time">14:00 - 16:00</div>
+-              </div>
+-            </div>
+-            <div class="memo-item">
+-              <div class="memo-dot dot-blue"></div>
+-              <div class="memo-content">
+-                <div class="memo-title">姣曚笟鐢熺瀹挎墜缁姙鐞?/div>
+-                <div class="memo-time">鍏ㄥぉ</div>
+-              </div>
+-            </div>
+-            <div class="memo-item">
+-              <div class="memo-dot dot-blue"></div>
++            <div v-for="m in memos" :key="m.id" class="memo-item">
++              <div class="memo-dot" :class="m.urgent ? 'dot-orange' : 'dot-blue'"></div>
+               <div class="memo-content">
+-                <div class="memo-title">娑堥槻鍣ㄦ潗渚嬭鎶芥</div>
+-                <div class="memo-time">10:00</div>
++                <div class="memo-title">{{ m.title }}</div>
++                <div class="memo-time">{{ m.time }}</div>
+               </div>
+             </div>
++            <el-empty v-if="memos.length === 0" description="鏆傛棤澶囧繕" :image-size="40"></el-empty>
+             <el-button class="add-memo-btn" plain>+ 娣诲姞澶囧繕</el-button>
+           </div>
+         </el-card>
+@@ -204,14 +217,13 @@
+             <div class="card-header"><span class="card-title">绯荤粺閫氱煡</span></div>
+           </template>
+           <div class="notice-list">
+-            <div class="notice-item">
+-              <el-icon color="#3b82f6"><component :is="Info" /></el-icon>
+-              <span>绯荤粺棰勮浜庡懆鍏噷鏅?2:00 杩涜缁存姢鏇存柊</span>
+-            </div>
+-            <div class="notice-item">
+-              <el-icon color="#f59e0b"><component :is="AlertCircle" /></el-icon>
+-              <span>鍙戠幇 3 鍙锋ゼ鏈?2 闂村瘽瀹ょ數璐逛綑棰濅笉瓒?/span>
++            <div v-for="n in notices" :key="n.id" class="notice-item">
++              <el-icon :color="n.type === 'alert' ? '#f59e0b' : '#3b82f6'">
++                <component :is="n.type === 'alert' ? 'AlertCircle' : 'Info'" />
++              </el-icon>
++              <span>{{ n.title }}</span>
+             </div>
++            <el-empty v-if="notices.length === 0" description="鏆傛棤閫氱煡" :image-size="40"></el-empty>
+           </div>
+         </el-card>
+       </el-col>
+@@ -227,7 +239,10 @@ import { getBeds, getRooms } from '../../api/room'
+ import { getBuildings } from '../../api/building'
+ import { getRepairs } from '../../api/repair'
+ import { getVisitorRecords } from '../../api/visitor'
++import { getBusinessRecords } from '../../api/businessRecord'
+ import { useUserStore } from '../../store/user'
++import request from '../../utils/request'
++import WeatherWidget from '../../components/WeatherWidget.vue'
+ 
+ const router = useRouter()
+ const userStore = useUserStore()
+@@ -241,21 +256,64 @@ const rooms = ref([])
+ const buildings = ref([])
+ const selectedBuilding = ref('')
+ const pendingRepairs = ref([])
++const memos = ref([])
++const notices = ref([])
++
++const roomDialogVisible = ref(false)
++const selectedRoom = ref(null)
++const roomDetailBeds = ref([])
++const roomDetailLoading = ref(false)
+ 
+ const filteredRooms = computed(() => {
+   if (!selectedBuilding.value) return rooms.value
+   return rooms.value.filter(r => r.buildingId === selectedBuilding.value)
+ })
+ 
++const openRoomDetail = async (room) => {
++  selectedRoom.value = room
++  roomDialogVisible.value = true
++  roomDetailLoading.value = true
++  try {
++    const beds = await request({ url: `/bed/list?roomId=${room.id}`, method: 'get' })
++    roomDetailBeds.value = (beds || [])
++  } catch (e) {
++    ElMessage.error('鑾峰彇鎴块棿璇︽儏澶辫触')
++  } finally {
++    roomDetailLoading.value = false
++  }
++}
++
++const getOccupantForBed = (index) => {
++  const suffix = `-${index}`
++  return roomDetailBeds.value.find(b => b.bedNumber && b.bedNumber.endsWith(suffix) && b.studentId)
++}
++
+ const loadData = async () => {
+   try {
+-    const [beds, repairList, visitors, roomList, buildingList] = await Promise.all([
+-      getBeds(), getRepairs(), getVisitorRecords(), getRooms(), getBuildings()
++    const [repairList, visitors, buildingList, buildingStatsRes, memoRecords, noticeRecords] = await Promise.all([
++      getRepairs(), getVisitorRecords(), getBuildings(), request({ url: '/dashboard/buildings', method: 'get' }),
++      getBusinessRecords('manager_memos'), getBusinessRecords('system_notices')
+     ])
+     
++    memos.value = (memoRecords || []).slice(0, 3).map((r, i) => ({
++      id: r.id,
++      title: r.title,
++      time: r.status || '鍏ㄥぉ',
++      urgent: i === 0
++    }))
++    
++    notices.value = (noticeRecords || []).slice(0, 3).map((r, i) => ({
++      id: r.id,
++      title: r.title,
++      type: i === 1 ? 'alert' : 'info'
++    }))
++    
+     buildings.value = buildingList || []
+     
+-    residentCount.value = beds.filter(b => b.status === 'OCCUPIED').length
++    // Calculate resident count from building stats
++    if (buildingStatsRes) {
++      residentCount.value = buildingStatsRes.reduce((acc, curr) => acc + (curr.occupiedBeds || 0), 0)
++    }
+     
+     const pendings = repairList.filter(r => r.status === 'PENDING')
+     pendingRepairCount.value = pendings.length
+@@ -268,23 +326,45 @@ const loadData = async () => {
+     try {
+       const lateRes = await request({ url: '/lateReturnRecord/list', method: 'get' })
+       lateReturnCount.value = lateRes ? lateRes.filter(r => r.status === 'PENDING').length : 0
+-    } catch (err) {}
++    } catch (err) {
++      console.error('Failed to fetch late returns', err)
++    }
+     
+-    rooms.value = roomList.map(r => ({
++    // Initial rooms load for the first building
++    if (buildings.value.length > 0) {
++      selectedBuilding.value = buildings.value[0].id
++      await fetchRoomsForBuilding(selectedBuilding.value)
++    }
++  } catch (e) {
++    console.error('Failed to load workbench data', e)
++  }
++}
++
++const fetchRoomsForBuilding = async (bId) => {
++  if (!bId) {
++    rooms.value = []
++    return
++  }
++  try {
++    const roomList = await getRooms(bId)
++    rooms.value = (roomList || []).map(r => ({
+       id: r.id,
+       number: r.roomNumber,
+       buildingId: r.buildingId,
+       buildingName: r.buildingName,
+       capacity: r.capacity || 4,
+       occupied: r.occupied || 0,
+-      warning: false // Simplified: no warning logic for now
++      warning: false
+     }))
+-  } catch (e) {
+-    console.error('Failed to load workbench data', e)
++  } catch(e) {
++    console.error('Failed to load rooms for building', e)
+   }
+ }
+ 
+-import request from '../../utils/request'
++import { watch } from 'vue'
++watch(selectedBuilding, (newVal) => {
++  fetchRoomsForBuilding(newVal)
++})
+ 
+ onMounted(() => loadData())
+ </script>
+@@ -431,6 +511,13 @@ onMounted(() => loadData())
+   align-items: center;
+   gap: 8px;
+   position: relative;
++  cursor: pointer;
++  transition: border-color 0.2s, box-shadow 0.2s;
++}
++
++.room-box:hover {
++  border-color: #3b82f6;
++  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+ }
+ 
+ .room-box.is-warning {
+@@ -583,7 +670,108 @@ onMounted(() => loadData())
+   align-items: flex-start;
+   gap: 8px;
+   font-size: 13px;
+-  color: var(--text-secondary);
+   line-height: 1.5;
+ }
++
++/* Bed Layout Styles */
++.layout-wrapper {
++  padding: 20px 0 40px;
++  display: flex;
++  justify-content: center;
++}
++.floor-plan {
++  position: relative;
++  width: 100%;
++  max-width: 500px;
++  height: 260px;
++}
++.plan-border {
++  position: absolute;
++  top: 0; left: 24px; right: 24px; bottom: 0;
++  border: 4px solid #cbd5e1;
++  border-radius: 12px;
++}
++.plan-border::before {
++  content: '';
++  position: absolute;
++  top: -4px; left: 10%; width: 60px; height: 8px;
++  background: #fff;
++}
++.plan-border::after {
++  content: '';
++  position: absolute;
++  bottom: -4px; right: 10%; width: 80px; height: 8px;
++  background: #fff;
++}
++.door-label {
++  position: absolute;
++  top: -12px;
++  left: calc(24px + 10% + 15px);
++  background: #fff;
++  padding: 0 12px;
++  color: #94a3b8;
++  font-weight: 500;
++  font-size: 14px;
++}
++.balcony-label {
++  position: absolute;
++  bottom: -12px;
++  right: calc(24px + 10% + 15px);
++  background: #fff;
++  padding: 0 12px;
++  color: #94a3b8;
++  font-weight: 500;
++  font-size: 14px;
++}
++.beds-grid {
++  position: absolute;
++  top: 40px; left: 50px; right: 50px; bottom: 40px;
++  display: grid;
++  grid-template-columns: 1fr 1fr;
++  grid-template-rows: 1fr 1fr;
++  gap: 30px 60px;
++  place-items: center;
++}
++.bed-slot {
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  gap: 8px;
++}
++.bed-box {
++  width: 80px;
++  height: 48px;
++  border: 2px solid #e2e8f0;
++  border-radius: 8px;
++  background: #f8fafc;
++  display: grid;
++  place-items: center;
++  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
++  transition: all 0.3s ease;
++}
++.bed-number {
++  font-weight: 600;
++  color: #64748b;
++  font-size: 14px;
++}
++.bed-owner {
++  color: #475569;
++  font-size: 14px;
++  font-weight: 500;
++}
++.bed-slot.is-occupied .bed-box {
++  border-color: #94a3b8;
++  background: #f1f5f9;
++}
++.bed-slot.is-occupied .bed-number {
++  color: #475569;
++}
++.bed-slot.is-empty .bed-box {
++  border: 2px dashed #e2e8f0;
++  background: #fff;
++}
++.bed-slot.is-empty .bed-number,
++.bed-slot.is-empty .bed-owner {
++  color: #cbd5e1;
++}
+ </style>
+diff --git a/Dorm-Sys/frontend/src/views/student/Desk.vue b/Dorm-Sys/frontend/src/views/student/Desk.vue
+index bbf6ce4..cb6ec78 100644
+--- a/Dorm-Sys/frontend/src/views/student/Desk.vue
++++ b/Dorm-Sys/frontend/src/views/student/Desk.vue
+@@ -10,20 +10,10 @@
+           </div>
+           <div>
+             <h1 style="margin: 0; font-size: 22px;">鏃╁畨锛寋{ userStore.userInfo?.name || '鍚屽' }} 馃憢</h1>
+-            <p style="margin: 4px 0 0; color: var(--sub); font-size: 14px;">浠婂ぉ鏄?2026骞?鏈?7鏃ユ槦鏈熶簲锛屽紑鍚珮鏁堢殑涓€澶╁惂锛?/p>
+-          </div>
+-        </div>
+-        <div style="display: flex; align-items: center; gap: 16px; padding: 12px 20px; background: var(--muted); border-radius: 12px;">
+-          <div style="text-align: center;">
+-            <div style="font-size: 28px;">鈽€锔?/div>
+-            <div style="font-size: 11px; color: var(--sub); margin-top: 2px;">鏅?/div>
+-          </div>
+-          <div style="width: 1px; height: 40px; background: var(--line);"></div>
+-          <div>
+-            <div style="font-size: 24px; font-weight: 700; color: var(--text);">22鈩?/div>
+-            <div style="font-size: 12px; color: var(--ok); margin-top: 2px;">绌烘皵浼?/div>
++            <p style="margin: 4px 0 0; color: var(--sub); font-size: 14px;">寮€鍚珮鏁堢殑涓€澶╁惂锛?/p>
+           </div>
+         </div>
++        <WeatherWidget />
+       </div>
+     </div>
+ 
+@@ -70,8 +60,8 @@
+                 <el-icon :size="22"><component :is="Wallet" /></el-icon>
+               </div>
+               <div>
+-                <div style="color: var(--sub); font-size: 13px; margin-bottom: 2px;">璐︽埛浣欓</div>
+-                <div style="font-weight: 700; font-size: 17px;">楼 128.50</div>
++                <div style="color: var(--sub); font-size: 13px; margin-bottom: 2px;">寰呯即璐归噾棰?/div>
++                <div style="font-weight: 700; font-size: 17px;">楼 {{ dash.unpaidAmount || '0.00' }}</div>
+               </div>
+             </div>
+             <button class="ghost-btn" @click="router.push('/student/fees')">绔嬪嵆鍏呭€?/button>
+@@ -84,7 +74,7 @@
+               </div>
+               <div>
+                 <div style="color: var(--sub); font-size: 13px; margin-bottom: 2px;">鎶ヤ慨鐢宠</div>
+-                <div style="font-weight: 700; font-size: 17px;">1 浠跺緟澶勭悊</div>
++                <div style="font-weight: 700; font-size: 17px;">{{ dash.pendingRepairs || 0 }} 浠跺緟澶勭悊</div>
+               </div>
+             </div>
+             <button class="ghost-btn" @click="router.push('/student/repair')">鐢宠鎶ヤ慨</button>
+@@ -97,7 +87,7 @@
+               </div>
+               <div>
+                 <div style="color: var(--sub); font-size: 13px; margin-bottom: 2px;">鍗敓璇勫垎</div>
+-                <div style="font-weight: 700; font-size: 17px;">92 鍒?/div>
++                <div style="font-weight: 700; font-size: 17px;">{{ dash.hygieneScore || '--' }} 鍒?/div>
+               </div>
+             </div>
+             <button class="ghost-btn" @click="router.push('/student/dorm')">鏌ョ湅璇︽儏</button>
+@@ -108,41 +98,22 @@
+         <div class="card">
+           <div class="card-head">
+             <h2>寰呭姙浜嬮」</h2>
+-            <span class="tag info" style="border-radius: 12px; padding: 2px 8px;">3</span>
++            <span class="tag info" style="border-radius: 12px; padding: 2px 8px;" v-if="dash.todoList?.length">{{ dash.todoList?.length }}</span>
+           </div>
+           <div class="card-body list">
+-            <div class="row" style="min-height: 60px;">
+-              <span class="status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: var(--warn);"></span>
+-              <div class="row-main">
+-                <div class="row-title">缂寸撼12鏈堢數璐?/div>
+-                <div class="row-meta">
+-                  <span>閲戦锛毬?92.30</span>
+-                  <span style="color: var(--danger);">鏄庡ぉ鎴</span>
+-                </div>
+-              </div>
+-              <button class="ghost-btn" @click="router.push('/student/fees')">鍘荤即绾?/button>
+-            </div>
+-            <div class="row" style="min-height: 60px;">
+-              <span class="status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: var(--ok);"></span>
++            <div class="row" style="min-height: 60px;" v-for="t in dash.todoList" :key="t.id">
++              <span class="status-dot" :style="`width: 8px; height: 8px; border-radius: 50%; background: ${t.statusColor};`"></span>
+               <div class="row-main">
+-                <div class="row-title">鎶ヤ慨宸ュ崟寰呯‘璁?/div>
++                <div class="row-title">{{ t.title }}</div>
+                 <div class="row-meta">
+-                  <span>{{ currentDormLabel }} 路 缃戠粶鏁呴殰</span>
+-                  <span>澶勭悊涓?/span>
++                  <span>{{ t.meta1 }}</span>
++                  <span :style="`color: ${t.statusColor};`">{{ t.meta2 }}</span>
+                 </div>
+               </div>
+-              <button class="ghost-btn" @click="router.push('/student/repair')">鏌ョ湅璇︽儏</button>
++              <button class="ghost-btn" @click="router.push(t.route)">{{ t.actionLabel }}</button>
+             </div>
+-            <div class="row" style="min-height: 60px;">
+-              <span class="status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: var(--sub);"></span>
+-              <div class="row-main">
+-                <div class="row-title">璁垮棰勭害瀹℃壒</div>
+-                <div class="row-meta">
+-                  <span>寮犱笁 路 3鏈?8鏃ユ潵璁?/span>
+-                  <span>寰呭鎵?/span>
+-                </div>
+-              </div>
+-              <button class="ghost-btn" @click="router.push('/student/visitor')">鏌ョ湅</button>
++            <div v-if="!dash.todoList?.length" style="padding: 24px; text-align: center; color: var(--sub); font-size: 13px;">
++              鏆傛棤寰呭姙浜嬮」
+             </div>
+           </div>
+         </div>
+@@ -158,7 +129,7 @@
+           </div>
+           <div class="card-body">
+             <div style="display: flex; align-items: flex-end; gap: 8px; height: 120px; padding: 16px 0;">
+-              <div v-for="(h, i) in [45, 62, 38, 75, 55, 68, 42, 58, 72, 48, 65, 52]" :key="i" 
++              <div v-for="(h, i) in (dash.powerHistory || [])" :key="i" 
+                    style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                 <span style="font-size: 11px; color: var(--sub);">{{h}}</span>
+                 <div :style="`width: 100%; height: ${h}px; background: linear-gradient(180deg, var(--primary), var(--primary-2)); border-radius: 4px 4px 0 0; transition: height .6s ease;`"></div>
+@@ -166,8 +137,8 @@
+               </div>
+             </div>
+             <div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line);">
+-              <span style="font-size: 13px; color: var(--sub);">鏈湀鐢ㄧ數</span>
+-              <span style="font-size: 13px; font-weight: 600; color: var(--primary);">186.5 搴?/span>
++              <span style="font-size: 13px; color: var(--sub);">鏈湀鎬昏棰勬祴浼板€?/span>
++              <span style="font-size: 13px; font-weight: 600; color: var(--primary);">{{ dash.totalPower || 0 }} 搴?/span>
+             </div>
+           </div>
+         </div>
+@@ -256,11 +227,13 @@ import { getRooms, getBeds } from '../../api/room'
+ import { getUsers } from '../../api/user'
+ import { getBuildings } from '../../api/building'
+ import { getBusinessRecords } from '../../api/businessRecord'
++import request from '../../utils/request'
+ import { useUserStore } from '../../store/user'
+ import { 
+   Home, Wallet, Settings, Medal,
+   UserRoundCheck, Repeat2, MessageCircle, Pencil, Newspaper, WalletCards
+ } from '@lucide/vue'
++import WeatherWidget from '../../components/WeatherWidget.vue'
+ 
+ const router = useRouter()
+ const userStore = useUserStore()
+@@ -268,6 +241,18 @@ const hoverBanner = ref(false)
+ const notices = ref([])
+ const currentDormLabel = ref('鍔犺浇涓?)
+ const roommates = ref([])
++const dash = ref({})
++
++const fetchDashboard = async () => {
++  try {
++    const res = await request({ url: '/dashboard/student', method: 'get' })
++    if (res) {
++      dash.value = res
++    }
++  } catch (e) {
++    console.error(e)
++  }
++}
+ 
+ const fetchDormSummary = async () => {
+   try {
+@@ -316,6 +301,7 @@ const fetchNotices = async () => {
+ onMounted(() => {
+   fetchDormSummary()
+   fetchNotices()
++  fetchDashboard()
+ })
+ </script>
+ 
+diff --git a/Dorm-Sys/frontend/src/views/student/Dorm.vue b/Dorm-Sys/frontend/src/views/student/Dorm.vue
+index 57d06f7..5e804aa 100644
+--- a/Dorm-Sys/frontend/src/views/student/Dorm.vue
++++ b/Dorm-Sys/frontend/src/views/student/Dorm.vue
+@@ -1,3 +1,22 @@
++<template>
++  <div class="dorm-container">
++    <el-row :gutter="24" class="main-row">
++      <!-- Left Column: Dorm Profile & Roommates -->
++      <el-col :span="8">
++        <el-card shadow="never" class="profile-card">
++          <!-- Top House Info -->
++          <div class="dorm-header">
++            <div class="dorm-icon-box">
++              <el-icon :size="40" color="var(--el-color-primary)"><component :is="Home" /></el-icon>
++            </div>
++            <h2 class="dorm-title">{{ myBuilding?.name || '鏈煡' }} 路 {{ myRoom?.roomNumber || '鏈煡' }}</h2>
++            <div class="dorm-tags">
++              <el-tag size="small" effect="plain">{{ myRoom?.floor || '-' }}灞?/el-tag>
++              <el-tag size="small" effect="plain">{{ myRoom?.capacity || 4 }}浜洪棿</el-tag>
++              <el-tag size="small" type="primary" effect="dark">{{ myBed?.bedNumber ? myBed.bedNumber.split('-')[1] + '鍙峰簥浣? : '鏈垎閰? }}</el-tag>
++            </div>
++          </div>
++
+ <template>
+   <div class="dorm-container">
+     <el-row :gutter="24" class="main-row">
+@@ -25,7 +44,7 @@
+             </div>
+             <div class="meta-item">
+               <span class="meta-label">鎵€灞炴牎鍖?/span>
+-              <span class="meta-value">涓绘牎鍖?路 瑗垮尯</span>
++              <span class="meta-value">{{ dash.campus || '涓绘牎鍖? }}</span>
+             </div>
+             <div class="meta-item">
+               <span class="meta-label">璐ｄ换瀹跨</span>
+@@ -113,37 +132,37 @@
+             <el-card shadow="never" class="facility-card">
+               <div class="card-header">
+                 <span>璁炬柦杩愯鐘舵€?/span>
+-                <el-button link type="primary" style="display:flex;align-items:center;gap:4px">
++                <el-button link type="primary" style="display:flex;align-items:center;gap:4px" @click="fetchDashboard">
+                   <el-icon><component :is="RefreshCw" /></el-icon>鍒锋柊
+                 </el-button>
+               </div>
+               <div class="facility-grid">
+                 <div class="fac-item">
+-                  <div class="fac-icon-box bg-blue"><el-icon><component :is="Lightbulb" /></el-icon></div>
++                  <div class="fac-icon-box" :class="dash.lightIssue ? 'bg-red' : 'bg-blue'"><el-icon><component :is="Lightbulb" /></el-icon></div>
+                   <div class="fac-info">
+                     <div class="fac-name">鐓ф槑鐏叿</div>
+-                    <div class="fac-status">杩愯涓?/div>
++                    <div class="fac-status" :class="dash.lightIssue ? 'text-red' : ''">{{ dash.lightIssue ? '缁翠慨涓? : '杩愯涓? }}</div>
+                   </div>
+                 </div>
+                 <div class="fac-item">
+-                  <div class="fac-icon-box bg-blue"><el-icon><component :is="Fan" /></el-icon></div>
++                  <div class="fac-icon-box" :class="dash.acIssue ? 'bg-red' : 'bg-blue'"><el-icon><component :is="Fan" /></el-icon></div>
+                   <div class="fac-info">
+                     <div class="fac-name">绌鸿皟璁惧</div>
+-                    <div class="fac-status">鑹ソ</div>
++                    <div class="fac-status" :class="dash.acIssue ? 'text-red' : ''">{{ dash.acIssue ? '缁翠慨涓? : '鑹ソ' }}</div>
+                   </div>
+                 </div>
+                 <div class="fac-item">
+-                  <div class="fac-icon-box bg-blue"><el-icon><component :is="Wifi" /></el-icon></div>
++                  <div class="fac-icon-box" :class="dash.netIssue ? 'bg-red' : 'bg-blue'"><el-icon><component :is="Wifi" /></el-icon></div>
+                   <div class="fac-info">
+                     <div class="fac-name">瀹胯垗缃戠粶</div>
+-                    <div class="fac-status">宸茶繛鎺?/div>
++                    <div class="fac-status" :class="dash.netIssue ? 'text-red' : ''">{{ dash.netIssue ? '缁翠慨涓? : '宸茶繛鎺? }}</div>
+                   </div>
+                 </div>
+                 <div class="fac-item">
+-                  <div class="fac-icon-box bg-yellow"><el-icon><component :is="Droplet" /></el-icon></div>
++                  <div class="fac-icon-box" :class="dash.waterIssue ? 'bg-red' : 'bg-yellow'"><el-icon><component :is="Droplet" /></el-icon></div>
+                   <div class="fac-info">
+                     <div class="fac-name">鐩撮ギ姘?/div>
+-                    <div class="fac-status text-yellow">婊よ姱寰呮崲</div>
++                    <div class="fac-status" :class="dash.waterIssue ? 'text-red' : 'text-yellow'">{{ dash.waterIssue ? '缁翠慨涓? : '杩愯涓? }}</div>
+                   </div>
+                 </div>
+               </div>
+@@ -156,7 +175,7 @@
+               <div class="card-header">鍗敓鏈堝害鎸囨爣</div>
+               <div class="hygiene-content">
+                 <div class="chart-box">
+-                  <el-progress type="dashboard" :percentage="95" :width="120" color="#3b82f6" :stroke-width="8">
++                  <el-progress type="dashboard" :percentage="dash.hygieneAverageScore || 0" :width="120" color="#3b82f6" :stroke-width="8">
+                     <template #default="{ percentage }">
+                       <div class="score-value">
+                         <span class="num">{{ percentage }}</span>
+@@ -169,12 +188,12 @@
+                 <div class="hygiene-stats">
+                   <div class="h-stat-row">
+                     <span class="h-label">鍏ㄦゼ鎺掑悕</span>
+-                    <span class="h-val">绗?12 鍚?/span>
++                    <span class="h-val">绗?{{ dash.hygieneRank || 1 }} 鍚?/span>
+                   </div>
+                   <el-divider border-style="dashed" />
+                   <div class="h-stat-row">
+                     <span class="h-label">涓婃妫€鏌?/span>
+-                    <span class="h-val">98 (浼樼)</span>
++                    <span class="h-val">{{ dash.hygieneCurrentScore || 100 }} 鍒?/span>
+                   </div>
+                 </div>
+               </div>
+@@ -227,6 +246,18 @@ const myBed = ref(null)
+ const myBuilding = ref(null)
+ const roommates = ref([])
+ const checkInDate = ref('-')
++const dash = ref({})
++
++const fetchDashboard = async () => {
++  try {
++    const res = await request({ url: '/dashboard/dorm', method: 'get' })
++    if (res) {
++      dash.value = res
++    }
++  } catch (e) {
++    console.error(e)
++  }
++}
+ 
+ // Combine me + roommates into one list for rendering
+ const allOccupants = computed(() => {
+@@ -302,7 +333,10 @@ const fetchDormInfo = async () => {
+   }
+ }
+ 
+-onMounted(() => fetchDormInfo())
++onMounted(() => {
++  fetchDormInfo()
++  fetchDashboard()
++})
+ </script>
+ 
+ <style scoped>
+@@ -508,191 +542,6 @@ onMounted(() => fetchDormInfo())
+   .group-chat-btn { flex-shrink: 0; }
+   .roommate-item { padding: 12px; }
+ }
+-
+-/* Right Stack */
+-.right-stack {
+-  display: flex;
+-  flex-direction: column;
+-  gap: 24px;
+-}
+-
+-/* Bed Layout Card */
+-.layout-wrapper {
+-  padding: 40px 0;
+-  display: flex;
+-  justify-content: center;
+-}
+-.floor-plan {
+-  position: relative;
+-  width: 100%;
+-  max-width: 600px;
+-  height: 300px;
+-}
+-.plan-border {
+-  position: absolute;
+-  top: 0; left: 24px; right: 24px; bottom: 0;
+-  border: 4px solid #cbd5e1;
+-  border-radius: 12px;
+-}
+-.plan-border::before {
+-  content: '';
+-  position: absolute;
+-  top: -4px; left: 10%; width: 60px; height: 8px;
+-  background: #fff;
+-}
+-.plan-border::after {
+-  content: '';
+-  position: absolute;
+-  bottom: -4px; right: 10%; width: 80px; height: 8px;
+-  background: #fff;
+-}
+-.door-label {
+-  position: absolute;
+-  top: -12px;
+-  left: calc(24px + 10% + 15px);
+-  background: #fff;
+-  padding: 0 12px;
+-  color: #94a3b8;
+-  font-weight: 500;
+-  font-size: 14px;
+-}
+-.balcony-label {
+-  position: absolute;
+-  bottom: -12px;
+-  right: calc(24px + 10% + 15px);
+-  background: #fff;
+-  padding: 0 12px;
+-  color: #94a3b8;
+-  font-weight: 500;
+-  font-size: 14px;
+-}
+-.beds-grid {
+-  position: absolute;
+-  top: 50px; left: 60px; right: 60px; bottom: 50px;
+-  display: grid;
+-  grid-template-columns: 1fr 1fr;
+-  grid-template-rows: 1fr 1fr;
+-  gap: 50px 80px;
+-  place-items: center;
+-}
+-.bed-slot {
+-  display: flex;
+-  flex-direction: column;
+-  align-items: center;
+-  gap: 12px;
+-}
+-.bed-box {
+-  width: 100px;
+-  height: 56px;
+-  border: 2px solid #e2e8f0;
+-  border-radius: 8px;
+-  background: #f8fafc;
+-  display: grid;
+-  place-items: center;
+-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+-  position: relative;
+-  transition: all 0.3s ease;
+-}
+-.bed-number {
+-  font-weight: 600;
+-  color: #64748b;
+-  font-size: 16px;
+-}
+-.bed-owner {
+-  color: #475569;
+-  font-size: 15px;
+-  font-weight: 500;
+-  transition: color 0.3s ease;
+-}
+-
+-/* My bed - blue accent */
+-.bed-slot.is-mine .bed-box {
+-  border-color: #3b82f6;
+-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15), 0 4px 12px rgba(59, 130, 246, 0.12);
+-}
+-.bed-slot.is-mine .bed-number {
+-  color: #1d4ed8;
+-  font-weight: 700;
+-}
+-.bed-slot.is-mine .bed-owner {
+-  color: #2563eb;
+-  font-weight: 700;
+-}
+-.my-bed-badge {
+-  position: absolute;
+-  top: -10px;
+-  right: -10px;
+-  background: #3b82f6;
+-  color: #fff;
+-  font-size: 10px;
+-  font-weight: 600;
+-  padding: 2px 8px;
+-  border-radius: 8px;
+-  white-space: nowrap;
+-  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+-}
+-
+-/* Occupied by roommate */
+-.bed-slot.is-occupied .bed-box {
+-  border-color: #94a3b8;
+-  background: #f1f5f9;
+-}
+-.bed-slot.is-occupied .bed-number {
+-  color: #475569;
+-}
+-
+-/* Empty bed */
+-.bed-slot.is-empty .bed-box {
+-  border: 2px dashed #e2e8f0;
+-  background: #fff;
+-}
+-.bed-slot.is-empty .bed-number {
+-  color: #cbd5e1;
+-}
+-.bed-slot.is-empty .bed-owner {
+-  color: #cbd5e1;
+-  font-weight: 400;
+-}
+-
+-/* Facility Grid */
+-.facility-grid {
+-  display: grid;
+-  grid-template-columns: 1fr 1fr;
+-  gap: 20px;
+-}
+-.fac-item {
+-  display: flex;
+-  align-items: center;
+-  padding: 20px;
+-  background: #f8fafc;
+-  border-radius: 16px;
+-  gap: 16px;
+-}
+-.fac-icon-box {
+-  width: 48px;
+-  height: 48px;
+-  border-radius: 14px;
+-  display: grid;
+-  place-items: center;
+-  font-size: 22px;
+-}
+-.bg-blue {
+-  background: #eef2ff;
+-  color: #3b82f6;
+-}
+-.bg-yellow {
+-  background: #fef3c7;
+-  color: #d97706;
+-}
+-.text-yellow {
+-  color: #d97706 !important;
+-}
+-.fac-name {
+-  font-size: 15px;
+-  font-weight: 600;
+-  color: #1e293b;
+-  margin-bottom: 6px;
+ }
+ .fac-status {
+   font-size: 14px;
+diff --git a/Dorm-Sys/frontend/vite.config.js b/Dorm-Sys/frontend/vite.config.js
+index 87bd529..2f53bb1 100644
+--- a/Dorm-Sys/frontend/vite.config.js
++++ b/Dorm-Sys/frontend/vite.config.js
+@@ -7,7 +7,7 @@ export default defineConfig({
+   server: {
+     proxy: {
+       '/api': {
+-        target: 'http://localhost:8088',
++        target: 'http://127.0.0.1:8088',
+         changeOrigin: true
+       }
+     }

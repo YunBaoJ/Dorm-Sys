@@ -214,7 +214,7 @@ const fetchUsers = async () => {
   try {
     const res = await getUserList()
     users.value = res
-  } catch (error) {
+  } catch (error) { console.error(error);
     ElMessage.error('获取用户列表失败')
   } finally {
     loading.value = false
@@ -257,7 +257,7 @@ const handleSubmit = async () => {
     ElMessage.success('保存成功')
     dialogVisible.value = false
     fetchUsers()
-  } catch (error) {
+  } catch (error) { console.error(error);
     ElMessage.error('保存失败')
   }
 }
@@ -272,7 +272,7 @@ const handleDelete = async (id) => {
     await deleteUser(id)
     ElMessage.success('删除成功')
     fetchUsers()
-  } catch (error) {
+  } catch (error) { console.error(error);
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
     }

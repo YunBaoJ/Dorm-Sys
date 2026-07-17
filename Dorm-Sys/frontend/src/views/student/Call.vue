@@ -86,7 +86,7 @@ const fetchMyCalls = async () => {
   try {
     const res = await request({ url: '/callRecord/list', method: 'get', params: { studentId: userStore.userInfo?.id } })
     myCalls.value = res || []
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('获取通话记录失败')
   } finally {
     loading.value = false
@@ -113,7 +113,7 @@ const handleSubmit = async () => {
     form.value.topic = ''
     form.value.targetPerson = ''
     fetchMyCalls()
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('预约提交失败')
   } finally {
     submitting.value = false

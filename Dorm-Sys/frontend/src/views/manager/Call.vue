@@ -48,7 +48,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Video, RefreshCw } from '@lucide/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import request from '../../utils/request'
+import { getCalls, saveCall } from '../../api/call'
 
 const calls = ref([])
 const activeTab = ref('PENDING')
@@ -61,9 +61,9 @@ const filteredCalls = computed(() => {
 const fetchCalls = async () => {
   loading.value = true
   try {
-    const res = await request({ url: '/callRecord/list', method: 'get' })
+    const res = await getCalls()
     calls.value = res || []
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('获取列表失败')
   } finally {
     loading.value = false
@@ -75,17 +75,13 @@ const updateStatus = async (row, newStatus) => {
   try {
     await ElMessageBox.confirm(actionText, '提示', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
     
-    await request({
-      url: '/callRecord/update',
-      method: 'post',
-      data: {
-        id: row.id,
-        status: newStatus
-      }
+    await saveCall({
+      id: row.id,
+      status: newStatus
     })
     ElMessage.success('操作成功')
     fetchCalls()
-  } catch (e) {
+  } catch (e) { console.error(e);
     if (e !== 'cancel') ElMessage.error('操作失败')
   }
 }

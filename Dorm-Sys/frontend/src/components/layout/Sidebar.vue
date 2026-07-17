@@ -87,6 +87,7 @@ const navMap = {
   dormmanager: [
     { path: '/dormmanager/workbench', label: '工作台', icon: ClipboardList },
     { path: '/dormmanager/checkin', label: '入住管理', icon: UserPlus },
+    { path: '/dormmanager/fee', label: '水电计费', icon: WalletCards },
     { path: '/dormmanager/repair', label: '报修处理', icon: Settings },
     { path: '/dormmanager/visitor', label: '访客登记', icon: UserCheck },
     { path: '/dormmanager/hygiene', label: '卫生检查', icon: FileCheck },

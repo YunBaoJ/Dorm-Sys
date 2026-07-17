@@ -19,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import com.dorm.backend.common.AuthUtils;
 
 @RestController
 @RequestMapping("/api/chat")
@@ -36,7 +37,7 @@ public class ChatController {
      */
     @PostMapping("/send")
     public Result<Boolean> send(@RequestBody ChatMessage msg) {
-        Long senderId = currentUserId();
+        Long senderId = AuthUtils.getCurrentUserId();
         if (senderId == null) return Result.error(401, "未登录");
         if (msg.getContent() == null || msg.getContent().isBlank() || msg.getContent().length() > 1000) {
             return Result.error(400, "消息内容长度应为1到1000字");
@@ -64,7 +65,7 @@ public class ChatController {
      */
     @GetMapping("/private/{targetUserId}")
     public Result<List<ChatMessage>> getPrivateMessages(@PathVariable Long targetUserId) {
-        Long myId = currentUserId();
+        Long myId = AuthUtils.getCurrentUserId();
         if (myId == null) return Result.error(401, "未登录");
         Bed myBed = currentBed(myId);
         Bed targetBed = currentBed(targetUserId);
@@ -88,7 +89,7 @@ public class ChatController {
 
     @GetMapping("/conversations")
     public Result<List<Map<String, Object>>> getPrivateConversations() {
-        Long myId = currentUserId();
+        Long myId = AuthUtils.getCurrentUserId();
         if (myId == null) return Result.error(401, "未登录");
         Bed myBed = currentBed(myId);
         if (myBed == null) return Result.success(new ArrayList<>());
@@ -133,7 +134,7 @@ public class ChatController {
      */
     @GetMapping("/group/{roomId}")
     public Result<List<ChatMessage>> getGroupMessages(@PathVariable Long roomId) {
-        Bed myBed = currentBed(currentUserId());
+        Bed myBed = currentBed(AuthUtils.getCurrentUserId());
         if (myBed == null || !Objects.equals(myBed.getRoomId(), roomId)) {
             return Result.error(403, "无权查看该宿舍群聊");
         }
@@ -173,7 +174,7 @@ public class ChatController {
         return bedService.getOne(query);
     }
 
-    private Long currentUserId() {
+    private Long AuthUtils.getCurrentUserId() {
         ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attr != null) {
             Object val = attr.getRequest().getAttribute("currentUserId");

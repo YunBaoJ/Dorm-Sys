@@ -43,7 +43,7 @@ const fetchNotices = async () => {
   loading.value = true
   try {
     notices.value = await getBusinessRecords('manager_messages', '已发布')
-  } catch (error) {
+  } catch (error) { console.error(error);
     ElMessage.error('获取公告失败')
   } finally {
     loading.value = false

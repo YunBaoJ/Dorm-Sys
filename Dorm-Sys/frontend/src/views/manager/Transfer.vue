@@ -182,7 +182,7 @@ const fetchTransfers = async () => {
       time: a.createTime ? a.createTime.replace('T', ' ').substring(0, 16) : '',
       avatar: ''
     }))
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('获取调宿申请列表失败')
   } finally {
     loading.value = false
@@ -196,7 +196,7 @@ const handleApprove = async (app) => {
     await saveTransfer({ ...app, status: 'APPROVED' })
     ElMessage.success('已批准')
     fetchTransfers()
-  } catch (e) { ElMessage.error('操作失败') }
+  } catch (e) { console.error(e); ElMessage.error('操作失败') }
 }
 
 const handleReject = async (app) => {
@@ -204,7 +204,7 @@ const handleReject = async (app) => {
     await saveTransfer({ ...app, status: 'REJECTED' })
     ElMessage.success('已驳回')
     fetchTransfers()
-  } catch (e) { ElMessage.error('操作失败') }
+  } catch (e) { console.error(e); ElMessage.error('操作失败') }
 }
 
 const pendingCount = computed(() => applications.value.filter(a => a.status === 'PENDING').length)

@@ -192,7 +192,7 @@ const fetchRecords = async () => {
       inspector: r.inspectorName || '未知',
       time: r.checkDate ? r.checkDate.replace('T', ' ') : ''
     }))
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('获取卫生检查记录失败')
   } finally {
     loading.value = false
@@ -202,7 +202,7 @@ const fetchRecords = async () => {
 const fetchRooms = async () => {
   try {
     rooms.value = await getRooms()
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('获取房间列表失败')
   }
 }
@@ -239,7 +239,7 @@ const handleSubmit = async () => {
     ElMessage.success('录入成功')
     dialogVisible.value = false
     fetchRecords()
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('录入失败')
   } finally {
     submitting.value = false
@@ -252,7 +252,7 @@ const handleDelete = async (id) => {
     await deleteHygieneRecord(id)
     ElMessage.success('删除成功')
     fetchRecords()
-  } catch (e) {
+  } catch (e) { console.error(e);
     if (e !== 'cancel') ElMessage.error('删除失败')
   }
 }

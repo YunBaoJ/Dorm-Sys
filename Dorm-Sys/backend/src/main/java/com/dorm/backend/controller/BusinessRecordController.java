@@ -11,6 +11,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import com.dorm.backend.common.AuthUtils;
 
 @RestController
 @RequestMapping("/api/businessRecord")
@@ -29,8 +30,8 @@ public class BusinessRecordController {
         if (status != null && !status.isBlank()) {
             queryWrapper.eq("status", status);
         }
-        if (isStudent() && isStudentOwnedType(type)) {
-            queryWrapper.eq("creator_id", currentUserId());
+        if (AuthUtils.isStudent() && isStudentOwnedType(type)) {
+            queryWrapper.eq("creator_id", AuthUtils.getCurrentUserId());
         }
         queryWrapper.orderByDesc("create_time");
         return Result.success(businessRecordService.list(queryWrapper));
@@ -45,8 +46,8 @@ public class BusinessRecordController {
             return Result.error(400, "标题不能为空");
         }
 
-        if (isStudent() && isStudentOwnedType(record.getType())) {
-            Long userId = currentUserId();
+        if (AuthUtils.isStudent() && isStudentOwnedType(record.getType())) {
+            Long userId = AuthUtils.getCurrentUserId();
             if (record.getId() != null) {
                 BusinessRecord existing = businessRecordService.getById(record.getId());
                 if (existing == null || !userId.equals(existing.getCreatorId())) {
@@ -71,7 +72,7 @@ public class BusinessRecordController {
 
     @DeleteMapping("/{id}")
     public Result<Boolean> delete(@PathVariable Long id) {
-        if (isStudent()) {
+        if (AuthUtils.isStudent()) {
             return Result.error(403, "学生不能删除业务记录");
         }
         return Result.success(businessRecordService.removeById(id));
@@ -79,26 +80,6 @@ public class BusinessRecordController {
 
     private boolean isStudentOwnedType(String type) {
         return type != null && type.startsWith("student_");
-    }
-
-    private boolean isStudent() {
-        return "student".equals(currentUserRole());
-    }
-
-    private Long currentUserId() {
-        Object value = currentRequestAttribute("currentUserId");
-        return value instanceof Number number ? number.longValue() : null;
-    }
-
-    private String currentUserRole() {
-        Object value = currentRequestAttribute("currentUserRole");
-        return value == null ? null : value.toString();
-    }
-
-    private Object currentRequestAttribute(String name) {
-        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
-            return attributes.getRequest().getAttribute(name);
-        }
-        return null;
+    }        return null;
     }
 }

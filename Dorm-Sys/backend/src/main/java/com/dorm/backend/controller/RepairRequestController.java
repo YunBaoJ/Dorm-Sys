@@ -20,6 +20,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import com.dorm.backend.common.AuthUtils;
 
 @RestController
 @RequestMapping("/api/repairRequest")
@@ -44,7 +45,7 @@ public class RepairRequestController {
     public Result<List<RepairRequest>> list(@RequestParam(required = false) Long submitterId, 
                                             @RequestParam(required = false) String status) {
         QueryWrapper<RepairRequest> queryWrapper = new QueryWrapper<>();
-        if (isStudent()) submitterId = currentUserId();
+        if (AuthUtils.AuthUtils.isStudent()) submitterId = AuthUtils.getCurrentUserId();
         if (submitterId != null) queryWrapper.eq("submitter_id", submitterId);
         if (status != null && !status.isEmpty()) queryWrapper.eq("status", status);
         
@@ -81,8 +82,8 @@ public class RepairRequestController {
 
     @PostMapping("/save")
     public Result<Boolean> save(@RequestBody RepairRequest repairRequest) {
-        if (isStudent()) {
-            Long userId = currentUserId();
+        if (AuthUtils.AuthUtils.isStudent()) {
+            Long userId = AuthUtils.getCurrentUserId();
             if (repairRequest.getId() != null) {
                 RepairRequest existing = repairRequestService.getById(repairRequest.getId());
                 if (existing == null || !userId.equals(existing.getSubmitterId())) {
@@ -111,23 +112,9 @@ public class RepairRequestController {
 
     @DeleteMapping("/{id}")
     public Result<Boolean> delete(@PathVariable Long id) {
-        if (isStudent()) return Result.error(403, "学生不能删除报修记录");
+        if (AuthUtils.AuthUtils.isStudent()) return Result.error(403, "学生不能删除报修记录");
         return Result.success(repairRequestService.removeById(id));
     }
-
-    private boolean isStudent() { return "student".equals(currentUserRole()); }
-    private Long currentUserId() {
-        Object value = currentRequestAttribute("currentUserId");
-        return value instanceof Number number ? number.longValue() : null;
-    }
-    private String currentUserRole() {
-        Object value = currentRequestAttribute("currentUserRole");
-        return value == null ? null : value.toString();
-    }
-    private Object currentRequestAttribute(String name) {
-        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
-            return attributes.getRequest().getAttribute(name);
-        }
         return null;
     }
 }

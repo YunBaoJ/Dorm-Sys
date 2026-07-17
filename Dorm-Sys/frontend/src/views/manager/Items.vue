@@ -66,9 +66,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Package, Plus } from '@lucide/vue'
+import { PackageSearch, Plus } from '@lucide/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import request from '../../utils/request'
+import { getItems, saveItem } from '../../api/item'
 
 const items = ref([])
 const activeTab = ref('PENDING')
@@ -84,9 +84,9 @@ const filteredItems = computed(() => {
 const fetchItems = async () => {
   loading.value = true
   try {
-    const res = await request({ url: '/itemRecord/list', method: 'get' })
+    const res = await getItems()
     items.value = res || []
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('获取列表失败')
   } finally {
     loading.value = false
@@ -105,20 +105,15 @@ const submitAdd = async () => {
   }
   submitting.value = true
   try {
-    await request({
-      url: '/itemRecord/add',
-      method: 'post',
-      data: {
-        title: form.value.title,
-        owner: form.value.owner,
-        description: form.value.description,
-        status: 'PENDING'
-      }
+    await saveItem({
+      itemName: form.value.title,
+      studentName: form.value.owner,
+      status: 'BORROWED'
     })
     ElMessage.success('登记成功')
     dialogVisible.value = false
     fetchItems()
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('登记失败')
   } finally {
     submitting.value = false
@@ -126,17 +121,12 @@ const submitAdd = async () => {
 }
 
 const updateStatus = async (row, newStatus) => {
-  const actionText = newStatus === 'RELEASED' ? '确认放行该物品？' : '确认物品已归还？'
   try {
-    await ElMessageBox.confirm(actionText, '提示', { type: 'warning' })
-    await request({
-      url: '/itemRecord/update',
-      method: 'post',
-      data: { id: row.id, status: newStatus }
-    })
+    await ElMessageBox.confirm('确认该物品已归还？', '提示', { type: 'warning' })
+    await saveItem({ id: row.id, status: 'RETURNED' })
     ElMessage.success('操作成功')
     fetchItems()
-  } catch (e) {
+  } catch (e) { console.error(e);
     if (e !== 'cancel') ElMessage.error('操作失败')
   }
 }

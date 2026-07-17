@@ -17,6 +17,25 @@
             </div>
           </div>
 
+<template>
+  <div class="dorm-container">
+    <el-row :gutter="24" class="main-row">
+      <!-- Left Column: Dorm Profile & Roommates -->
+      <el-col :span="8">
+        <el-card shadow="never" class="profile-card">
+          <!-- Top House Info -->
+          <div class="dorm-header">
+            <div class="dorm-icon-box">
+              <el-icon :size="40" color="var(--el-color-primary)"><component :is="Home" /></el-icon>
+            </div>
+            <h2 class="dorm-title">{{ myBuilding?.name || '未知' }} · {{ myRoom?.roomNumber || '未知' }}</h2>
+            <div class="dorm-tags">
+              <el-tag size="small" effect="plain">{{ myRoom?.floor || '-' }}层</el-tag>
+              <el-tag size="small" effect="plain">{{ myRoom?.capacity || 4 }}人间</el-tag>
+              <el-tag size="small" type="primary" effect="dark">{{ myBed?.bedNumber ? myBed.bedNumber.split('-')[1] + '号床位' : '未分配' }}</el-tag>
+            </div>
+          </div>
+
           <!-- Dorm Meta Details -->
           <div class="dorm-meta-list">
             <div class="meta-item">
@@ -25,7 +44,7 @@
             </div>
             <div class="meta-item">
               <span class="meta-label">所属校区</span>
-              <span class="meta-value">主校区 · 西区</span>
+              <span class="meta-value">{{ dash.campus || '主校区' }}</span>
             </div>
             <div class="meta-item">
               <span class="meta-label">责任宿管</span>
@@ -113,37 +132,37 @@
             <el-card shadow="never" class="facility-card">
               <div class="card-header">
                 <span>设施运行状态</span>
-                <el-button link type="primary" style="display:flex;align-items:center;gap:4px">
+                <el-button link type="primary" style="display:flex;align-items:center;gap:4px" @click="fetchDashboard">
                   <el-icon><component :is="RefreshCw" /></el-icon>刷新
                 </el-button>
               </div>
               <div class="facility-grid">
                 <div class="fac-item">
-                  <div class="fac-icon-box bg-blue"><el-icon><component :is="Lightbulb" /></el-icon></div>
+                  <div class="fac-icon-box" :class="dash.lightIssue ? 'bg-red' : 'bg-blue'"><el-icon><component :is="Lightbulb" /></el-icon></div>
                   <div class="fac-info">
                     <div class="fac-name">照明灯具</div>
-                    <div class="fac-status">运行中</div>
+                    <div class="fac-status" :class="dash.lightIssue ? 'text-red' : ''">{{ dash.lightIssue ? '维修中' : '运行中' }}</div>
                   </div>
                 </div>
                 <div class="fac-item">
-                  <div class="fac-icon-box bg-blue"><el-icon><component :is="Fan" /></el-icon></div>
+                  <div class="fac-icon-box" :class="dash.acIssue ? 'bg-red' : 'bg-blue'"><el-icon><component :is="Fan" /></el-icon></div>
                   <div class="fac-info">
                     <div class="fac-name">空调设备</div>
-                    <div class="fac-status">良好</div>
+                    <div class="fac-status" :class="dash.acIssue ? 'text-red' : ''">{{ dash.acIssue ? '维修中' : '良好' }}</div>
                   </div>
                 </div>
                 <div class="fac-item">
-                  <div class="fac-icon-box bg-blue"><el-icon><component :is="Wifi" /></el-icon></div>
+                  <div class="fac-icon-box" :class="dash.netIssue ? 'bg-red' : 'bg-blue'"><el-icon><component :is="Wifi" /></el-icon></div>
                   <div class="fac-info">
                     <div class="fac-name">宿舍网络</div>
-                    <div class="fac-status">已连接</div>
+                    <div class="fac-status" :class="dash.netIssue ? 'text-red' : ''">{{ dash.netIssue ? '维修中' : '已连接' }}</div>
                   </div>
                 </div>
                 <div class="fac-item">
-                  <div class="fac-icon-box bg-yellow"><el-icon><component :is="Droplet" /></el-icon></div>
+                  <div class="fac-icon-box" :class="dash.waterIssue ? 'bg-red' : 'bg-yellow'"><el-icon><component :is="Droplet" /></el-icon></div>
                   <div class="fac-info">
                     <div class="fac-name">直饮水</div>
-                    <div class="fac-status text-yellow">滤芯待换</div>
+                    <div class="fac-status" :class="dash.waterIssue ? 'text-red' : 'text-yellow'">{{ dash.waterIssue ? '维修中' : '运行中' }}</div>
                   </div>
                 </div>
               </div>
@@ -156,7 +175,7 @@
               <div class="card-header">卫生月度指标</div>
               <div class="hygiene-content">
                 <div class="chart-box">
-                  <el-progress type="dashboard" :percentage="95" :width="120" color="#3b82f6" :stroke-width="8">
+                  <el-progress type="dashboard" :percentage="dash.hygieneAverageScore || 0" :width="120" color="#3b82f6" :stroke-width="8">
                     <template #default="{ percentage }">
                       <div class="score-value">
                         <span class="num">{{ percentage }}</span>
@@ -169,12 +188,12 @@
                 <div class="hygiene-stats">
                   <div class="h-stat-row">
                     <span class="h-label">全楼排名</span>
-                    <span class="h-val">第 12 名</span>
+                    <span class="h-val">第 {{ dash.hygieneRank || 1 }} 名</span>
                   </div>
                   <el-divider border-style="dashed" />
                   <div class="h-stat-row">
                     <span class="h-label">上次检查</span>
-                    <span class="h-val">98 (优秀)</span>
+                    <span class="h-val">{{ dash.hygieneCurrentScore || 100 }} 分</span>
                   </div>
                 </div>
               </div>
@@ -227,6 +246,18 @@ const myBed = ref(null)
 const myBuilding = ref(null)
 const roommates = ref([])
 const checkInDate = ref('-')
+const dash = ref({})
+
+const fetchDashboard = async () => {
+  try {
+    const res = await request({ url: '/dashboard/dorm', method: 'get' })
+    if (res) {
+      dash.value = res
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
 
 // Combine me + roommates into one list for rendering
 const allOccupants = computed(() => {
@@ -302,7 +333,10 @@ const fetchDormInfo = async () => {
   }
 }
 
-onMounted(() => fetchDormInfo())
+onMounted(() => {
+  fetchDormInfo()
+  fetchDashboard()
+})
 </script>
 
 <style scoped>
@@ -508,191 +542,6 @@ onMounted(() => fetchDormInfo())
   .group-chat-btn { flex-shrink: 0; }
   .roommate-item { padding: 12px; }
 }
-
-/* Right Stack */
-.right-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-/* Bed Layout Card */
-.layout-wrapper {
-  padding: 40px 0;
-  display: flex;
-  justify-content: center;
-}
-.floor-plan {
-  position: relative;
-  width: 100%;
-  max-width: 600px;
-  height: 300px;
-}
-.plan-border {
-  position: absolute;
-  top: 0; left: 24px; right: 24px; bottom: 0;
-  border: 4px solid #cbd5e1;
-  border-radius: 12px;
-}
-.plan-border::before {
-  content: '';
-  position: absolute;
-  top: -4px; left: 10%; width: 60px; height: 8px;
-  background: #fff;
-}
-.plan-border::after {
-  content: '';
-  position: absolute;
-  bottom: -4px; right: 10%; width: 80px; height: 8px;
-  background: #fff;
-}
-.door-label {
-  position: absolute;
-  top: -12px;
-  left: calc(24px + 10% + 15px);
-  background: #fff;
-  padding: 0 12px;
-  color: #94a3b8;
-  font-weight: 500;
-  font-size: 14px;
-}
-.balcony-label {
-  position: absolute;
-  bottom: -12px;
-  right: calc(24px + 10% + 15px);
-  background: #fff;
-  padding: 0 12px;
-  color: #94a3b8;
-  font-weight: 500;
-  font-size: 14px;
-}
-.beds-grid {
-  position: absolute;
-  top: 50px; left: 60px; right: 60px; bottom: 50px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 50px 80px;
-  place-items: center;
-}
-.bed-slot {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-.bed-box {
-  width: 100px;
-  height: 56px;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
-  background: #f8fafc;
-  display: grid;
-  place-items: center;
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-  position: relative;
-  transition: all 0.3s ease;
-}
-.bed-number {
-  font-weight: 600;
-  color: #64748b;
-  font-size: 16px;
-}
-.bed-owner {
-  color: #475569;
-  font-size: 15px;
-  font-weight: 500;
-  transition: color 0.3s ease;
-}
-
-/* My bed - blue accent */
-.bed-slot.is-mine .bed-box {
-  border-color: #3b82f6;
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15), 0 4px 12px rgba(59, 130, 246, 0.12);
-}
-.bed-slot.is-mine .bed-number {
-  color: #1d4ed8;
-  font-weight: 700;
-}
-.bed-slot.is-mine .bed-owner {
-  color: #2563eb;
-  font-weight: 700;
-}
-.my-bed-badge {
-  position: absolute;
-  top: -10px;
-  right: -10px;
-  background: #3b82f6;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 8px;
-  white-space: nowrap;
-  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
-}
-
-/* Occupied by roommate */
-.bed-slot.is-occupied .bed-box {
-  border-color: #94a3b8;
-  background: #f1f5f9;
-}
-.bed-slot.is-occupied .bed-number {
-  color: #475569;
-}
-
-/* Empty bed */
-.bed-slot.is-empty .bed-box {
-  border: 2px dashed #e2e8f0;
-  background: #fff;
-}
-.bed-slot.is-empty .bed-number {
-  color: #cbd5e1;
-}
-.bed-slot.is-empty .bed-owner {
-  color: #cbd5e1;
-  font-weight: 400;
-}
-
-/* Facility Grid */
-.facility-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
-.fac-item {
-  display: flex;
-  align-items: center;
-  padding: 20px;
-  background: #f8fafc;
-  border-radius: 16px;
-  gap: 16px;
-}
-.fac-icon-box {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  display: grid;
-  place-items: center;
-  font-size: 22px;
-}
-.bg-blue {
-  background: #eef2ff;
-  color: #3b82f6;
-}
-.bg-yellow {
-  background: #fef3c7;
-  color: #d97706;
-}
-.text-yellow {
-  color: #d97706 !important;
-}
-.fac-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1e293b;
-  margin-bottom: 6px;
 }
 .fac-status {
   font-size: 14px;

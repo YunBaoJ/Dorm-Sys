@@ -18,6 +18,9 @@ import com.dorm.backend.service.AdminInfoService;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import com.dorm.backend.common.AuthUtils;
+import com.dorm.backend.service.BedService;
+import com.dorm.backend.entity.Bed;
 
 @RestController
 @RequestMapping("/api/user")
@@ -34,6 +37,9 @@ public class UserController {
     
     @Autowired
     private AdminInfoService adminInfoService;
+
+    @Autowired
+    private BedService bedService;
 
     @GetMapping("/list")
     public Result<List<User>> list() {
@@ -55,10 +61,31 @@ public class UserController {
         return Result.success(users);
     }
 
+    @GetMapping("/unassigned")
+    public Result<List<User>> getUnassignedStudents(@RequestParam(required = false) Integer gender) {
+        List<Long> occupiedIds = bedService.list().stream()
+            .filter(b -> b.getStudentId() != null)
+            .map(Bed::getStudentId)
+            .collect(Collectors.toList());
+            
+        QueryWrapper<User> qw = new QueryWrapper<>();
+        qw.eq("role", "student");
+        if (gender != null) {
+            qw.eq("gender", gender);
+        }
+        if (!occupiedIds.isEmpty()) {
+            qw.notIn("id", occupiedIds);
+        }
+        
+        List<User> users = userService.list(qw);
+        for(User u : users) hidePassword(u);
+        return Result.success(users);
+    }
+
     @PostMapping("/save")
     public Result<Boolean> save(@RequestBody User user) {
-        if (!"admin".equals(currentUserRole())) {
-            Long userId = currentUserId();
+        if (!"admin".equals(AuthUtils.getCurrentUserRole())) {
+            Long userId = AuthUtils.getCurrentUserId();
             User existing = userService.getById(userId);
             if (existing == null) {
                 return Result.error(404, "用户不存在");
@@ -117,7 +144,7 @@ public class UserController {
 
     @DeleteMapping("/{id}")
     public Result<Boolean> delete(@PathVariable Long id) {
-        if (!"admin".equals(currentUserRole())) {
+        if (!"admin".equals(AuthUtils.getCurrentUserRole())) {
             return Result.error(403, "仅管理员可以删除用户");
         }
         return Result.success(userService.removeById(id));
@@ -125,22 +152,6 @@ public class UserController {
 
     private void hidePassword(User user) {
         user.setPassword(null);
-    }
-
-    private Long currentUserId() {
-        Object value = currentRequestAttribute("currentUserId");
-        return value instanceof Number number ? number.longValue() : null;
-    }
-
-    private String currentUserRole() {
-        Object value = currentRequestAttribute("currentUserRole");
-        return value == null ? null : value.toString();
-    }
-
-    private Object currentRequestAttribute(String name) {
-        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
-            return attributes.getRequest().getAttribute(name);
-        }
-        return null;
+    }        return null;
     }
 }

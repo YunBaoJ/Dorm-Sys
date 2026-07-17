@@ -14,6 +14,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import com.dorm.backend.common.AuthUtils;
 
 @RestController
 @RequestMapping("/api/visitorRecord")
@@ -28,7 +29,7 @@ public class VisitorRecordController {
     @GetMapping("/list")
     public Result<List<VisitorRecord>> list(@RequestParam(required = false) Long studentId) {
         QueryWrapper<VisitorRecord> qw = new QueryWrapper<>();
-        if (isStudent()) studentId = currentUserId();
+        if (AuthUtils.AuthUtils.isStudent()) studentId = AuthUtils.getCurrentUserId();
         if (studentId != null) qw.eq("student_id", studentId);
         qw.orderByDesc("create_time");
         
@@ -48,8 +49,8 @@ public class VisitorRecordController {
 
     @PostMapping("/save")
     public Result<Boolean> save(@RequestBody VisitorRecord visitorRecord) {
-        if (isStudent()) {
-            Long userId = currentUserId();
+        if (AuthUtils.AuthUtils.isStudent()) {
+            Long userId = AuthUtils.getCurrentUserId();
             if (visitorRecord.getId() != null) {
                 VisitorRecord existing = visitorRecordService.getById(visitorRecord.getId());
                 if (existing == null || !userId.equals(existing.getStudentId())) {
@@ -66,23 +67,9 @@ public class VisitorRecordController {
 
     @DeleteMapping("/{id}")
     public Result<Boolean> delete(@PathVariable Long id) {
-        if (isStudent()) return Result.error(403, "学生不能删除访客记录");
+        if (AuthUtils.AuthUtils.isStudent()) return Result.error(403, "学生不能删除访客记录");
         return Result.success(visitorRecordService.removeById(id));
     }
-
-    private boolean isStudent() { return "student".equals(currentUserRole()); }
-    private Long currentUserId() {
-        Object value = currentRequestAttribute("currentUserId");
-        return value instanceof Number number ? number.longValue() : null;
-    }
-    private String currentUserRole() {
-        Object value = currentRequestAttribute("currentUserRole");
-        return value == null ? null : value.toString();
-    }
-    private Object currentRequestAttribute(String name) {
-        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
-            return attributes.getRequest().getAttribute(name);
-        }
         return null;
     }
 }

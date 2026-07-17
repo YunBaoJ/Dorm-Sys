@@ -187,7 +187,7 @@ const fetchTickets = async () => {
       statusType: statusTypeMap[t.status] || 'info',
       time: t.createTime ? t.createTime.replace('T', ' ').substring(0, 16) : ''
     }))
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('获取工单列表失败')
   } finally {
     loading.value = false
@@ -201,7 +201,7 @@ const handleAccept = async (t) => {
     await saveRepair({ id: t.id, submitterId: t.submitterId, roomId: t.roomId, type: t.type, description: t.description, status: 'PROCESSING' })
     ElMessage.success('已接单')
     fetchTickets()
-  } catch (e) { ElMessage.error('操作失败') }
+  } catch (e) { console.error(e); ElMessage.error('操作失败') }
 }
 
 const handleComplete = async (t) => {
@@ -209,7 +209,7 @@ const handleComplete = async (t) => {
     await saveRepair({ id: t.id, submitterId: t.submitterId, roomId: t.roomId, type: t.type, description: t.description, status: 'COMPLETED' })
     ElMessage.success('已标记完工')
     fetchTickets()
-  } catch (e) { ElMessage.error('操作失败') }
+  } catch (e) { console.error(e); ElMessage.error('操作失败') }
 }
 
 const pendingCount = computed(() => tickets.value.filter(t => t.status === 'PENDING').length)

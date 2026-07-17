@@ -13,39 +13,33 @@
                 <p>全局数据监控 · 资源动态调度</p>
               </div>
             </div>
-            <div class="hero-time">
-              <div class="time-main">22:18</div>
-              <div class="time-sub">3月27日星期五</div>
+            <div class="hero-actions" style="display: flex; align-items: center; gap: 24px;">
+              <WeatherWidget />
+              <div class="hero-time">
+                <div class="time-main">22:18</div>
+                <div class="time-sub">3月27日星期五</div>
+              </div>
             </div>
           </div>
         </el-card>
 
         <!-- Alerts -->
-        <div class="alerts-wrapper">
+        <div class="alerts-wrapper" v-loading="loading">
           <el-alert
-            title="3号楼当前有 12 个电力故障报修超过 24 小时未处理。"
-            type="warning"
+            v-for="(alert, index) in alerts"
+            :key="index"
+            :title="alert.title"
+            :type="alert.type"
             show-icon
             :closable="false"
             class="custom-alert"
           >
             <template #title>
-              <span class="alert-text">3号楼当前有 12 个电力故障报修超过 24 小时未处理。</span>
-              <el-button size="small" type="warning" plain class="alert-btn">立即处理</el-button>
+              <span class="alert-text">{{ alert.title }}</span>
+              <el-button size="small" :type="alert.type" plain class="alert-btn" @click="$router.push(alert.url)">{{ alert.action }}</el-button>
             </template>
           </el-alert>
-          <el-alert
-            title="异常晚归预警"
-            type="error"
-            show-icon
-            :closable="false"
-            class="custom-alert"
-          >
-            <template #title>
-              <span class="alert-text">异常晚归预警</span>
-              <el-button size="small" type="danger" plain class="alert-btn">立即处理</el-button>
-            </template>
-          </el-alert>
+          <el-empty v-if="alerts.length === 0" description="暂无系统异常预警" :image-size="60"></el-empty>
         </div>
 
         <!-- Building Distribution -->
@@ -60,34 +54,31 @@
             </div>
           </template>
           
-          <el-row :gutter="20">
-            <el-col :span="12">
-              <div class="building-item">
-                <div class="building-head">
-                  <span class="building-name">明德楼</span>
-                  <span class="building-percent">60%</span>
+          <el-row :gutter="20" v-loading="loading">
+            <el-col :span="viewMode === 'grid' ? 12 : 24" v-for="b in pagedBuildings" :key="b.id" style="margin-bottom: 16px;">
+              <div class="building-item" :style="viewMode === 'list' ? 'display: flex; align-items: center; gap: 20px;' : ''">
+                <div class="building-head" :style="viewMode === 'list' ? 'margin-bottom: 0; min-width: 120px;' : ''">
+                  <span class="building-name">{{ b.name }}</span>
+                  <span class="building-percent">{{ b.percentage }}%</span>
                 </div>
-                <el-progress :percentage="60" :show-text="false" :stroke-width="8" color="#3b82f6" />
-                <div class="building-foot">
-                  <span class="building-meta">12/20 床</span>
-                  <el-tag size="small" type="primary" effect="plain">运行正常</el-tag>
-                </div>
-              </div>
-            </el-col>
-            <el-col :span="12">
-              <div class="building-item">
-                <div class="building-head">
-                  <span class="building-name">至善楼</span>
-                  <span class="building-percent">33%</span>
-                </div>
-                <el-progress :percentage="33" :show-text="false" :stroke-width="8" color="#3b82f6" />
-                <div class="building-foot">
-                  <span class="building-meta">4/12 床</span>
-                  <el-tag size="small" type="primary" effect="plain">运行正常</el-tag>
+                <el-progress :percentage="b.percentage" :show-text="false" :stroke-width="8" color="#3b82f6" :style="viewMode === 'list' ? 'flex: 1;' : ''" />
+                <div class="building-foot" :style="viewMode === 'list' ? 'margin-top: 0; min-width: 150px; justify-content: flex-end; gap: 12px;' : ''">
+                  <span class="building-meta">{{ b.occupiedBeds }}/{{ b.totalBeds }} 床</span>
+                  <el-tag size="small" type="primary" effect="plain">{{ b.status }}</el-tag>
                 </div>
               </div>
             </el-col>
           </el-row>
+          <div style="display: flex; justify-content: flex-end; margin-top: 8px;" v-if="buildings.length > pageSize">
+            <el-pagination
+              background
+              layout="prev, pager, next"
+              :total="buildings.length"
+              :page-size="pageSize"
+              v-model:current-page="currentPage"
+              @current-change="handleCurrentChange"
+            />
+          </div>
         </el-card>
 
         <!-- System Dynamics -->
@@ -95,7 +86,7 @@
           <template #header>
             <div class="card-header">
               <span>最近系统动态</span>
-              <el-button type="primary" link>查看全部</el-button>
+              <el-button type="primary" link @click="ElMessage.info('系统动态日志页面正在开发中')">查看全部</el-button>
             </div>
           </template>
           <el-timeline>
@@ -127,33 +118,33 @@
           <template #header>
             <div class="card-header"><span>业务概览</span></div>
           </template>
-          <div class="biz-list">
+          <div class="biz-list" v-loading="loading">
             <div class="biz-item">
               <div class="biz-icon bg-blue"><el-icon><component :is="User" /></el-icon></div>
               <div class="biz-info">
                 <div class="biz-label">注册学生</div>
-                <div class="biz-value">16 <span>人</span></div>
+                <div class="biz-value">{{ stats.studentCount || 0 }} <span>人</span></div>
               </div>
             </div>
             <div class="biz-item">
               <div class="biz-icon bg-orange"><el-icon><component :is="Users" /></el-icon></div>
               <div class="biz-info">
                 <div class="biz-label">宿管团队</div>
-                <div class="biz-value">2 <span>位</span></div>
+                <div class="biz-value">{{ stats.managerCount || 0 }} <span>位</span></div>
               </div>
             </div>
             <div class="biz-item">
               <div class="biz-icon bg-cyan"><el-icon><component :is="Building" /></el-icon></div>
               <div class="biz-info">
                 <div class="biz-label">管辖楼栋</div>
-                <div class="biz-value">2 <span>栋</span></div>
+                <div class="biz-value">{{ stats.buildingCount || 0 }} <span>栋</span></div>
               </div>
             </div>
             <div class="biz-item">
               <div class="biz-icon bg-yellow"><el-icon><component :is="Home" /></el-icon></div>
               <div class="biz-info">
                 <div class="biz-label">宿舍房间</div>
-                <div class="biz-value">20 <span>间</span></div>
+                <div class="biz-value">{{ stats.roomCount || 0 }} <span>间</span></div>
               </div>
             </div>
           </div>
@@ -195,15 +186,15 @@
             <div class="card-header"><span>管理工作台</span></div>
           </template>
           <div class="workbench-grid">
-            <div class="wb-btn">
+            <div class="wb-btn" @click="router.push('/admin/users/list')">
               <el-icon :size="24" color="#3b82f6"><component :is="User" /></el-icon>
               <span>用户</span>
             </div>
-            <div class="wb-btn">
+            <div class="wb-btn" @click="router.push('/admin/resources/buildings')">
               <el-icon :size="24" color="#3b82f6"><component :is="Building" /></el-icon>
               <span>楼栋</span>
             </div>
-            <div class="wb-btn">
+            <div class="wb-btn" @click="router.push('/admin/resources/rooms')">
               <el-icon :size="24" color="#3b82f6"><component :is="Home" /></el-icon>
               <span>房间</span>
             </div>
@@ -216,10 +207,34 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { Monitor, User, Users, Building, Home } from '@lucide/vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { Monitor, AlertTriangle, Info, MapPin, Search, ArrowRight, ShieldCheck, Download, CalendarDays, Key, CreditCard, User, Users, Building, Home } from '@lucide/vue'
+import request from '../../utils/request'
+import WeatherWidget from '../../components/WeatherWidget.vue'
+import { ElMessage } from 'element-plus'
+import { getStats, getBuildingStats, getAlerts } from '../../api/dashboard'
 
+const router = useRouter()
 const viewMode = ref('grid')
+const loading = ref(false)
+
+const stats = ref({})
+const buildings = ref([])
+const alerts = ref([])
+
+const currentPage = ref(1)
+const pageSize = ref(4)
+
+const pagedBuildings = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return buildings.value.slice(start, end)
+})
+
+const handleCurrentChange = (val) => {
+  currentPage.value = val
+}
 
 const activities = [
   {
@@ -247,6 +262,28 @@ const activities = [
     tag: 'admin'
   }
 ]
+
+const fetchData = async () => {
+  loading.value = true
+  try {
+    const [statsRes, buildingsRes, alertsRes] = await Promise.all([
+      getStats(),
+      getBuildingStats(),
+      getAlerts()
+    ])
+    stats.value = statsRes || {}
+    buildings.value = buildingsRes || []
+    alerts.value = alertsRes || []
+  } catch (error) {
+    console.error('Failed to fetch dashboard data', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchData()
+})
 </script>
 
 <style scoped>

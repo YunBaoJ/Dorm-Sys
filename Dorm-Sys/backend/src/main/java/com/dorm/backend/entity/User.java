@@ -16,6 +16,7 @@ public class User {
     private String password;
     private String role; // student, dormmanager, admin
     private String name;
+    private String gender;
     private String avatar;
     private String email;
     private String phone;

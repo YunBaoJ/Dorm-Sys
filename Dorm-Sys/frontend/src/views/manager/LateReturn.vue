@@ -71,7 +71,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Clock, Plus } from '@lucide/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import request from '../../utils/request'
+import { getLateReturns, saveLateReturn } from '../../api/lateReturn'
 
 const records = ref([])
 const activeTab = ref('PENDING')
@@ -87,9 +87,9 @@ const filteredRecords = computed(() => {
 const fetchRecords = async () => {
   loading.value = true
   try {
-    const res = await request({ url: '/lateReturnRecord/list', method: 'get' })
+    const res = await getLateReturns()
     records.value = res || []
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('获取列表失败')
   } finally {
     loading.value = false
@@ -112,22 +112,18 @@ const submitAdd = async () => {
     // format as ISO without Z to match LocalDateTime roughly
     const returnTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, -1)
     
-    await request({
-      url: '/lateReturnRecord/add',
-      method: 'post',
-      data: {
-        studentName: form.value.studentName,
-        studentId: form.value.studentId ? parseInt(form.value.studentId) : null,
-        roomNumber: form.value.roomNumber,
-        reason: form.value.reason,
-        status: 'PENDING',
-        returnTime: returnTime
-      }
+    await saveLateReturn({
+      studentName: form.value.studentName,
+      studentId: form.value.studentId ? parseInt(form.value.studentId) : null,
+      roomNumber: form.value.roomNumber,
+      reason: form.value.reason,
+      status: 'PENDING',
+      returnTime: returnTime
     })
     ElMessage.success('登记成功')
     dialogVisible.value = false
     fetchRecords()
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('登记失败')
   } finally {
     submitting.value = false
@@ -138,14 +134,10 @@ const updateStatus = async (row, newStatus) => {
   const actionText = newStatus === 'NOTIFIED' ? '确认通报该记录？' : '确认归档该记录？'
   try {
     await ElMessageBox.confirm(actionText, '提示', { type: 'warning' })
-    await request({
-      url: '/lateReturnRecord/update',
-      method: 'post',
-      data: { id: row.id, status: newStatus }
-    })
+    await saveLateReturn({ id: row.id, status: newStatus })
     ElMessage.success('操作成功')
     fetchRecords()
-  } catch (e) {
+  } catch (e) { console.error(e);
     if (e !== 'cancel') ElMessage.error('操作失败')
   }
 }

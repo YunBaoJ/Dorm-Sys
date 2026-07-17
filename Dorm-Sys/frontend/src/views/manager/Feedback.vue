@@ -102,7 +102,7 @@ const fetchFeedbacks = async () => {
   try {
     const res = await request({ url: '/businessRecord/list', method: 'get', params: { type: 'feedback' } })
     feedbacks.value = res || []
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('获取列表失败')
   } finally {
     loading.value = false
@@ -145,7 +145,7 @@ const submitReply = async () => {
     ElMessage.success('回复成功')
     dialogVisible.value = false
     fetchFeedbacks()
-  } catch (e) {
+  } catch (e) { console.error(e);
     ElMessage.error('回复失败')
   } finally {
     submitting.value = false
