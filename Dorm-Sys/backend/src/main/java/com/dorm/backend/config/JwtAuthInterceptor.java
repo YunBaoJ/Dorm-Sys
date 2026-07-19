@@ -35,6 +35,14 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
             request.setAttribute("currentUserId", claims.get("userId"));
             request.setAttribute("currentUsername", claims.get("username"));
             request.setAttribute("currentUserRole", claims.get("role"));
+            if (isAdminOnlyRead(request, String.valueOf(claims.get("role")))) {
+                writeForbidden(response, "仅管理员可以查看该资源");
+                return false;
+            }
+            if (isForbiddenStudentRead(request, String.valueOf(claims.get("role")))) {
+                writeForbidden(response, "学生无权查看宿舍管理数据");
+                return false;
+            }
             if (isForbiddenStudentMutation(request, String.valueOf(claims.get("role")))) {
                 writeForbidden(response, "学生无权修改宿舍管理资源");
                 return false;
@@ -67,6 +75,22 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
                 || path.startsWith("/api/bed/")
                 || path.startsWith("/api/feeBill/")
                 || (path.startsWith("/api/user/") && !"/api/user/save".equals(path));
+    }
+
+    private boolean isForbiddenStudentRead(HttpServletRequest request, String role) {
+        if (!"student".equals(role) || !"GET".equalsIgnoreCase(request.getMethod())) {
+            return false;
+        }
+        String path = request.getRequestURI();
+        return path.startsWith("/api/user/")
+                || path.startsWith("/api/bed/")
+                || path.equals("/api/dashboard/buildings");
+    }
+
+    private boolean isAdminOnlyRead(HttpServletRequest request, String role) {
+        if ("admin".equals(role) || !"GET".equalsIgnoreCase(request.getMethod())) return false;
+        String path = request.getRequestURI();
+        return path.equals("/api/dashboard/stats") || path.equals("/api/dashboard/alerts");
     }
 
     private void writeForbidden(HttpServletResponse response, String message) throws Exception {

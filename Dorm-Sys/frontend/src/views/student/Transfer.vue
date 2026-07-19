@@ -72,9 +72,10 @@
 import { ref, onMounted } from 'vue'
 import { Repeat2 } from '@lucide/vue'
 import { getTransfers, saveTransfer } from '../../api/transfer'
-import { getRooms, getBeds } from '../../api/room'
+import { getRooms } from '../../api/room'
 import { useUserStore } from '../../store/user'
 import { ElMessage } from 'element-plus'
+import request from '../../utils/request'
 
 const userStore = useUserStore()
 const form = ref({ reason: '', targetRoomId: null })
@@ -101,12 +102,12 @@ const fetchMyTransfers = async () => {
 
 const fetchRoomsAndBeds = async () => {
   try {
-    const [roomsRes, bedsRes] = await Promise.all([getRooms(), getBeds()])
+    const [roomsRes, summary] = await Promise.all([
+      getRooms(),
+      request({ url: '/dashboard/dorm', method: 'get' })
+    ])
     availableRooms.value = (roomsRes || []).filter(r => r.status !== 'FULL')
-    
-    // Find student's current bed
-    const myBed = (bedsRes || []).find(b => b.studentId === userStore.userInfo?.id)
-    if (myBed) myCurrentBedId.value = myBed.id
+    myCurrentBedId.value = summary?.myBed?.id || null
   } catch (e) {
     console.error('Failed to fetch rooms/beds', e)
   }

@@ -11,7 +11,7 @@ public class AiController {
 
     @GetMapping("/chat")
     public Result chat(@RequestParam String question) {
-        // Simple keyword-based mock for AI assistant
+        // Local rule-based answers for common dormitory questions.
         if (question == null) {
             return Result.success("请输入您的问题");
         }

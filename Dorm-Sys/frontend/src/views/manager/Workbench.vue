@@ -234,6 +234,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { Bell, RefreshCw as Refresh, User, Settings, UserCheck, Clock, ChevronRight, UserPlus, Medal, MessageCircle, Info, AlertCircle } from '@lucide/vue'
 import { getBeds, getRooms } from '../../api/room'
 import { getBuildings } from '../../api/building'

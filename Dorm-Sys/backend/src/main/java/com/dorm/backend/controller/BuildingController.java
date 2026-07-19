@@ -2,22 +2,13 @@ package com.dorm.backend.controller;
 
 import com.dorm.backend.common.Result;
 import com.dorm.backend.entity.Building;
-import com.dorm.backend.entity.Room;
-import com.dorm.backend.entity.Bed;
 import com.dorm.backend.service.BuildingService;
-import com.dorm.backend.service.RoomService;
-import com.dorm.backend.service.BedService;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.Map;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 import com.dorm.backend.common.AuthUtils;
-import com.dorm.backend.entity.User;
-import com.dorm.backend.service.UserService;
+import com.dorm.backend.service.DormManagerScopeService;
 
 @RestController
 @RequestMapping("/api/building")
@@ -27,13 +18,7 @@ public class BuildingController {
     private BuildingService buildingService;
     
     @Autowired
-    private RoomService roomService;
-    
-    @Autowired
-    private BedService bedService;
-    
-    @Autowired
-    private UserService userService;
+    private DormManagerScopeService managerScopeService;
 
     @GetMapping("/list")
     public Result<List<Building>> list() {
@@ -43,10 +28,9 @@ public class BuildingController {
         Long userId = AuthUtils.getCurrentUserId();
         
         if ("dormmanager".equals(role) && userId != null) {
-            User user = userService.getById(userId);
-            if (user != null && user.getName() != null) {
-                bQw.eq("manager", user.getName());
-            }
+            List<Long> buildingIds = managerScopeService.managedBuildingIds(userId);
+            if (buildingIds.isEmpty()) return Result.success(List.of());
+            bQw.in("id", buildingIds);
         }
         
         List<Building> buildings = buildingService.getBuildingsWithStats(bQw);
@@ -56,6 +40,10 @@ public class BuildingController {
 
     @GetMapping("/{id}")
     public Result<Building> getById(@PathVariable Long id) {
+        if ("dormmanager".equals(AuthUtils.getCurrentUserRole())
+                && !managerScopeService.canManageBuilding(AuthUtils.getCurrentUserId(), id)) {
+            return Result.error(403, "无权查看该楼栋");
+        }
         return Result.success(buildingService.getById(id));
     }
 

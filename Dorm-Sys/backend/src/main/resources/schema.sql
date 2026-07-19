@@ -196,6 +196,6 @@ CREATE TABLE `feedback` (
 
 -- 初始化测试数据
 INSERT INTO `sys_user` (`username`, `password`, `role`, `name`, `avatar`, `class_name`, `email`, `phone`) VALUES
-('2022010001', '123456', 'student', '张伟', '/images/avatar.jpg', '计科2201', 'stu001@stu.edu.cn', '13800010001'),
-('dormmanager', '123456', 'dormmanager', '周强', NULL, NULL, NULL, NULL),
-('admin', '123456', 'admin', '系统管理员', NULL, NULL, NULL, NULL);
+('20240001', '$2b$12$fkepBhQatdh.trQqZmPZcuZwJhLFNz1I6DuLntDfPnQiv5YlaTRrC', 'student', '张伟', '/images/avatar.jpg', '计科2201', 'stu001@stu.edu.cn', '13800010001'),
+('manager1', '$2b$12$fkepBhQatdh.trQqZmPZcuZwJhLFNz1I6DuLntDfPnQiv5YlaTRrC', 'dormmanager', '王叔', NULL, NULL, NULL, NULL),
+('admin', '$2b$12$fkepBhQatdh.trQqZmPZcuZwJhLFNz1I6DuLntDfPnQiv5YlaTRrC', 'admin', '超级管理员', NULL, NULL, NULL, NULL);

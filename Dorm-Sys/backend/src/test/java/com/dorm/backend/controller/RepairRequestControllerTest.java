@@ -11,6 +11,9 @@ import com.dorm.backend.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.List;
 
@@ -50,5 +53,36 @@ class RepairRequestControllerTest {
         ArgumentCaptor<RepairRequest> captor = ArgumentCaptor.forClass(RepairRequest.class);
         verify(repairRequestService).saveOrUpdate(captor.capture());
         assertThat(captor.getValue().getRoomId()).isEqualTo(4L);
+    }
+
+    @Test
+    void studentCannotSubmitRepairForAnotherRoom() {
+        RepairRequestService repairRequestService = mock(RepairRequestService.class);
+        BedService bedService = mock(BedService.class);
+        when(repairRequestService.saveOrUpdate(any())).thenReturn(true);
+        Bed bed = new Bed();
+        bed.setStudentId(1L);
+        bed.setRoomId(4L);
+        when(bedService.list(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any())).thenReturn(List.of(bed));
+
+        MockHttpServletRequest httpRequest = new MockHttpServletRequest();
+        httpRequest.setAttribute("currentUserId", 1L);
+        httpRequest.setAttribute("currentUserRole", "student");
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(httpRequest));
+
+        RepairRequestController controller = new RepairRequestController();
+        ReflectionTestUtils.setField(controller, "repairRequestService", repairRequestService);
+        ReflectionTestUtils.setField(controller, "bedService", bedService);
+
+        RepairRequest request = new RepairRequest();
+        request.setRoomId(99L);
+        request.setType("NETWORK");
+        request.setDescription("test");
+        controller.save(request);
+
+        ArgumentCaptor<RepairRequest> captor = ArgumentCaptor.forClass(RepairRequest.class);
+        verify(repairRequestService).saveOrUpdate(captor.capture());
+        assertThat(captor.getValue().getRoomId()).isEqualTo(4L);
+        RequestContextHolder.resetRequestAttributes();
     }
 }

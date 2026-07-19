@@ -14,11 +14,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 import com.dorm.backend.common.AuthUtils;
-import com.dorm.backend.entity.User;
-import com.dorm.backend.service.UserService;
+import com.dorm.backend.entity.Bed;
+import com.dorm.backend.service.BedService;
+import com.dorm.backend.service.DormManagerScopeService;
 
 @RestController
 @RequestMapping("/api/feeBill")
@@ -34,7 +33,10 @@ public class FeeBillController {
     private BuildingService buildingService;
     
     @Autowired
-    private UserService userService;
+    private BedService bedService;
+
+    @Autowired
+    private DormManagerScopeService managerScopeService;
 
     @GetMapping("/list")
     public Result<List<FeeBill>> list(@RequestParam(required = false) Long roomId,
@@ -46,26 +48,22 @@ public class FeeBillController {
         // Filter by manager's buildings
         String role = AuthUtils.getCurrentUserRole();
         Long userId = AuthUtils.getCurrentUserId();
-        
-        if ("dormmanager".equals(role) && userId != null) {
-            User user = userService.getById(userId);
-            if (user != null && user.getName() != null) {
-                List<Long> bIds = buildingService.list(new QueryWrapper<Building>().eq("manager", user.getName()))
-                    .stream().map(Building::getId).collect(Collectors.toList());
-                if (bIds.isEmpty()) {
-                    return Result.success(List.of()); // Manager has no buildings
-                }
-                List<Long> rIds = roomService.list(new QueryWrapper<Room>().in("building_id", bIds))
-                    .stream().map(Room::getId).collect(Collectors.toList());
-                if (rIds.isEmpty()) {
-                    return Result.success(List.of());
-                }
-                if (roomId == null) {
-                    qw.in("room_id", rIds);
-                } else if (!rIds.contains(roomId)) {
-                    return Result.success(List.of()); // Not allowed
-                }
+
+        if ("student".equals(role) && userId != null) {
+            Bed currentBed = bedService.getOne(new QueryWrapper<Bed>()
+                .eq("student_id", userId)
+                .last("LIMIT 1"));
+            if (currentBed == null || currentBed.getRoomId() == null) {
+                return Result.success(List.of());
             }
+            roomId = currentBed.getRoomId();
+            qw = new QueryWrapper<>();
+            qw.eq("room_id", roomId);
+            if (status != null && !status.isEmpty()) qw.eq("status", status);
+        } else if ("dormmanager".equals(role) && userId != null) {
+            List<Long> roomIds = managerScopeService.managedRoomIds(userId);
+            if (roomIds.isEmpty() || (roomId != null && !roomIds.contains(roomId))) return Result.success(List.of());
+            if (roomId == null) qw.in("room_id", roomIds);
         }
         
         qw.orderByDesc("create_time");
@@ -88,16 +86,44 @@ public class FeeBillController {
 
     @GetMapping("/{id}")
     public Result<FeeBill> getById(@PathVariable Long id) {
-        return Result.success(feeBillService.getById(id));
+        FeeBill bill = feeBillService.getById(id);
+        if ("student".equals(AuthUtils.getCurrentUserRole()) && bill != null) {
+            Bed currentBed = bedService.getOne(new QueryWrapper<Bed>()
+                .eq("student_id", AuthUtils.getCurrentUserId())
+                .last("LIMIT 1"));
+            if (currentBed == null || !bill.getRoomId().equals(currentBed.getRoomId())) {
+                return Result.error(403, "无权查看该宿舍账单");
+            }
+        } else if ("dormmanager".equals(AuthUtils.getCurrentUserRole()) && bill != null
+                && !managerScopeService.canManageRoom(AuthUtils.getCurrentUserId(), bill.getRoomId())) {
+            return Result.error(403, "无权查看该宿舍账单");
+        }
+        return Result.success(bill);
     }
 
     @PostMapping("/save")
     public Result<Boolean> save(@RequestBody FeeBill feeBill) {
+        if ("dormmanager".equals(AuthUtils.getCurrentUserRole()) && feeBill.getId() != null) {
+            FeeBill existing = feeBillService.getById(feeBill.getId());
+            if (existing == null
+                    || !managerScopeService.canManageRoom(AuthUtils.getCurrentUserId(), existing.getRoomId())) {
+                return Result.error(403, "无权修改该宿舍账单");
+            }
+        }
+        if ("dormmanager".equals(AuthUtils.getCurrentUserRole())
+                && !managerScopeService.canManageRoom(AuthUtils.getCurrentUserId(), feeBill.getRoomId())) {
+            return Result.error(403, "无权修改该宿舍账单");
+        }
         return Result.success(feeBillService.saveOrUpdate(feeBill));
     }
 
     @DeleteMapping("/{id}")
     public Result<Boolean> delete(@PathVariable Long id) {
+        FeeBill bill = feeBillService.getById(id);
+        if ("dormmanager".equals(AuthUtils.getCurrentUserRole()) && bill != null
+                && !managerScopeService.canManageRoom(AuthUtils.getCurrentUserId(), bill.getRoomId())) {
+            return Result.error(403, "无权删除该宿舍账单");
+        }
         return Result.success(feeBillService.removeById(id));
     }
 }

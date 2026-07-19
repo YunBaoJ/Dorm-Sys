@@ -21,6 +21,8 @@ import java.util.stream.Collectors;
 import com.dorm.backend.common.AuthUtils;
 import com.dorm.backend.service.BedService;
 import com.dorm.backend.entity.Bed;
+import com.dorm.backend.service.PasswordService;
+import com.dorm.backend.service.DormManagerScopeService;
 
 @RestController
 @RequestMapping("/api/user")
@@ -41,9 +43,22 @@ public class UserController {
     @Autowired
     private BedService bedService;
 
+    @Autowired
+    private PasswordService passwordService;
+
+    @Autowired
+    private DormManagerScopeService managerScopeService;
+
     @GetMapping("/list")
     public Result<List<User>> list() {
-        List<User> users = userService.list();
+        List<User> users;
+        if ("dormmanager".equals(AuthUtils.getCurrentUserRole())) {
+            List<Long> studentIds = managerScopeService.managedStudentIds(AuthUtils.getCurrentUserId());
+            if (studentIds.isEmpty()) return Result.success(List.of());
+            users = userService.list(new QueryWrapper<User>().eq("role", "student").in("id", studentIds));
+        } else {
+            users = userService.list();
+        }
         List<StudentInfo> students = studentInfoService.list();
         Map<Long, StudentInfo> studentMap = students.stream()
             .collect(Collectors.toMap(StudentInfo::getUserId, s -> s));
@@ -62,7 +77,7 @@ public class UserController {
     }
 
     @GetMapping("/unassigned")
-    public Result<List<User>> getUnassignedStudents(@RequestParam(required = false) Integer gender) {
+    public Result<List<User>> getUnassignedStudents(@RequestParam(required = false) String gender) {
         List<Long> occupiedIds = bedService.list().stream()
             .filter(b -> b.getStudentId() != null)
             .map(Bed::getStudentId)
@@ -97,11 +112,12 @@ public class UserController {
             existing.setPhone(user.getPhone());
             user = existing;
         }
-        // Simple mock encryption for prototype (in production use BCrypt)
         if (user.getId() == null && user.getPassword() == null) {
-            user.setPassword("123456"); // Default password
+            user.setPassword(passwordService.encode("123456"));
         } else if (user.getId() != null && (user.getPassword() == null || user.getPassword().isBlank())) {
             user.setPassword(null);
+        } else if (!passwordService.isEncoded(user.getPassword())) {
+            user.setPassword(passwordService.encode(user.getPassword()));
         }
         boolean res = userService.saveOrUpdate(user);
         
@@ -152,6 +168,5 @@ public class UserController {
 
     private void hidePassword(User user) {
         user.setPassword(null);
-    }        return null;
     }
 }

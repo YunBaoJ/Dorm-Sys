@@ -36,19 +36,4 @@ public class StayHistoryController {
         return Result.success(stayHistoryService.getOne(query));
     }
 
-    private Long AuthUtils.getCurrentUserId() {
-        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
-            Object value = attributes.getRequest().getAttribute("currentUserId");
-            return value instanceof Number number ? number.longValue() : null;
-        }
-        return null;
-    }
-
-    private String AuthUtils.getCurrentUserRole() {
-        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
-            Object value = attributes.getRequest().getAttribute("currentUserRole");
-            return value == null ? null : value.toString();
-        }
-        return null;
-    }
 }

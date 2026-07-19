@@ -118,27 +118,24 @@
           </div>
         </div>
 
-        <!-- Power Chart -->
+        <!-- Electricity fee chart -->
         <div class="card">
           <div class="card-head">
-            <h2>用电趋势</h2>
-            <div>
-              <button class="ghost-btn">本周</button>
-              <button class="ghost-btn active-filter" style="margin-left: 8px;">本月</button>
-            </div>
+            <h2>电费趋势</h2>
+            <span style="font-size: 13px; color: var(--sub);">近 12 个月</span>
           </div>
           <div class="card-body">
             <div style="display: flex; align-items: flex-end; gap: 8px; height: 120px; padding: 16px 0;">
-              <div v-for="(h, i) in (dash.powerHistory || [])" :key="i" 
+              <div v-for="(amount, i) in (dash.electricityFeeHistory || [])" :key="i"
                    style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;">
-                <span style="font-size: 11px; color: var(--sub);">{{h}}</span>
-                <div :style="`width: 100%; height: ${h}px; background: linear-gradient(180deg, var(--primary), var(--primary-2)); border-radius: 4px 4px 0 0; transition: height .6s ease;`"></div>
-                <span style="font-size: 11px; color: var(--sub);">{{i + 1}}日</span>
+                <span style="font-size: 11px; color: var(--sub);">{{ Number(amount).toFixed(0) }}</span>
+                <div :style="`width: 100%; height: ${electricityBarHeight(amount)}px; background: var(--primary); border-radius: 4px 4px 0 0; transition: height .6s ease;`"></div>
+                <span style="font-size: 11px; color: var(--sub);">{{ dash.electricityFeeMonths?.[i] }}</span>
               </div>
             </div>
             <div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line);">
-              <span style="font-size: 13px; color: var(--sub);">本月总计预测估值</span>
-              <span style="font-size: 13px; font-weight: 600; color: var(--primary);">{{ dash.totalPower || 0 }} 度</span>
+              <span style="font-size: 13px; color: var(--sub);">数据库账单合计</span>
+              <span style="font-size: 13px; font-weight: 600; color: var(--primary);">¥ {{ Number(dash.totalElectricityFee || 0).toFixed(2) }}</span>
             </div>
           </div>
         </div>
@@ -199,7 +196,7 @@
             </button>
             <button @click="router.push('/student/ai')">
               <el-icon :size="24"><component :is="MessageCircle" /></el-icon>
-              <span>AI助手</span>
+              <span>自助问答</span>
             </button>
             <button @click="router.push('/student/feedback')">
               <el-icon :size="24"><component :is="Pencil" /></el-icon>
@@ -223,9 +220,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getRooms, getBeds } from '../../api/room'
-import { getUsers } from '../../api/user'
-import { getBuildings } from '../../api/building'
 import { getBusinessRecords } from '../../api/businessRecord'
 import request from '../../utils/request'
 import { useUserStore } from '../../store/user'
@@ -243,6 +237,12 @@ const currentDormLabel = ref('加载中')
 const roommates = ref([])
 const dash = ref({})
 
+const electricityBarHeight = (amount) => {
+  const values = dash.value.electricityFeeHistory || []
+  const max = Math.max(...values.map(Number), 1)
+  return Math.max(4, Math.round(Number(amount || 0) / max * 72))
+}
+
 const fetchDashboard = async () => {
   try {
     const res = await request({ url: '/dashboard/student', method: 'get' })
@@ -256,32 +256,14 @@ const fetchDashboard = async () => {
 
 const fetchDormSummary = async () => {
   try {
-    const [bedsRes, usersRes, roomsRes, buildingsRes] = await Promise.all([
-      getBeds(), getUsers(), getRooms(), getBuildings()
-    ])
-    const beds = bedsRes || []
-    const users = usersRes || []
-    const rooms = roomsRes || []
-    const buildings = buildingsRes || []
-    const me = userStore.userInfo || {}
-    const myBed = beds.find((bed) => bed.studentId === me.id)
-    if (!myBed) {
+    const summary = await request({ url: '/dashboard/dorm', method: 'get' })
+    if (!summary?.myBed) {
       currentDormLabel.value = '未分配宿舍'
       roommates.value = []
       return
     }
-
-    const room = rooms.find((item) => item.id === myBed.roomId)
-    const building = room ? buildings.find((item) => item.id === room.buildingId) : null
-    currentDormLabel.value = room ? `${building?.name || ''} ${room.roomNumber}`.trim() : '未分配宿舍'
-
-    const userMap = Object.fromEntries(users.map((user) => [user.id, user]))
-    roommates.value = beds
-      .filter((bed) => bed.roomId === myBed.roomId && bed.studentId && bed.studentId !== me.id)
-      .map((bed) => ({
-        name: userMap[bed.studentId]?.name || '未知',
-        bedNumber: bed.bedNumber
-      }))
+    currentDormLabel.value = `${summary.building?.name || ''} ${summary.room?.roomNumber || ''}`.trim()
+    roommates.value = summary.roommates || []
   } catch (error) { console.error(error);
     currentDormLabel.value = '获取失败'
     roommates.value = []

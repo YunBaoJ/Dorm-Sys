@@ -108,7 +108,7 @@ const navMap = {
     { path: '/student/notice', label: '校园公告', icon: Newspaper },
     { path: '/student/visitor', label: '访客预约', icon: UserRoundCheck },
     { path: '/student/transfer', label: '调宿申请', icon: Repeat2 },
-    { path: '/student/ai', label: 'AI助手', icon: MessageCircle },
+    { path: '/student/ai', label: '自助问答', icon: MessageCircle },
     { path: '/student/call', label: '智能通话', icon: Video },
     { path: '/student/feedback', label: '意见反馈', icon: Pencil },
     { path: '/student/settings', label: '账户设置', icon: Settings }

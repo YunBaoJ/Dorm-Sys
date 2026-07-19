@@ -205,7 +205,7 @@ const fetchResidents = async () => {
     allRooms.value = rooms
     buildings.value = buildingsRes || []
     const users = usersRes || []
-    unassignedStudents.value = unassignedRes.data || []
+    unassignedStudents.value = unassignedRes || []
     
     const roomMap = Object.fromEntries(rooms.map(r => [r.id, r]))
     const buildingMap = Object.fromEntries(buildings.value.map(b => [b.id, b.name]))

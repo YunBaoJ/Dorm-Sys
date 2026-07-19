@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import com.dorm.backend.common.AuthUtils;
+import com.dorm.backend.service.DormManagerScopeService;
 
 @RestController
 @RequestMapping("/api/room")
@@ -27,10 +29,20 @@ public class RoomController {
     @Autowired
     private BedService bedService;
 
+    @Autowired
+    private DormManagerScopeService managerScopeService;
+
     @GetMapping("/list")
     public Result<List<Room>> list(@RequestParam(required = false) Long buildingId) {
         QueryWrapper<Room> queryWrapper = new QueryWrapper<>();
-        if (buildingId != null) {
+        if ("dormmanager".equals(AuthUtils.getCurrentUserRole())) {
+            List<Long> buildingIds = managerScopeService.managedBuildingIds(AuthUtils.getCurrentUserId());
+            if (buildingIds.isEmpty() || (buildingId != null && !buildingIds.contains(buildingId))) {
+                return Result.success(List.of());
+            }
+            if (buildingId == null) queryWrapper.in("building_id", buildingIds);
+            else queryWrapper.eq("building_id", buildingId);
+        } else if (buildingId != null) {
             queryWrapper.eq("building_id", buildingId);
         }
         List<Room> rooms = roomService.list(queryWrapper);
@@ -56,7 +68,12 @@ public class RoomController {
 
     @GetMapping("/{id}")
     public Result<Room> getById(@PathVariable Long id) {
-        return Result.success(roomService.getById(id));
+        Room room = roomService.getById(id);
+        if ("dormmanager".equals(AuthUtils.getCurrentUserRole()) && room != null
+                && !managerScopeService.canManageBuilding(AuthUtils.getCurrentUserId(), room.getBuildingId())) {
+            return Result.error(403, "无权查看该房间");
+        }
+        return Result.success(room);
     }
 
     @PostMapping("/save")

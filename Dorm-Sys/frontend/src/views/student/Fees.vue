@@ -56,10 +56,8 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { RefreshCw } from '@lucide/vue'
 import { getFeeBills } from '../../api/fee'
-import { getBeds } from '../../api/room'
-import { useUserStore } from '../../store/user'
+import request from '../../utils/request'
 
-const userStore = useUserStore()
 const bills = ref([])
 const loading = ref(false)
 
@@ -69,14 +67,13 @@ const unpaidTotal = computed(() => unpaidBills.value.reduce((sum, bill) => sum +
 const fetchFees = async () => {
   loading.value = true
   try {
-    const beds = await getBeds()
-    const myBed = (beds || []).find((bed) => bed.studentId === userStore.userInfo?.id)
-    if (!myBed) {
+    const summary = await request({ url: '/dashboard/dorm', method: 'get' })
+    if (!summary?.myBed) {
       bills.value = []
       ElMessage.warning('尚未查询到您的住宿信息')
       return
     }
-    const result = await getFeeBills(myBed.roomId)
+    const result = await getFeeBills(summary.myBed.roomId)
     bills.value = (result || []).map((bill) => ({
       ...bill,
       period: bill.month,

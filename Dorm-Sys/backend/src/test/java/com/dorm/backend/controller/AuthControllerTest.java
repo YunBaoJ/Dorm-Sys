@@ -6,6 +6,7 @@ import com.dorm.backend.common.Result;
 import com.dorm.backend.dto.LoginDTO;
 import com.dorm.backend.entity.User;
 import com.dorm.backend.service.UserService;
+import com.dorm.backend.service.PasswordService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -17,6 +18,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.atLeastOnce;
 
 class AuthControllerTest {
 
@@ -46,10 +48,38 @@ class AuthControllerTest {
         assertThat(returnedUser.getPassword()).isNull();
     }
 
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void loginAcceptsBcryptPasswordWithoutQueryingByPassword() {
+        UserService userService = mock(UserService.class);
+        User user = loginUser();
+        user.setPassword(new PasswordService().encode("123456"));
+        when(userService.getOne(any())).thenReturn(user);
+
+        Result<Map<String, Object>> result = authController(userService).login(loginDTO());
+
+        ArgumentCaptor<QueryWrapper<User>> queryCaptor = ArgumentCaptor.forClass((Class) QueryWrapper.class);
+        verify(userService).getOne(queryCaptor.capture());
+        assertThat(result.getCode()).isEqualTo(200);
+        assertThat(queryCaptor.getValue().getSqlSegment()).doesNotContain("password");
+    }
+
+    @Test
+    void legacyPlaintextPasswordIsUpgradedAfterSuccessfulLogin() {
+        UserService userService = mock(UserService.class);
+        when(userService.getOne(any())).thenReturn(loginUser());
+
+        Result<Map<String, Object>> result = authController(userService).login(loginDTO());
+
+        assertThat(result.getCode()).isEqualTo(200);
+        verify(userService, atLeastOnce()).update(any());
+    }
+
     private AuthController authController(UserService userService) {
         AuthController controller = new AuthController();
         ReflectionTestUtils.setField(controller, "userService", userService);
         ReflectionTestUtils.setField(controller, "jwtUtils", new JwtUtils());
+        ReflectionTestUtils.setField(controller, "passwordService", new PasswordService());
         return controller;
     }
 

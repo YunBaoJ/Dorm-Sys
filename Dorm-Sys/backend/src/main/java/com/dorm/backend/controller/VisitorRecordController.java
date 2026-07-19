@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import com.dorm.backend.common.AuthUtils;
+import com.dorm.backend.service.DormManagerScopeService;
 
 @RestController
 @RequestMapping("/api/visitorRecord")
@@ -26,10 +27,18 @@ public class VisitorRecordController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private DormManagerScopeService managerScopeService;
+
     @GetMapping("/list")
     public Result<List<VisitorRecord>> list(@RequestParam(required = false) Long studentId) {
         QueryWrapper<VisitorRecord> qw = new QueryWrapper<>();
-        if (AuthUtils.AuthUtils.isStudent()) studentId = AuthUtils.getCurrentUserId();
+        if (AuthUtils.isStudent()) studentId = AuthUtils.getCurrentUserId();
+        if ("dormmanager".equals(AuthUtils.getCurrentUserRole())) {
+            List<Long> studentIds = managerScopeService.managedStudentIds(AuthUtils.getCurrentUserId());
+            if (studentIds.isEmpty() || (studentId != null && !studentIds.contains(studentId))) return Result.success(List.of());
+            if (studentId == null) qw.in("student_id", studentIds);
+        }
         if (studentId != null) qw.eq("student_id", studentId);
         qw.orderByDesc("create_time");
         
@@ -44,12 +53,26 @@ public class VisitorRecordController {
 
     @GetMapping("/{id}")
     public Result<VisitorRecord> getById(@PathVariable Long id) {
-        return Result.success(visitorRecordService.getById(id));
+        VisitorRecord record = visitorRecordService.getById(id);
+        if (AuthUtils.isStudent() && record != null
+                && !AuthUtils.getCurrentUserId().equals(record.getStudentId())) {
+            return Result.error(403, "无权查看该访客记录");
+        } else if ("dormmanager".equals(AuthUtils.getCurrentUserRole()) && record != null
+                && !canManageStudent(record.getStudentId())) {
+            return Result.error(403, "无权查看该访客记录");
+        }
+        return Result.success(record);
     }
 
     @PostMapping("/save")
     public Result<Boolean> save(@RequestBody VisitorRecord visitorRecord) {
-        if (AuthUtils.AuthUtils.isStudent()) {
+        if ("dormmanager".equals(AuthUtils.getCurrentUserRole()) && visitorRecord.getId() != null) {
+            VisitorRecord existing = visitorRecordService.getById(visitorRecord.getId());
+            if (existing == null || !canManageStudent(existing.getStudentId())) {
+                return Result.error(403, "无权处理该访客记录");
+            }
+        }
+        if (AuthUtils.isStudent()) {
             Long userId = AuthUtils.getCurrentUserId();
             if (visitorRecord.getId() != null) {
                 VisitorRecord existing = visitorRecordService.getById(visitorRecord.getId());
@@ -61,15 +84,25 @@ public class VisitorRecordController {
                 visitorRecord.setStatus("PENDING");
             }
             visitorRecord.setStudentId(userId);
+        } else if ("dormmanager".equals(AuthUtils.getCurrentUserRole())
+                && !canManageStudent(visitorRecord.getStudentId())) {
+            return Result.error(403, "无权处理该访客记录");
         }
         return Result.success(visitorRecordService.saveOrUpdate(visitorRecord));
     }
 
     @DeleteMapping("/{id}")
     public Result<Boolean> delete(@PathVariable Long id) {
-        if (AuthUtils.AuthUtils.isStudent()) return Result.error(403, "学生不能删除访客记录");
+        if (AuthUtils.isStudent()) return Result.error(403, "学生不能删除访客记录");
+        VisitorRecord record = visitorRecordService.getById(id);
+        if ("dormmanager".equals(AuthUtils.getCurrentUserRole()) && record != null
+                && !canManageStudent(record.getStudentId())) {
+            return Result.error(403, "无权删除该访客记录");
+        }
         return Result.success(visitorRecordService.removeById(id));
     }
-        return null;
+
+    private boolean canManageStudent(Long studentId) {
+        return managerScopeService.canManageStudent(AuthUtils.getCurrentUserId(), studentId);
     }
 }

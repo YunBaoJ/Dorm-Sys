@@ -23,6 +23,13 @@
           </div>
         </el-card>
 
+        <el-alert v-if="loadError" type="error" :closable="false" show-icon class="load-error">
+          <template #title>
+            <span>管理看板数据加载失败</span>
+            <el-button type="danger" link @click="fetchData">重新加载</el-button>
+          </template>
+        </el-alert>
+
         <!-- Alerts -->
         <div class="alerts-wrapper" v-loading="loading">
           <el-alert
@@ -81,33 +88,6 @@
           </div>
         </el-card>
 
-        <!-- System Dynamics -->
-        <el-card shadow="never" class="timeline-card">
-          <template #header>
-            <div class="card-header">
-              <span>最近系统动态</span>
-              <el-button type="primary" link @click="ElMessage.info('系统动态日志页面正在开发中')">查看全部</el-button>
-            </div>
-          </template>
-          <el-timeline>
-            <el-timeline-item
-              v-for="(activity, index) in activities"
-              :key="index"
-              :type="activity.type"
-              :color="activity.color"
-              :size="activity.size"
-            >
-              <div class="timeline-content">
-                <div class="timeline-main">
-                  <div class="timeline-title">{{ activity.content }}</div>
-                  <div class="timeline-time">{{ activity.timestamp }}</div>
-                </div>
-                <el-tag size="small" type="info" class="timeline-tag">{{ activity.tag }}</el-tag>
-              </div>
-            </el-timeline-item>
-          </el-timeline>
-        </el-card>
-
       </el-col>
 
       <!-- Right Column -->
@@ -159,23 +139,23 @@
             <div class="res-item">
               <div class="res-head">
                 <span>数据库连接</span>
-                <span class="res-status text-blue">正常</span>
+                <span class="res-status text-blue">已连接</span>
               </div>
-              <el-progress :percentage="30" :show-text="false" color="#3b82f6" />
+              <div class="resource-note">业务统计由 MySQL 实时汇总</div>
             </div>
             <div class="res-item">
               <div class="res-head">
-                <span>AI 服务负载</span>
-                <span class="res-status text-blue">低负荷</span>
+                <span>自助问答</span>
+                <span class="res-status text-blue">可用</span>
               </div>
-              <el-progress :percentage="15" :show-text="false" color="#f59e0b" />
+              <div class="resource-note">本地宿舍业务规则库</div>
             </div>
             <div class="res-item">
               <div class="res-head">
-                <span>系统存储空间</span>
-                <span class="res-status text-blue">充足</span>
+                <span>接口鉴权</span>
+                <span class="res-status text-blue">已启用</span>
               </div>
-              <el-progress :percentage="45" :show-text="false" color="#3b82f6" />
+              <div class="resource-note">JWT 与角色数据范围校验</div>
             </div>
           </div>
         </el-card>
@@ -209,15 +189,15 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Monitor, AlertTriangle, Info, MapPin, Search, ArrowRight, ShieldCheck, Download, CalendarDays, Key, CreditCard, User, Users, Building, Home } from '@lucide/vue'
+import { Monitor, User, Users, Building, Home } from '@lucide/vue'
 import request from '../../utils/request'
 import WeatherWidget from '../../components/WeatherWidget.vue'
-import { ElMessage } from 'element-plus'
 import { getStats, getBuildingStats, getAlerts } from '../../api/dashboard'
 
 const router = useRouter()
 const viewMode = ref('grid')
 const loading = ref(false)
+const loadError = ref(false)
 
 const stats = ref({})
 const buildings = ref([])
@@ -236,35 +216,9 @@ const handleCurrentChange = (val) => {
   currentPage.value = val
 }
 
-const activities = [
-  {
-    content: '管理员修改了 3号楼 的入住配置',
-    timestamp: '10:24',
-    color: '#3b82f6',
-    tag: 'admin'
-  },
-  {
-    content: '系统自动拦截了一次异常登录尝试',
-    timestamp: '09:45',
-    color: '#f59e0b',
-    tag: 'system'
-  },
-  {
-    content: '新增了 5 名宿管人员账号',
-    timestamp: '08:30',
-    color: '#3b82f6',
-    tag: 'admin'
-  },
-  {
-    content: '发布了关于寒假留校的通知公告',
-    timestamp: '昨天',
-    color: '#3b82f6',
-    tag: 'admin'
-  }
-]
-
 const fetchData = async () => {
   loading.value = true
+  loadError.value = false
   try {
     const [statsRes, buildingsRes, alertsRes] = await Promise.all([
       getStats(),
@@ -272,10 +226,25 @@ const fetchData = async () => {
       getAlerts()
     ])
     stats.value = statsRes || {}
-    buildings.value = buildingsRes || []
+    buildings.value = (buildingsRes || []).map((building) => {
+      const occupiedBeds = Number(building.occupiedBeds) || 0
+      const totalBeds = Number(building.totalBeds) || 0
+      const percentage = Number.isFinite(Number(building.percentage))
+        ? Number(building.percentage)
+        : (totalBeds ? Math.round((occupiedBeds / totalBeds) * 100) : 0)
+
+      return {
+        ...building,
+        occupiedBeds,
+        totalBeds,
+        percentage: Math.min(100, Math.max(0, percentage)),
+        status: building.status || (percentage >= 100 ? '已满' : percentage >= 80 ? '紧张' : '正常')
+      }
+    })
     alerts.value = alertsRes || []
   } catch (error) {
     console.error('Failed to fetch dashboard data', error)
+    loadError.value = true
   } finally {
     loading.value = false
   }
@@ -404,38 +373,6 @@ onMounted(() => {
   color: var(--sub);
 }
 
-.timeline-card {
-  margin-bottom: 24px;
-}
-
-.timeline-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.timeline-main {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.timeline-title {
-  color: var(--text-secondary);
-  font-size: 14px;
-}
-
-.timeline-time {
-  color: var(--sub);
-  font-size: 12px;
-}
-
-.timeline-tag {
-  background-color: var(--line);
-  border-color: var(--line);
-  color: var(--sub);
-}
-
 .side-card {
   margin-bottom: 24px;
 }
@@ -504,6 +441,16 @@ onMounted(() => {
   font-size: 13px;
   color: var(--text-secondary);
   margin-bottom: 8px;
+}
+
+.load-error {
+  margin-bottom: 16px;
+}
+
+.resource-note {
+  font-size: 12px;
+  color: var(--sub);
+  line-height: 1.5;
 }
 
 .text-blue { color: #3b82f6; }

@@ -72,9 +72,9 @@
 import { ref, onMounted } from 'vue'
 import { Settings } from '@lucide/vue'
 import { getRepairs, saveRepair } from '../../api/repair'
-import { getBeds } from '../../api/room'
 import { useUserStore } from '../../store/user'
 import { ElMessage } from 'element-plus'
+import request from '../../utils/request'
 
 const userStore = useUserStore()
 const form = ref({ type: '', description: '' })
@@ -101,9 +101,8 @@ const fetchMyRepairs = async () => {
 
 const fetchCurrentRoom = async () => {
   try {
-    const beds = await getBeds()
-    const currentBed = (beds || []).find((bed) => bed.studentId === userStore.userInfo?.id)
-    currentRoomId.value = currentBed?.roomId || null
+    const summary = await request({ url: '/dashboard/dorm', method: 'get' })
+    currentRoomId.value = summary?.myBed?.roomId || null
   } catch (error) { console.error(error);
     currentRoomId.value = null
     ElMessage.warning('当前房间信息加载失败，提交时将由系统重新匹配')

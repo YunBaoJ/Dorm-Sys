@@ -17,25 +17,6 @@
             </div>
           </div>
 
-<template>
-  <div class="dorm-container">
-    <el-row :gutter="24" class="main-row">
-      <!-- Left Column: Dorm Profile & Roommates -->
-      <el-col :span="8">
-        <el-card shadow="never" class="profile-card">
-          <!-- Top House Info -->
-          <div class="dorm-header">
-            <div class="dorm-icon-box">
-              <el-icon :size="40" color="var(--el-color-primary)"><component :is="Home" /></el-icon>
-            </div>
-            <h2 class="dorm-title">{{ myBuilding?.name || '未知' }} · {{ myRoom?.roomNumber || '未知' }}</h2>
-            <div class="dorm-tags">
-              <el-tag size="small" effect="plain">{{ myRoom?.floor || '-' }}层</el-tag>
-              <el-tag size="small" effect="plain">{{ myRoom?.capacity || 4 }}人间</el-tag>
-              <el-tag size="small" type="primary" effect="dark">{{ myBed?.bedNumber ? myBed.bedNumber.split('-')[1] + '号床位' : '未分配' }}</el-tag>
-            </div>
-          </div>
-
           <!-- Dorm Meta Details -->
           <div class="dorm-meta-list">
             <div class="meta-item">
@@ -132,7 +113,7 @@
             <el-card shadow="never" class="facility-card">
               <div class="card-header">
                 <span>设施运行状态</span>
-                <el-button link type="primary" style="display:flex;align-items:center;gap:4px" @click="fetchDashboard">
+                <el-button link type="primary" style="display:flex;align-items:center;gap:4px" @click="fetchDormInfo">
                   <el-icon><component :is="RefreshCw" /></el-icon>刷新
                 </el-button>
               </div>
@@ -219,9 +200,6 @@ import { ref, computed, onMounted } from 'vue'
 import { 
   Home, MessageCircle, RefreshCw, Lightbulb, Fan, Wifi, Droplet
 } from '@lucide/vue'
-import { getRooms, getBeds } from '../../api/room'
-import { getUsers } from '../../api/user'
-import { getBuildings } from '../../api/building'
 import { useUserStore } from '../../store/user'
 import ChatDrawer from '../../components/ChatDrawer.vue'
 import request from '../../utils/request'
@@ -247,17 +225,6 @@ const myBuilding = ref(null)
 const roommates = ref([])
 const checkInDate = ref('-')
 const dash = ref({})
-
-const fetchDashboard = async () => {
-  try {
-    const res = await request({ url: '/dashboard/dorm', method: 'get' })
-    if (res) {
-      dash.value = res
-    }
-  } catch (e) {
-    console.error(e)
-  }
-}
 
 // Combine me + roommates into one list for rendering
 const allOccupants = computed(() => {
@@ -290,44 +257,18 @@ const getOccupantForBed = (bedIndex) => {
 
 const fetchDormInfo = async () => {
   try {
-    const [bedsRes, usersRes, roomsRes, buildingsRes, stayHistory] = await Promise.all([
-      getBeds(), getUsers(), getRooms(), getBuildings(),
+    const [summary, stayHistory] = await Promise.all([
+      request({ url: '/dashboard/dorm', method: 'get' }),
       request({ url: '/stayHistory/current', method: 'get' })
     ])
     if (stayHistory?.checkInDate) {
       checkInDate.value = new Date(stayHistory.checkInDate).toLocaleDateString('zh-CN')
     }
-    const beds = Array.isArray(bedsRes) ? bedsRes : (bedsRes.data || [])
-    const users = Array.isArray(usersRes) ? usersRes : (usersRes.data || [])
-    const rooms = Array.isArray(roomsRes) ? roomsRes : (roomsRes.data || [])
-    const buildings = Array.isArray(buildingsRes) ? buildingsRes : (buildingsRes.data || [])
-
-    const me = userStore.userInfo || {}
-    const myBedInfo = beds.find(b => b.studentId === me.id)
-    if (!myBedInfo) return // No bed assigned
-    
-    myBed.value = myBedInfo
-    const roomInfo = rooms.find(r => r.id === myBedInfo.roomId)
-    if (roomInfo) {
-      myRoom.value = roomInfo
-      myBuilding.value = buildings.find(b => b.id === roomInfo.buildingId)
-      
-      // Find roommates
-      const roomBeds = beds.filter(b => b.roomId === roomInfo.id && b.studentId && b.studentId !== me.id)
-      const userMap = Object.fromEntries(users.map(u => [u.id, u]))
-      
-      roommates.value = roomBeds.map(b => {
-        const u = userMap[b.studentId] || {}
-        return {
-          id: u.id,
-          name: u.name || '未知',
-          avatar: u.avatar,
-          sno: u.username || '',
-          bedNumber: b.bedNumber,
-          isMe: false
-        }
-      })
-    }
+    dash.value = summary || {}
+    myBed.value = summary?.myBed || null
+    myRoom.value = summary?.room || null
+    myBuilding.value = summary?.building || null
+    roommates.value = (summary?.roommates || []).map(user => ({ ...user, sno: user.username || '', isMe: false }))
   } catch (e) {
     console.error('Failed to fetch dorm info', e)
   }
@@ -335,7 +276,6 @@ const fetchDormInfo = async () => {
 
 onMounted(() => {
   fetchDormInfo()
-  fetchDashboard()
 })
 </script>
 
@@ -542,6 +482,198 @@ onMounted(() => {
   .group-chat-btn { flex-shrink: 0; }
   .roommate-item { padding: 12px; }
 }
+
+/* Right Stack */
+.right-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Bed Layout Card */
+.layout-wrapper {
+  padding: 40px 0;
+  display: flex;
+  justify-content: center;
+}
+.floor-plan {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+  height: 300px;
+}
+.plan-border {
+  position: absolute;
+  inset: 0 24px;
+  border: 4px solid #cbd5e1;
+  border-radius: 12px;
+}
+.plan-border::before,
+.plan-border::after {
+  content: '';
+  position: absolute;
+  height: 8px;
+  background: #fff;
+}
+.plan-border::before {
+  top: -4px;
+  left: 10%;
+  width: 60px;
+}
+.plan-border::after {
+  right: 10%;
+  bottom: -4px;
+  width: 80px;
+}
+.door-label,
+.balcony-label {
+  position: absolute;
+  z-index: 1;
+  padding: 0 12px;
+  background: #fff;
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 500;
+}
+.door-label {
+  top: -12px;
+  left: calc(24px + 10% + 15px);
+}
+.balcony-label {
+  right: calc(24px + 10% + 15px);
+  bottom: -12px;
+}
+.beds-grid {
+  position: absolute;
+  inset: 50px 60px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 50px 80px;
+  place-items: center;
+}
+.bed-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.bed-box {
+  position: relative;
+  width: 100px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+.bed-number {
+  color: #64748b;
+  font-size: 16px;
+  font-weight: 600;
+}
+.bed-owner {
+  color: #475569;
+  font-size: 15px;
+  font-weight: 500;
+}
+.bed-slot.is-mine .bed-box {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15), 0 4px 12px rgba(59, 130, 246, 0.12);
+}
+.bed-slot.is-mine .bed-number,
+.bed-slot.is-mine .bed-owner {
+  color: #1d4ed8;
+  font-weight: 700;
+}
+.my-bed-badge {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: #3b82f6;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.bed-slot.is-occupied .bed-box {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+}
+.bed-slot.is-occupied .bed-number {
+  color: #475569;
+}
+.bed-slot.is-empty .bed-box {
+  border-style: dashed;
+  background: #fff;
+}
+.bed-slot.is-empty .bed-number,
+.bed-slot.is-empty .bed-owner {
+  color: #cbd5e1;
+  font-weight: 400;
+}
+
+/* Facility Grid */
+.facility-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.fac-item {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #edf2f7;
+  border-radius: 8px;
+  background: #f8fafc;
+  gap: 16px;
+}
+.fac-icon-box {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  font-size: 22px;
+}
+.bg-blue {
+  background: #eef2ff;
+  color: #3b82f6;
+}
+.bg-yellow {
+  background: #fef3c7;
+  color: #d97706;
+}
+.bg-red {
+  background: #fee2e2;
+  color: #dc2626;
+}
+.text-yellow {
+  color: #d97706 !important;
+}
+.text-red {
+  color: #dc2626 !important;
+}
+.fac-name {
+  margin-bottom: 6px;
+  color: #1e293b;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .layout-wrapper { padding-inline: 0; }
+  .beds-grid { inset-inline: 40px; gap: 44px; }
+  .facility-grid { grid-template-columns: 1fr; }
 }
 .fac-status {
   font-size: 14px;

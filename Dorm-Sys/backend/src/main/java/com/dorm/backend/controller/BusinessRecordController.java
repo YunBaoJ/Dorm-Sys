@@ -1,17 +1,16 @@
 package com.dorm.backend.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.dorm.backend.common.AuthUtils;
 import com.dorm.backend.common.Result;
 import com.dorm.backend.entity.BusinessRecord;
 import com.dorm.backend.service.BusinessRecordService;
+import com.dorm.backend.service.DormManagerScopeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import com.dorm.backend.common.AuthUtils;
 
 @RestController
 @RequestMapping("/api/businessRecord")
@@ -20,19 +19,29 @@ public class BusinessRecordController {
     @Autowired
     private BusinessRecordService businessRecordService;
 
+    @Autowired
+    private DormManagerScopeService managerScopeService;
+
     @GetMapping("/list")
     public Result<List<BusinessRecord>> list(@RequestParam(required = false) String type,
                                              @RequestParam(required = false) String status) {
         QueryWrapper<BusinessRecord> queryWrapper = new QueryWrapper<>();
-        if (type != null && !type.isBlank()) {
-            queryWrapper.eq("type", type);
+        if (AuthUtils.isStudent()) {
+            if (type == null || type.isBlank() || "feedback".equals(type)) {
+                type = "feedback";
+                queryWrapper.eq("creator_id", AuthUtils.getCurrentUserId());
+            } else if ("manager_messages".equals(type)) {
+                status = "已发布";
+            } else {
+                return Result.error(403, "无权查看该类业务记录");
+            }
+        } else if ("dormmanager".equals(AuthUtils.getCurrentUserRole()) && "feedback".equals(type)) {
+            List<Long> studentIds = managerScopeService.managedStudentIds(AuthUtils.getCurrentUserId());
+            if (studentIds.isEmpty()) return Result.success(List.of());
+            queryWrapper.in("creator_id", studentIds);
         }
-        if (status != null && !status.isBlank()) {
-            queryWrapper.eq("status", status);
-        }
-        if (AuthUtils.isStudent() && isStudentOwnedType(type)) {
-            queryWrapper.eq("creator_id", AuthUtils.getCurrentUserId());
-        }
+        if (type != null && !type.isBlank()) queryWrapper.eq("type", type);
+        if (status != null && !status.isBlank()) queryWrapper.eq("status", status);
         queryWrapper.orderByDesc("create_time");
         return Result.success(businessRecordService.list(queryWrapper));
     }
@@ -46,40 +55,66 @@ public class BusinessRecordController {
             return Result.error(400, "标题不能为空");
         }
 
-        if (AuthUtils.isStudent() && isStudentOwnedType(record.getType())) {
+        if (AuthUtils.isStudent()) {
+            if (!"feedback".equals(record.getType())) {
+                return Result.error(403, "学生只能提交意见反馈");
+            }
             Long userId = AuthUtils.getCurrentUserId();
             if (record.getId() != null) {
                 BusinessRecord existing = businessRecordService.getById(record.getId());
-                if (existing == null || !userId.equals(existing.getCreatorId())) {
+                if (existing == null || !"feedback".equals(existing.getType())
+                        || !userId.equals(existing.getCreatorId())) {
                     return Result.error(403, "无权修改该记录");
                 }
                 record.setStatus(existing.getStatus());
-            } else if ("student_feedback".equals(record.getType())) {
-                record.setStatus("待受理");
-            } else if ("student_call".equals(record.getType())) {
-                record.setStatus("待呼叫");
+                record.setCreateTime(existing.getCreateTime());
+            } else {
+                record.setStatus("PENDING");
             }
+            record.setType("feedback");
             record.setCreatorId(userId);
+        } else if ("dormmanager".equals(AuthUtils.getCurrentUserRole())) {
+            Long managerId = AuthUtils.getCurrentUserId();
+            if ("feedback".equals(record.getType())) {
+                BusinessRecord existing = record.getId() == null ? null : businessRecordService.getById(record.getId());
+                if (existing == null || !"feedback".equals(existing.getType())
+                        || !managerScopeService.canManageStudent(managerId, existing.getCreatorId())) {
+                    return Result.error(403, "无权处理该反馈");
+                }
+                record.setCreatorId(existing.getCreatorId());
+                record.setCreateTime(existing.getCreateTime());
+            } else if ("manager_messages".equals(record.getType()) || "manager_memos".equals(record.getType())) {
+                if (record.getId() != null) {
+                    BusinessRecord existing = businessRecordService.getById(record.getId());
+                    if (existing == null || !record.getType().equals(existing.getType())
+                            || !managerId.equals(existing.getCreatorId())) {
+                        return Result.error(403, "无权修改该记录");
+                    }
+                    record.setCreateTime(existing.getCreateTime());
+                }
+                record.setCreatorId(managerId);
+            } else {
+                return Result.error(403, "无权修改该类业务记录");
+            }
         }
 
         LocalDateTime now = LocalDateTime.now();
-        if (record.getId() == null && record.getCreateTime() == null) {
-            record.setCreateTime(now);
-        }
+        if (record.getId() == null && record.getCreateTime() == null) record.setCreateTime(now);
         record.setUpdateTime(now);
         return Result.success(businessRecordService.saveOrUpdate(record));
     }
 
     @DeleteMapping("/{id}")
     public Result<Boolean> delete(@PathVariable Long id) {
-        if (AuthUtils.isStudent()) {
-            return Result.error(403, "学生不能删除业务记录");
+        if (AuthUtils.isStudent()) return Result.error(403, "学生不能删除业务记录");
+        if ("dormmanager".equals(AuthUtils.getCurrentUserRole())) {
+            BusinessRecord existing = businessRecordService.getById(id);
+            if (existing == null || !("manager_messages".equals(existing.getType())
+                    || "manager_memos".equals(existing.getType()))
+                    || !AuthUtils.getCurrentUserId().equals(existing.getCreatorId())) {
+                return Result.error(403, "无权删除该记录");
+            }
         }
         return Result.success(businessRecordService.removeById(id));
-    }
-
-    private boolean isStudentOwnedType(String type) {
-        return type != null && type.startsWith("student_");
-    }        return null;
     }
 }

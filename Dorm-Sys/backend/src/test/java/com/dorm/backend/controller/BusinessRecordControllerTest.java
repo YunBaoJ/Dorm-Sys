@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.dorm.backend.entity.BusinessRecord;
 import com.dorm.backend.service.BusinessRecordService;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
 import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -19,6 +20,11 @@ import static org.mockito.Mockito.when;
 
 class BusinessRecordControllerTest {
 
+    @AfterEach
+    void clearRequestContext() {
+        RequestContextHolder.resetRequestAttributes();
+    }
+
     @Test
     @SuppressWarnings({"unchecked", "rawtypes"})
     void listFiltersByType() {
@@ -26,7 +32,7 @@ class BusinessRecordControllerTest {
         BusinessRecordController controller = new BusinessRecordController();
         ReflectionTestUtils.setField(controller, "businessRecordService", service);
 
-        controller.list("student_feedback", null);
+        controller.list("feedback", null);
 
         ArgumentCaptor<QueryWrapper<BusinessRecord>> captor = ArgumentCaptor.forClass((Class) QueryWrapper.class);
         verify(service).list(captor.capture());
@@ -45,13 +51,31 @@ class BusinessRecordControllerTest {
         request.setAttribute("currentUserRole", "student");
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 
-        controller.list("student_feedback", null);
+        controller.list("feedback", null);
 
         ArgumentCaptor<QueryWrapper<BusinessRecord>> captor = ArgumentCaptor.forClass((Class) QueryWrapper.class);
         verify(service).list(captor.capture());
         assertThat(captor.getValue().getSqlSegment()).contains("creator_id");
         assertThat(captor.getValue().getParamNameValuePairs()).containsValue(7L);
-        RequestContextHolder.resetRequestAttributes();
+    }
+
+    @Test
+    void studentCannotCreateManagerMessage() {
+        BusinessRecordService service = mock(BusinessRecordService.class);
+        BusinessRecordController controller = new BusinessRecordController();
+        ReflectionTestUtils.setField(controller, "businessRecordService", service);
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute("currentUserId", 7L);
+        request.setAttribute("currentUserRole", "student");
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+
+        BusinessRecord record = new BusinessRecord();
+        record.setType("manager_messages");
+        record.setTitle("伪造公告");
+
+        assertThat(controller.save(record).getCode()).isEqualTo(403);
+        verify(service, never()).saveOrUpdate(any());
     }
 
     @Test

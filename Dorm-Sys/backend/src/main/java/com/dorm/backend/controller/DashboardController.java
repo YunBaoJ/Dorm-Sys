@@ -2,6 +2,7 @@ package com.dorm.backend.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.dorm.backend.common.Result;
+import com.dorm.backend.common.AuthUtils;
 import com.dorm.backend.entity.*;
 import com.dorm.backend.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +11,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.math.BigDecimal;
+import java.time.YearMonth;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.text.SimpleDateFormat;
@@ -38,6 +40,46 @@ public class DashboardController {
     
     @Autowired
     private BuildingService buildingService;
+
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private DormManagerScopeService managerScopeService;
+
+    @GetMapping("/stats")
+    public Result<Map<String, Object>> getStats() {
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("studentCount", userService.count(new QueryWrapper<User>().eq("role", "student")));
+        stats.put("managerCount", userService.count(new QueryWrapper<User>().eq("role", "dormmanager")));
+        stats.put("buildingCount", buildingService.count());
+        stats.put("roomCount", roomService.count());
+        return Result.success(stats);
+    }
+
+    @GetMapping("/alerts")
+    public Result<List<Map<String, Object>>> getAlerts() {
+        List<Map<String, Object>> alerts = new ArrayList<>();
+        long pendingRepairs = repairRequestService.count(new QueryWrapper<RepairRequest>()
+            .in("status", List.of("PENDING", "PROCESSING")));
+        if (pendingRepairs > 0) {
+            alerts.add(alert("当前有 " + pendingRepairs + " 条报修工单待处理", "warning", "查看工单", "/admin/repairs"));
+        }
+        long maintenanceRooms = roomService.count(new QueryWrapper<Room>().eq("status", "MAINTENANCE"));
+        if (maintenanceRooms > 0) {
+            alerts.add(alert("当前有 " + maintenanceRooms + " 间宿舍处于维护状态", "error", "查看房间", "/admin/resources/rooms"));
+        }
+        return Result.success(alerts);
+    }
+
+    private Map<String, Object> alert(String title, String type, String action, String url) {
+        Map<String, Object> alert = new HashMap<>();
+        alert.put("title", title);
+        alert.put("type", type);
+        alert.put("action", action);
+        alert.put("url", url);
+        return alert;
+    }
 
     @GetMapping("/student")
     public Result<Map<String, Object>> getStudentDashboard() {
@@ -144,18 +186,31 @@ public class DashboardController {
         
         data.put("todoList", todoList);
         
-        // 5. Power Chart (Pseudo-random based on room id)
-        List<Integer> powerHistory = new ArrayList<>();
-        int baseSeed = myRoomId != null ? myRoomId.hashCode() : 42;
-        Random rand = new Random(baseSeed + Calendar.getInstance().get(Calendar.MONTH));
-        int totalPower = 0;
-        for (int i = 0; i < 12; i++) {
-            int val = 30 + rand.nextInt(50);
-            powerHistory.add(val);
-            totalPower += val;
+        List<BigDecimal> electricityFeeHistory = new ArrayList<>();
+        List<String> electricityFeeMonths = new ArrayList<>();
+        BigDecimal totalElectricityFee = BigDecimal.ZERO;
+        Map<String, BigDecimal> electricityFeesByMonth = new HashMap<>();
+        if (myRoomId != null) {
+            List<FeeBill> electricityBills = feeBillService.list(new QueryWrapper<FeeBill>()
+                .eq("room_id", myRoomId)
+                .eq("type", "ELECTRICITY"));
+            for (FeeBill bill : electricityBills) {
+                if (bill.getMonth() != null && bill.getAmount() != null) {
+                    electricityFeesByMonth.merge(bill.getMonth(), bill.getAmount(), BigDecimal::add);
+                }
+            }
         }
-        data.put("powerHistory", powerHistory);
-        data.put("totalPower", totalPower);
+        YearMonth currentMonth = YearMonth.now();
+        for (int offset = 11; offset >= 0; offset--) {
+            YearMonth month = currentMonth.minusMonths(offset);
+            BigDecimal amount = electricityFeesByMonth.getOrDefault(month.toString(), BigDecimal.ZERO);
+            electricityFeeMonths.add(month.getMonthValue() + "月");
+            electricityFeeHistory.add(amount);
+            totalElectricityFee = totalElectricityFee.add(amount);
+        }
+        data.put("electricityFeeMonths", electricityFeeMonths);
+        data.put("electricityFeeHistory", electricityFeeHistory);
+        data.put("totalElectricityFee", totalElectricityFee);
         
         return Result.success(data);
     }
@@ -163,6 +218,10 @@ public class DashboardController {
     @GetMapping("/buildings")
     public Result<List<Map<String, Object>>> getBuildingStats() {
         List<Building> buildings = buildingService.list();
+        if ("dormmanager".equals(AuthUtils.getCurrentUserRole())) {
+            List<Long> managedBuildingIds = managerScopeService.managedBuildingIds(AuthUtils.getCurrentUserId());
+            buildings = buildings.stream().filter(building -> managedBuildingIds.contains(building.getId())).toList();
+        }
         List<Room> allRooms = roomService.list();
         List<Bed> allBeds = bedService.list();
         
@@ -178,11 +237,16 @@ public class DashboardController {
             
             List<Bed> bBeds = allBeds.stream().filter(bed -> bRoomIds.contains(bed.getRoomId())).collect(Collectors.toList());
             
-            long occupied = bBeds.stream().filter(bed -> bed.getStudentId() != null && "OCCUPIED".equals(bed.getStatus())).count();
+            long occupied = bBeds.stream().filter(bed -> bed.getStudentId() != null).count();
+            int percentage = bBeds.isEmpty()
+                ? 0
+                : (int) Math.round(occupied * 100.0 / bBeds.size());
             
             stat.put("totalRooms", bRooms.size());
             stat.put("totalBeds", bBeds.size());
             stat.put("occupiedBeds", occupied);
+            stat.put("percentage", percentage);
+            stat.put("status", percentage >= 100 ? "已满" : percentage >= 80 ? "紧张" : "正常");
             
             res.add(stat);
         }
@@ -203,12 +267,47 @@ public class DashboardController {
         
         Bed myBed = bedService.getOne(new QueryWrapper<Bed>().eq("student_id", userId));
         if (myBed == null || myBed.getRoomId() == null) {
-            return Result.error("未分配宿舍");
+            data.put("myBed", null);
+            data.put("room", null);
+            data.put("building", null);
+            data.put("roommates", List.of());
+            return Result.success(data);
         }
         Long myRoomId = myBed.getRoomId();
         
         Room room = roomService.getById(myRoomId);
         Building building = room != null ? buildingService.getById(room.getBuildingId()) : null;
+
+        data.put("myBed", myBed);
+        data.put("room", room);
+        data.put("building", building);
+
+        List<Bed> roomBeds = bedService.list(new QueryWrapper<Bed>()
+            .eq("room_id", myRoomId)
+            .isNotNull("student_id"));
+        List<Long> roommateIds = roomBeds.stream()
+            .map(Bed::getStudentId)
+            .filter(Objects::nonNull)
+            .filter(id -> !id.equals(userId))
+            .toList();
+        Map<Long, User> roommateUsers = roommateIds.isEmpty()
+            ? Collections.emptyMap()
+            : userService.list(new QueryWrapper<User>().in("id", roommateIds)).stream()
+                .collect(Collectors.toMap(User::getId, user -> user));
+        List<Map<String, Object>> roommates = new ArrayList<>();
+        for (Bed bed : roomBeds) {
+            if (bed.getStudentId() == null || bed.getStudentId().equals(userId)) continue;
+            User user = roommateUsers.get(bed.getStudentId());
+            if (user == null) continue;
+            Map<String, Object> roommate = new HashMap<>();
+            roommate.put("id", user.getId());
+            roommate.put("name", user.getName());
+            roommate.put("username", user.getUsername());
+            roommate.put("avatar", user.getAvatar());
+            roommate.put("bedNumber", bed.getBedNumber());
+            roommates.add(roommate);
+        }
+        data.put("roommates", roommates);
         
         data.put("campus", building != null ? building.getLocation() : "主校区");
         
@@ -224,7 +323,7 @@ public class DashboardController {
         boolean waterIssue = false;
         
         for (RepairRequest r : activeRepairs) {
-            String type = r.getType();
+            String type = r.getType() == null ? "" : r.getType();
             if (type.contains("灯") || type.contains("电")) lightIssue = true;
             if (type.contains("空调")) acIssue = true;
             if (type.contains("网")) netIssue = true;

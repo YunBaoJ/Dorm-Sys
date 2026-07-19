@@ -54,9 +54,9 @@
                     <span class="progress-val">{{ room.occupied }}/{{ room.capacity }}</span>
                   </div>
                   <el-progress 
-                    :percentage="room.capacity ? (room.occupied / room.capacity) * 100 : 0" 
+                    :percentage="room.occupancyPercentage"
                     :stroke-width="8" 
-                    :color="room.occupied === room.capacity ? '#f59e0b' : 'var(--line)'"
+                    :color="room.occupied >= room.capacity ? '#f59e0b' : '#3b82f6'"
                     :show-text="false"
                   />
                 </div>
@@ -262,7 +262,19 @@ const fetchRooms = async () => {
   loading.value = true
   try {
     const res = await getRooms(buildingFilter.value || null)
-    rooms.value = res || []
+    rooms.value = (res || []).map((room) => {
+      const occupied = Number(room.occupied) || 0
+      const capacity = Number(room.capacity) || 0
+
+      return {
+        ...room,
+        occupied,
+        capacity,
+        occupancyPercentage: capacity
+          ? Math.min(100, Math.round((occupied / capacity) * 100))
+          : 0
+      }
+    })
   } catch (error) { console.error(error);
     ElMessage.error('获取房间列表失败')
   } finally {

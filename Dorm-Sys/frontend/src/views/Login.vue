@@ -115,7 +115,7 @@
 </template>
 
 <script setup>
-import { nextTick, reactive, ref } from 'vue'
+import { nextTick, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
 import { loginApi } from '../api/auth'
@@ -148,10 +148,21 @@ const roles = [
 ]
 
 const form = reactive({
-  username: '2022010001',
+  username: '20240001',
   password: '123456',
   role: 'student',
   remember: true
+})
+
+const demoAccounts = {
+  student: '20240001',
+  dormmanager: 'manager1',
+  admin: 'admin'
+}
+
+watch(() => form.role, (role) => {
+  form.username = demoAccounts[role]
+  errors.username = ''
 })
 
 const showResetTip = () => {
@@ -334,24 +345,13 @@ const handleLogin = async () => {
   position: relative;
   box-sizing: border-box;
   width: min(100% - 64px, 440px);
-  border: 1px solid rgba(255, 255, 255, 0.56);
+  border: 1px solid rgba(255, 255, 255, 0.48);
   border-radius: 8px;
   padding: 42px 36px 34px;
-  background: rgba(248, 251, 255, 0.78);
-  box-shadow: 0 24px 60px rgba(4, 24, 49, 0.24);
-  backdrop-filter: blur(22px) saturate(140%);
-  -webkit-backdrop-filter: blur(22px) saturate(140%);
-}
-
-.form-content::before {
-  position: absolute;
-  top: 0;
-  left: 36px;
-  width: 36px;
-  height: 4px;
-  border-radius: 0 0 2px 2px;
-  background: var(--primary);
-  content: '';
+  background: rgba(232, 240, 250, 0.54);
+  box-shadow: 0 24px 64px rgba(4, 24, 49, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.42);
+  backdrop-filter: blur(30px) saturate(150%) contrast(104%);
+  -webkit-backdrop-filter: blur(30px) saturate(150%) contrast(104%);
 }
 
 .mobile-brand {
@@ -386,45 +386,50 @@ const handleLogin = async () => {
 .role-group {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
   margin-bottom: 24px;
-  border: 1px solid rgba(148, 163, 184, 0.42);
-  border-radius: 6px;
-  overflow: hidden;
 }
 
 .role-button {
+  position: relative;
   justify-content: center;
-  gap: 7px;
-  min-height: 48px;
+  gap: 6px;
+  min-height: 44px;
   border: 0;
-  border-right: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.64);
-  color: #526068;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(100, 116, 139, 0.14);
+  color: #52657a;
   cursor: pointer;
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 650;
   transition: background-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
 }
 
-.role-button:last-child {
-  border-right: 0;
-}
-
 .role-button:hover {
-  background: var(--primary-soft);
+  background: rgba(255, 255, 255, 0.36);
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.2);
+  color: var(--primary);
 }
 
 .role-button.active {
+  border-radius: 6px;
   background: var(--primary);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
   color: #fff;
+  font-weight: 700;
+}
+
+.role-button.active svg {
+  stroke-width: 2.4;
 }
 
 .role-button:focus-visible {
-  position: relative;
   z-index: 1;
-  outline: 3px solid rgba(37, 99, 235, 0.3);
-  outline-offset: -3px;
+  border-radius: 4px;
+  outline: 2px solid rgba(37, 99, 235, 0.55);
+  outline-offset: -4px;
 }
 
 .login-form {
@@ -444,10 +449,11 @@ const handleLogin = async () => {
   min-height: 48px;
   gap: 11px;
   box-sizing: border-box;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(148, 163, 184, 0.32);
   border-radius: 6px;
   padding: 0 14px;
-  background: rgba(255, 255, 255, 0.68);
+  background: rgba(255, 255, 255, 0.52);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
   color: #819097;
   transition: border-color 180ms ease, box-shadow 180ms ease;
 }
@@ -579,7 +585,7 @@ const handleLogin = async () => {
 .security-note {
   gap: 8px;
   margin: 26px 0 0;
-  border-top: 1px solid #e9eef6;
+  border-top: 1px solid rgba(255, 255, 255, 0.46);
   padding-top: 19px;
   color: #778187;
   font-size: 12px;
@@ -659,8 +665,5 @@ const handleLogin = async () => {
     padding: 38px 24px 28px;
   }
 
-  .form-content::before {
-    left: 24px;
-  }
 }
 </style>

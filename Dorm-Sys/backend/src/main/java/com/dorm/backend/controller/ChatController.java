@@ -174,12 +174,4 @@ public class ChatController {
         return bedService.getOne(query);
     }
 
-    private Long AuthUtils.getCurrentUserId() {
-        ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-        if (attr != null) {
-            Object val = attr.getRequest().getAttribute("currentUserId");
-            return val instanceof Number ? ((Number) val).longValue() : null;
-        }
-        return null;
-    }
 }
