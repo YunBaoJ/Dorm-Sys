@@ -4,7 +4,7 @@
       <div class="hero-content">
         <div>
           <h2>校园公告</h2>
-          <p>查看宿管发布的最新通知</p>
+          <p>查看管理员与宿管发布的最新通知</p>
         </div>
         <el-button @click="fetchNotices">刷新</el-button>
       </div>
@@ -22,7 +22,7 @@
             <p>{{ notice.description }}</p>
             <div class="notice-meta">
               <span>{{ notice.owner || '全体学生' }}</span>
-              <span>{{ formatTime(notice.createTime) }}</span>
+              <span>{{ formatTime(notice.eventTime || notice.createTime) }}</span>
             </div>
           </div>
         </div>
@@ -42,7 +42,12 @@ const loading = ref(false)
 const fetchNotices = async () => {
   loading.value = true
   try {
-    notices.value = await getBusinessRecords('manager_messages', '已发布')
+    const [managerMessages, adminNotices] = await Promise.all([
+      getBusinessRecords('manager_messages', '已发布'),
+      getBusinessRecords('admin_notice', '已发布')
+    ])
+    notices.value = [...(adminNotices || []), ...(managerMessages || [])]
+      .sort((a, b) => new Date(b.eventTime || b.createTime) - new Date(a.eventTime || a.createTime))
   } catch (error) { console.error(error);
     ElMessage.error('获取公告失败')
   } finally {

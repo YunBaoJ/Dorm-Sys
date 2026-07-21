@@ -30,6 +30,8 @@ public class BusinessRecordController {
             if (type == null || type.isBlank() || "feedback".equals(type)) {
                 type = "feedback";
                 queryWrapper.eq("creator_id", AuthUtils.getCurrentUserId());
+            } else if ("admin_notice".equals(type)) {
+                status = "已发布";
             } else if ("manager_messages".equals(type)) {
                 status = "已发布";
             } else {
@@ -53,6 +55,9 @@ public class BusinessRecordController {
         }
         if (record.getTitle() == null || record.getTitle().isBlank()) {
             return Result.error(400, "标题不能为空");
+        }
+        if ("admin_notice".equals(record.getType()) && !"admin".equals(AuthUtils.getCurrentUserRole())) {
+            return Result.error(403, "仅管理员可维护全校公告");
         }
 
         if (AuthUtils.isStudent()) {
@@ -96,9 +101,24 @@ public class BusinessRecordController {
             } else {
                 return Result.error(403, "无权修改该类业务记录");
             }
+        } else if ("admin".equals(AuthUtils.getCurrentUserRole()) && "admin_notice".equals(record.getType())) {
+            if (!"草稿".equals(record.getStatus()) && !"已发布".equals(record.getStatus())) {
+                return Result.error(400, "管理员公告状态仅支持草稿或已发布");
+            }
+            if (record.getId() != null) {
+                BusinessRecord existing = businessRecordService.getById(record.getId());
+                if (existing == null || !"admin_notice".equals(existing.getType())) {
+                    return Result.error(403, "无权修改该记录");
+                }
+                record.setCreateTime(existing.getCreateTime());
+            }
+            record.setCreatorId(AuthUtils.getCurrentUserId());
         }
 
         LocalDateTime now = LocalDateTime.now();
+        if ("admin_notice".equals(record.getType()) && "已发布".equals(record.getStatus())) {
+            record.setEventTime(now);
+        }
         if (record.getId() == null && record.getCreateTime() == null) record.setCreateTime(now);
         record.setUpdateTime(now);
         return Result.success(businessRecordService.saveOrUpdate(record));
