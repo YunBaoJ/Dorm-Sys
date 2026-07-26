@@ -63,7 +63,7 @@
                   <span class="detail-content">{{ app.reason }}</span>
                 </div>
                 <div v-if="app.comment" class="comment-bubble">
-                  <el-icon color="#3b82f6"><component :is="MessageSquare" /></el-icon>
+                  <el-icon color="var(--primary)"><component :is="MessageSquare" /></el-icon>
                   <span>{{ app.comment }}</span>
                 </div>
               </div>
@@ -96,7 +96,7 @@
               </div>
             </div>
             <div class="dash-item">
-              <div class="dash-icon bg-light-blue"><el-icon color="#3b82f6"><component :is="CheckCircle2" /></el-icon></div>
+              <div class="dash-icon bg-light-blue"><el-icon color="var(--primary)"><component :is="CheckCircle2" /></el-icon></div>
               <div class="dash-info">
                 <div class="dash-label">已处理</div>
                 <div class="dash-value">{{ processedCount }} <span>单</span></div>
@@ -369,7 +369,7 @@ const processedCount = computed(() => applications.value.filter(a => a.status !=
   align-items: center;
   gap: 8px;
   background-color: var(--primary-2);
-  color: #3b82f6;
+  color: var(--primary);
   padding: 12px 16px;
   border-radius: 8px;
   font-size: 13px;
@@ -485,7 +485,7 @@ const processedCount = computed(() => applications.value.filter(a => a.status !=
   height: 24px;
   border-radius: 50%;
   background: var(--primary-2);
-  color: #3b82f6;
+  color: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -526,6 +526,6 @@ const processedCount = computed(() => applications.value.filter(a => a.status !=
 }
 
 .tips-list li::marker {
-  color: #3b82f6;
+  color: var(--primary);
 }
 </style>

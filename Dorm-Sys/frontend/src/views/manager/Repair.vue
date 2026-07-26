@@ -308,7 +308,7 @@ const completedCount = computed(() => tickets.value.filter(t => t.status === 'CO
   color: white;
 }
 
-.bg-blue { background: #3b82f6; }
+.bg-blue { background: var(--primary); }
 
 .ticket-info {
   flex: 1;
@@ -408,8 +408,8 @@ const completedCount = computed(() => tickets.value.filter(t => t.status === 'CO
   font-size: 24px;
 }
 
-.bg-light-blue { background: var(--primary-2); color: #3b82f6; }
-.bg-light-orange { background: var(--orange-2); color: #f97316; }
+.bg-light-blue { background: var(--primary-2); color: var(--primary); }
+.bg-light-orange { background: var(--orange-2); color: var(--orange); }
 .bg-gray { background: var(--line); color: var(--sub); }
 
 .dash-info {
@@ -454,7 +454,7 @@ const completedCount = computed(() => tickets.value.filter(t => t.status === 'CO
 }
 
 .dot-orange { background-color: #f59e0b; }
-.dot-blue { background-color: #3b82f6; }
+.dot-blue { background-color: var(--primary); }
 
 .sla-info {
   flex: 1;
@@ -490,5 +490,5 @@ const completedCount = computed(() => tickets.value.filter(t => t.status === 'CO
   font-weight: 500;
 }
 
-.text-blue { color: #3b82f6; }
+.text-blue { color: var(--primary); }
 </style>

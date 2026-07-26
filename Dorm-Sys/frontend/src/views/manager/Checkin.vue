@@ -130,7 +130,7 @@
                 <span>{{ occ.name }}</span>
                 <span class="text-blue">{{ occ.percentage }}%</span>
               </div>
-              <el-progress :percentage="occ.percentage" :show-text="false" color="#3b82f6" />
+              <el-progress :percentage="occ.percentage" :show-text="false" color="var(--el-color-primary)" />
             </div>
             <div v-if="buildingOccupations.length === 0" style="color:var(--sub); font-size:13px">暂无楼栋数据</div>
           </div>
@@ -507,8 +507,8 @@ const handleCheckout = async (r) => {
   font-size: 24px;
 }
 
-.bg-light-blue { background: var(--primary-2); color: #3b82f6; }
-.bg-light-orange { background: var(--orange-2); color: #f97316; }
+.bg-light-blue { background: var(--primary-2); color: var(--primary); }
+.bg-light-orange { background: var(--orange-2); color: var(--orange); }
 .bg-gray { background: var(--line); color: var(--sub); }
 
 .dash-info {
@@ -552,7 +552,7 @@ const handleCheckout = async (r) => {
   color: var(--text-secondary);
 }
 
-.text-blue { color: #3b82f6; font-weight: bold; }
+.text-blue { color: var(--primary); font-weight: bold; }
 
 .notes-card {
   background-color: var(--primary-2);
@@ -568,6 +568,6 @@ const handleCheckout = async (r) => {
 }
 
 .tips-list li::marker {
-  color: #3b82f6;
+  color: var(--primary);
 }
 </style>

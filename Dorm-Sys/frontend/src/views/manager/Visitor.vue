@@ -299,9 +299,9 @@ const recentCheckins = computed(() => visitors.value.filter(v => v.status === 'A
   line-height: 1.2;
 }
 
-.av-yellow { background: #eab308; }
-.av-green { background: #10b981; }
-.av-red { background: #ef4444; }
+.av-yellow { background: var(--warn); }
+.av-green { background: var(--success); }
+.av-red { background: var(--danger); }
 
 .visitor-info {
   flex: 1;
@@ -339,7 +339,7 @@ const recentCheckins = computed(() => visitors.value.filter(v => v.status === 'A
   font-size: 13px;
 }
 
-.text-blue { color: #3b82f6; }
+.text-blue { color: var(--primary); }
 
 .visitor-meta {
   display: flex;
@@ -409,8 +409,8 @@ const recentCheckins = computed(() => visitors.value.filter(v => v.status === 'A
   font-size: 24px;
 }
 
-.bg-light-blue { background: var(--primary-2); color: #3b82f6; }
-.bg-light-orange { background: var(--orange-2); color: #f97316; }
+.bg-light-blue { background: var(--primary-2); color: var(--primary); }
+.bg-light-orange { background: var(--orange-2); color: var(--orange); }
 .bg-gray { background: var(--line); color: var(--sub); }
 
 .dash-info {
@@ -458,6 +458,6 @@ const recentCheckins = computed(() => visitors.value.filter(v => v.status === 'A
 }
 
 .rules-list li::marker {
-  color: #3b82f6;
+  color: var(--primary);
 }
 </style>

@@ -342,7 +342,7 @@ const getScoreClass = (score) => {
   line-height: 1;
 }
 
-.text-blue { color: #3b82f6; }
+.text-blue { color: var(--primary); }
 .text-orange { color: #f59e0b; }
 .text-dark { color: var(--text); }
 
@@ -354,7 +354,7 @@ const getScoreClass = (score) => {
   font-weight: 500;
 }
 
-.trend-up { color: #3b82f6; }
+.trend-up { color: var(--primary); }
 .trend-down { color: #f59e0b; }
 .text-gray { color: var(--sub); font-weight: normal; }
 
@@ -395,7 +395,7 @@ const getScoreClass = (score) => {
 }
 
 .text-primary {
-  color: #3b82f6;
+  color: var(--primary);
   font-weight: bold;
 }
 
@@ -408,7 +408,7 @@ const getScoreClass = (score) => {
 }
 
 .tips-list li::marker {
-  color: #3b82f6;
+  color: var(--primary);
 }
 
 .list-card {
@@ -479,7 +479,7 @@ const getScoreClass = (score) => {
 
 .score-blue {
   border-color: var(--primary-2);
-  color: #3b82f6;
+  color: var(--primary);
 }
 
 .score-orange {
@@ -488,8 +488,8 @@ const getScoreClass = (score) => {
 }
 
 .score-red {
-  border-color: #fef2f2;
-  color: #ef4444;
+  border-color: var(--danger-2);
+  color: var(--danger);
 }
 
 .record-info {

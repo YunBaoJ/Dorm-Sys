@@ -111,7 +111,7 @@
           </template>
           <div class="assist-list">
             <div class="assist-item">
-              <el-icon color="#3b82f6" :size="18" class="assist-icon"><component :is="UploadCloud" /></el-icon>
+              <el-icon color="var(--primary)" :size="18" class="assist-icon"><component :is="UploadCloud" /></el-icon>
               <div>
                 <div class="assist-title">批量导入</div>
                 <div class="assist-desc">支持通过 Excel 模板批量创建学生和宿管账号。</div>
@@ -461,8 +461,8 @@ const handleDelete = async (id) => {
   font-size: 24px;
 }
 
-.bg-blue { background: var(--primary-2); color: #3b82f6; }
-.bg-orange { background: var(--orange-2); color: #f97316; }
+.bg-blue { background: var(--primary-2); color: var(--primary); }
+.bg-orange { background: var(--orange-2); color: var(--orange); }
 .bg-gray { background: var(--line); color: var(--sub); }
 
 .stat-info {
@@ -525,7 +525,7 @@ const handleDelete = async (id) => {
   margin: 0;
   padding-left: 20px;
   font-size: 13px;
-  color: #3b82f6;
+  color: var(--primary);
   line-height: 1.8;
 }
 </style>

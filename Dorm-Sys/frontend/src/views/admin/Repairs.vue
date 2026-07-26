@@ -110,7 +110,7 @@
                 <span class="avg-label">强电/弱电故障</span>
                 <span class="avg-val text-blue">4.2h</span>
               </div>
-              <el-progress :percentage="80" :stroke-width="6" :show-text="false" color="#3b82f6" />
+              <el-progress :percentage="80" :stroke-width="6" :show-text="false" color="var(--primary)" />
             </div>
             <div class="avg-item">
               <div class="avg-header">
@@ -378,8 +378,8 @@ onMounted(fetchTickets)
   font-size: 20px;
 }
 
-.bg-light-blue { background: var(--primary-2); color: #3b82f6; }
-.bg-light-orange { background: var(--orange-2); color: #f97316; }
+.bg-light-blue { background: var(--primary-2); color: var(--primary); }
+.bg-light-orange { background: var(--orange-2); color: var(--orange); }
 .bg-gray { background: var(--line); color: var(--sub); }
 
 .dash-info {
@@ -431,7 +431,7 @@ onMounted(fetchTickets)
   font-weight: 600;
 }
 
-.text-blue { color: #3b82f6; }
+.text-blue { color: var(--primary); }
 .text-orange { color: #f59e0b; }
 
 .rules-card {
@@ -440,7 +440,7 @@ onMounted(fetchTickets)
 }
 
 .text-primary {
-  color: #3b82f6;
+  color: var(--primary);
 }
 
 .rules-list {
@@ -452,6 +452,6 @@ onMounted(fetchTickets)
 }
 
 .rules-list li::marker {
-  color: #3b82f6;
+  color: var(--primary);
 }
 </style>

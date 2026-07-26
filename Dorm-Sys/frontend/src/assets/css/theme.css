@@ -1,11 +1,11 @@
 :root {
   /* Override Element Plus theme colors to match the design */
-  --el-color-primary: #2f8cff;
-  --el-color-primary-light-3: #6eafff;
-  --el-color-primary-light-5: #97c8ff;
-  --el-color-primary-light-7: #c1dfff;
-  --el-color-primary-light-8: #d5e9ff;
-  --el-color-primary-light-9: #eaf3ff;
+  --el-color-primary: #2563eb;
+  --el-color-primary-light-3: #558ef0;
+  --el-color-primary-light-5: #8bb4f7;
+  --el-color-primary-light-7: #b8d2fb;
+  --el-color-primary-light-8: #d1e3fd;
+  --el-color-primary-light-9: #eaf1fe;
   --el-color-success: #22c55e;
   --el-color-warning: #f59e0b;
   --el-color-danger: #ef4444;
@@ -36,7 +36,32 @@ body {
 }
 
 .el-card__header {
-  border-bottom: 1px solid #f0f2f5 !important;
+  border-bottom: 1px solid var(--line) !important;
   font-weight: bold;
   font-size: 16px;
+}
+
+/* Dark mode overrides */
+:root[data-theme="dark"] {
+  --el-color-primary: #3b82f6;
+  --el-color-primary-light-3: #60a5fa;
+  --el-color-primary-light-5: #93c5fd;
+  --el-color-primary-light-7: #bfdbfe;
+  --el-color-primary-light-8: #dbeafe;
+  --el-color-primary-light-9: #1e3a5f;
+  --el-color-success: #22c55e;
+  --el-color-warning: #eab308;
+  --el-color-danger: #ef4444;
+  --el-color-info: #94a3b8;
+
+  --el-box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --el-box-shadow-light: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+:root[data-theme="dark"] body {
+  background-color: #020617;
+}
+
+:root[data-theme="dark"] .el-card__header {
+  border-bottom: 1px solid #1e293b !important;
 }

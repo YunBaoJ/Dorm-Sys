@@ -156,7 +156,7 @@
               <div class="card-header">卫生月度指标</div>
               <div class="hygiene-content">
                 <div class="chart-box">
-                  <el-progress type="dashboard" :percentage="dash.hygieneAverageScore || 0" :width="120" color="#3b82f6" :stroke-width="8">
+                  <el-progress type="dashboard" :percentage="dash.hygieneAverageScore || 0" :width="120" color="var(--el-color-primary)" :stroke-width="8">
                     <template #default="{ percentage }">
                       <div class="score-value">
                         <span class="num">{{ percentage }}</span>
@@ -291,13 +291,13 @@ onMounted(() => {
   border-radius: 12px;
   border: none;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04) !important;
-  background: #fff;
+  background: var(--surface);
 }
 
 .card-header {
   font-weight: 600;
   font-size: 16px;
-  color: #1e293b;
+  color: var(--text);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -319,7 +319,7 @@ onMounted(() => {
 .dorm-icon-box {
   width: 90px;
   height: 90px;
-  background: #eef2ff;
+  background: var(--indigo-2);
   border-radius: 24px;
   display: grid;
   place-items: center;
@@ -329,7 +329,7 @@ onMounted(() => {
   margin: 0 0 16px;
   font-size: 24px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text);
 }
 .dorm-tags {
   display: flex;
@@ -348,11 +348,11 @@ onMounted(() => {
   font-size: 14px;
 }
 .meta-label {
-  color: #64748b;
+  color: var(--sub);
 }
 .meta-value {
   font-weight: 600;
-  color: #1e293b;
+  color: var(--text);
 }
 
 /* Roommates Section */
@@ -363,13 +363,13 @@ onMounted(() => {
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 16px;
-  color: #1e293b;
+  color: var(--text);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 .section-title .count {
-  color: #94a3b8;
+  color: var(--sub);
   font-weight: 400;
   margin-left: 6px;
 }
@@ -388,13 +388,13 @@ onMounted(() => {
   align-items: center;
   min-width: 0;
   padding: 12px 16px;
-  border: 1px solid #e4ecfc;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #f8faff;
+  background: var(--surface);
 }
 .roommate-item.is-me {
-  background: #f4f8ff;
-  border-color: #93b4f9;
+  background: var(--primary-2);
+  border-color: var(--primary);
 }
 .avatar, .avatar-placeholder {
   width: 48px;
@@ -403,8 +403,8 @@ onMounted(() => {
   margin-right: 14px;
 }
 .avatar-placeholder {
-  background: #e2e8f0;
-  color: #64748b;
+  background: var(--line);
+  color: var(--sub);
   display: grid;
   place-items: center;
   font-weight: 600;
@@ -424,7 +424,7 @@ onMounted(() => {
 }
 .rm-name {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--text);
   font-size: 15px;
 }
 .me-tag {
@@ -437,14 +437,14 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   font-size: 13px;
-  color: #64748b;
+  color: var(--sub);
 }
 .rm-status {
-  background: #e2e8f0;
+  background: var(--muted-2);
   padding: 2px 8px;
   border-radius: 12px;
   font-size: 12px;
-  color: #475569;
+  color: var(--text-secondary);
 }
 .rm-action {
   display: flex;
@@ -458,17 +458,17 @@ onMounted(() => {
   padding: 0;
   display: grid;
   place-items: center;
-  border: 1px solid #d7e3f8;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
-  color: #2563eb;
+  background: var(--surface);
+  color: var(--primary);
   cursor: pointer;
   transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
 }
 .message-btn:hover {
   color: #fff;
-  border-color: #2563eb;
-  background: #2563eb;
+  border-color: var(--primary);
+  background: var(--primary);
 }
 .message-btn:focus-visible {
   outline: 3px solid rgba(37, 99, 235, 0.24);
@@ -505,7 +505,7 @@ onMounted(() => {
 .plan-border {
   position: absolute;
   inset: 0 24px;
-  border: 4px solid #cbd5e1;
+  border: 4px solid var(--line);
   border-radius: 12px;
 }
 .plan-border::before,
@@ -513,7 +513,7 @@ onMounted(() => {
   content: '';
   position: absolute;
   height: 8px;
-  background: #fff;
+  background: var(--surface);
 }
 .plan-border::before {
   top: -4px;
@@ -530,8 +530,8 @@ onMounted(() => {
   position: absolute;
   z-index: 1;
   padding: 0 12px;
-  background: #fff;
-  color: #94a3b8;
+  background: var(--surface);
+  color: var(--sub);
   font-size: 14px;
   font-weight: 500;
 }
@@ -564,30 +564,30 @@ onMounted(() => {
   height: 56px;
   display: grid;
   place-items: center;
-  border: 2px solid #e2e8f0;
+  border: 2px solid var(--line);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--bg);
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
   transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 .bed-number {
-  color: #64748b;
+  color: var(--sub);
   font-size: 16px;
   font-weight: 600;
 }
 .bed-owner {
-  color: #475569;
+  color: var(--text-secondary);
   font-size: 15px;
   font-weight: 500;
 }
 .bed-slot.is-mine .bed-box {
-  border-color: #3b82f6;
-  background: #eff6ff;
+  border-color: var(--primary);
+  background: var(--primary-2);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15), 0 4px 12px rgba(59, 130, 246, 0.12);
 }
 .bed-slot.is-mine .bed-number,
 .bed-slot.is-mine .bed-owner {
-  color: #1d4ed8;
+  color: var(--primary);
   font-weight: 700;
 }
 .my-bed-badge {
@@ -596,7 +596,7 @@ onMounted(() => {
   right: -10px;
   padding: 2px 8px;
   border-radius: 8px;
-  background: #3b82f6;
+  background: var(--primary);
   box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
   color: #fff;
   font-size: 10px;
@@ -604,19 +604,19 @@ onMounted(() => {
   white-space: nowrap;
 }
 .bed-slot.is-occupied .bed-box {
-  border-color: #94a3b8;
-  background: #f1f5f9;
+  border-color: var(--sub);
+  background: var(--muted);
 }
 .bed-slot.is-occupied .bed-number {
-  color: #475569;
+  color: var(--text-secondary);
 }
 .bed-slot.is-empty .bed-box {
   border-style: dashed;
-  background: #fff;
+  background: var(--surface);
 }
 .bed-slot.is-empty .bed-number,
 .bed-slot.is-empty .bed-owner {
-  color: #cbd5e1;
+  color: var(--sub);
   font-weight: 400;
 }
 
@@ -631,9 +631,9 @@ onMounted(() => {
   align-items: center;
   min-width: 0;
   padding: 20px;
-  border: 1px solid #edf2f7;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--bg);
   gap: 16px;
 }
 .fac-icon-box {
@@ -646,26 +646,26 @@ onMounted(() => {
   font-size: 22px;
 }
 .bg-blue {
-  background: #eef2ff;
-  color: #3b82f6;
+  background: var(--primary-2);
+  color: var(--primary);
 }
 .bg-yellow {
-  background: #fef3c7;
-  color: #d97706;
+  background: var(--warn-2);
+  color: var(--warn);
 }
 .bg-red {
-  background: #fee2e2;
-  color: #dc2626;
+  background: var(--danger-2);
+  color: var(--danger);
 }
 .text-yellow {
-  color: #d97706 !important;
+  color: var(--warn) !important;
 }
 .text-red {
-  color: #dc2626 !important;
+  color: var(--danger) !important;
 }
 .fac-name {
   margin-bottom: 6px;
-  color: #1e293b;
+  color: var(--text);
   font-size: 15px;
   font-weight: 600;
 }
@@ -677,7 +677,7 @@ onMounted(() => {
 }
 .fac-status {
   font-size: 14px;
-  color: #64748b;
+  color: var(--sub);
 }
 
 /* Hygiene Card */
@@ -700,16 +700,16 @@ onMounted(() => {
 .score-value .num {
   font-size: 40px;
   font-weight: 800;
-  color: #1e293b;
+  color: var(--text);
 }
 .score-value .unit {
   font-size: 16px;
-  color: #64748b;
+  color: var(--sub);
   margin-left: 4px;
 }
 .chart-label {
   font-size: 14px;
-  color: #94a3b8;
+  color: var(--sub);
   margin-top: -12px;
 }
 .hygiene-stats {
@@ -725,11 +725,11 @@ onMounted(() => {
   padding: 8px 0;
 }
 .h-label {
-  color: #64748b;
+  color: var(--sub);
   font-size: 15px;
 }
 .h-val {
-  color: #1e293b;
+  color: var(--text);
   font-weight: 600;
   font-size: 15px;
 }

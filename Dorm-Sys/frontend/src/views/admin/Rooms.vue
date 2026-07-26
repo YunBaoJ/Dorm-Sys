@@ -56,7 +56,7 @@
                   <el-progress 
                     :percentage="room.occupancyPercentage"
                     :stroke-width="8" 
-                    :color="room.occupied >= room.capacity ? '#f59e0b' : '#3b82f6'"
+                    :color="room.occupied >= room.capacity ? 'var(--el-color-warning)' : 'var(--el-color-primary)'"
                     :show-text="false"
                   />
                 </div>
@@ -90,14 +90,14 @@
           </template>
           <div class="dashboard-list">
             <div class="dash-item">
-              <div class="dash-icon bg-light-blue"><el-icon color="#3b82f6"><component :is="Check" /></el-icon></div>
+              <div class="dash-icon bg-light-blue"><el-icon color="var(--el-color-primary)"><component :is="Check" /></el-icon></div>
               <div class="dash-info">
                 <div class="dash-label">可用房间</div>
                 <div class="dash-value">{{ roomStatus.available }} <span>间</span></div>
               </div>
             </div>
             <div class="dash-item">
-              <div class="dash-icon bg-light-orange"><el-icon color="#f59e0b"><component :is="AlertCircle" /></el-icon></div>
+              <div class="dash-icon bg-light-orange"><el-icon color="var(--el-color-warning)"><component :is="AlertCircle" /></el-icon></div>
               <div class="dash-info">
                 <div class="dash-label">满员房间</div>
                 <div class="dash-value">{{ roomStatus.full }} <span>间</span></div>
@@ -546,7 +546,7 @@ const handleViewBeds = async (room) => {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  color: #3b82f6;
+  color: var(--primary);
 }
 
 .bg-light-blue { background: var(--primary-2); }
@@ -709,7 +709,7 @@ const handleViewBeds = async (room) => {
   height: 24px;
   border-radius: 50%;
   background: var(--primary-2);
-  color: #3b82f6;
+  color: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -719,8 +719,8 @@ const handleViewBeds = async (room) => {
 }
 
 .bg-indigo {
-  background: #eef2ff;
-  color: #6366f1;
+  background: var(--primary-2);
+  color: var(--purple);
 }
 
 .guide-info {
@@ -746,7 +746,7 @@ const handleViewBeds = async (room) => {
 }
 
 .text-primary {
-  color: #3b82f6;
+  color: var(--primary);
 }
 
 .tips-list {
@@ -758,6 +758,6 @@ const handleViewBeds = async (room) => {
 }
 
 .tips-list li::marker {
-  color: #3b82f6;
+  color: var(--primary);
 }
 </style>

@@ -148,10 +148,10 @@ const roles = [
 ]
 
 const form = reactive({
-  username: '20240001',
+  username: '',
   password: '',
   role: 'student',
-  remember: true
+  remember: false
 })
 
 const demoAccounts = {
@@ -160,10 +160,11 @@ const demoAccounts = {
   admin: 'admin'
 }
 
+// 切换角色时自动填入演示账号
 watch(() => form.role, (role) => {
   form.username = demoAccounts[role]
   errors.username = ''
-})
+}, { immediate: true })
 
 const showResetTip = () => {
   ElMessage.info('请联系宿舍管理员重置密码。')

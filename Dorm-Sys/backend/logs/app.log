@@ -1568,3 +1568,45 @@ org.springframework.web.servlet.resource.NoResourceFoundException: No static res
 	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:659)
 	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:63)
 	at java.base/java.lang.Thread.run(Thread.java:840)
+2026-07-27 01:06:55.229 [main] INFO  c.d.backend.BackendApplicationTests - Starting BackendApplicationTests using Java 17.0.19 with PID 33348 (started by Administrator in F:\bishe\Antigravity\Dorm-Sys\backend)
+2026-07-27 01:06:55.237 [main] INFO  c.d.backend.BackendApplicationTests - No active profile set, falling back to 1 default profile: "default"
+2026-07-27 01:06:57.508 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2026-07-27 01:06:58.072 [main] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@1f949ab9
+2026-07-27 01:06:58.076 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2026-07-27 01:06:59.843 [main] INFO  c.d.backend.BackendApplicationTests - Started BackendApplicationTests in 5.057 seconds (process running for 6.58)
+2026-07-27 01:07:06.014 [main] INFO  o.s.mock.web.MockServletContext - Initializing Spring TestDispatcherServlet ''
+2026-07-27 01:07:06.014 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Initializing Servlet ''
+2026-07-27 01:07:06.015 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Completed initialization in 1 ms
+2026-07-27 01:07:06.242 [main] INFO  o.s.mock.web.MockServletContext - Initializing Spring TestDispatcherServlet ''
+2026-07-27 01:07:06.242 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Initializing Servlet ''
+2026-07-27 01:07:06.242 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Completed initialization in 0 ms
+2026-07-27 01:07:06.586 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2026-07-27 01:07:06.602 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
+2026-07-27 01:13:49.445 [main] INFO  c.d.backend.BackendApplicationTests - Starting BackendApplicationTests using Java 17.0.19 with PID 36448 (started by Administrator in F:\bishe\Antigravity\Dorm-Sys\backend)
+2026-07-27 01:13:49.447 [main] INFO  c.d.backend.BackendApplicationTests - No active profile set, falling back to 1 default profile: "default"
+2026-07-27 01:13:51.246 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2026-07-27 01:13:51.693 [main] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@3181d4de
+2026-07-27 01:13:51.697 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2026-07-27 01:13:53.179 [main] INFO  c.d.backend.BackendApplicationTests - Started BackendApplicationTests in 4.122 seconds (process running for 5.342)
+2026-07-27 01:13:58.622 [main] INFO  o.s.mock.web.MockServletContext - Initializing Spring TestDispatcherServlet ''
+2026-07-27 01:13:58.623 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Initializing Servlet ''
+2026-07-27 01:13:58.624 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Completed initialization in 1 ms
+2026-07-27 01:13:58.893 [main] INFO  o.s.mock.web.MockServletContext - Initializing Spring TestDispatcherServlet ''
+2026-07-27 01:13:58.893 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Initializing Servlet ''
+2026-07-27 01:13:58.893 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Completed initialization in 0 ms
+2026-07-27 01:13:59.267 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2026-07-27 01:13:59.287 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
+2026-07-27 01:14:36.164 [main] INFO  c.d.backend.BackendApplicationTests - Starting BackendApplicationTests using Java 17.0.19 with PID 36276 (started by Administrator in F:\bishe\Antigravity\Dorm-Sys\backend)
+2026-07-27 01:14:36.166 [main] INFO  c.d.backend.BackendApplicationTests - No active profile set, falling back to 1 default profile: "default"
+2026-07-27 01:14:37.993 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2026-07-27 01:14:38.341 [main] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@4f64d9cb
+2026-07-27 01:14:38.344 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2026-07-27 01:14:39.827 [main] INFO  c.d.backend.BackendApplicationTests - Started BackendApplicationTests in 4.064 seconds (process running for 5.354)
+2026-07-27 01:14:45.052 [main] INFO  o.s.mock.web.MockServletContext - Initializing Spring TestDispatcherServlet ''
+2026-07-27 01:14:45.053 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Initializing Servlet ''
+2026-07-27 01:14:45.055 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Completed initialization in 1 ms
+2026-07-27 01:14:45.276 [main] INFO  o.s.mock.web.MockServletContext - Initializing Spring TestDispatcherServlet ''
+2026-07-27 01:14:45.276 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Initializing Servlet ''
+2026-07-27 01:14:45.276 [main] INFO  o.s.t.w.s.TestDispatcherServlet - Completed initialization in 0 ms
+2026-07-27 01:14:45.616 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2026-07-27 01:14:45.633 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.

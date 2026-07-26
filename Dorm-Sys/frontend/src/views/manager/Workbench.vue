@@ -10,7 +10,7 @@
               <h2>您好，{{ userStore.userInfo?.name || '宿管' }} 老师</h2>
               <p>今天是 {{ todayDisplay }}，目前楼栋运行状态：<span class="text-blue">良好</span></p>
             </div>
-            <div class="hero-actions" style="display: flex; align-items: center; gap: 16px;">
+            <div class="hero-actions">
               <WeatherWidget />
               <el-button type="primary" @click="loadData"><el-icon class="el-icon--left"><component :is="Refresh" /></el-icon>刷新数据</el-button>
             </div>
@@ -20,7 +20,7 @@
         <!-- 4 Stats Cards -->
         <el-row :gutter="20" class="stats-grid">
           <el-col :span="12">
-            <el-card shadow="hover" class="stat-card" @click="router.push('/dormmanager/checkin')">
+            <el-card shadow="hover" class="stat-card" @click="router.push('/dormmanager/checkin')" role="button" tabindex="0" @keydown.enter="router.push('/dormmanager/checkin')" @keydown.space.prevent="router.push('/dormmanager/checkin')">
               <div class="stat-body">
                 <div class="stat-icon bg-blue"><el-icon><component :is="User" /></el-icon></div>
                 <div class="stat-info">
@@ -28,11 +28,12 @@
                   <div class="stat-value">{{ residentCount }}</div>
                 </div>
               </div>
-              <div class="stat-footer">当前楼栋入住率--</div>
+              <div class="stat-footer" v-if="totalBedCount > 0">当前楼栋入住率{{ Math.round(residentCount / totalBedCount * 100) }}%</div>
+              <div class="stat-footer" v-else>当前楼栋入住率--</div>
             </el-card>
           </el-col>
           <el-col :span="12">
-            <el-card shadow="hover" class="stat-card" @click="router.push('/dormmanager/repair')">
+            <el-card shadow="hover" class="stat-card" @click="router.push('/dormmanager/repair')" role="button" tabindex="0" @keydown.enter="router.push('/dormmanager/repair')" @keydown.space.prevent="router.push('/dormmanager/repair')">
               <div class="stat-body">
                 <div class="stat-icon bg-orange"><el-icon><component :is="Settings" /></el-icon></div>
                 <div class="stat-info">
@@ -46,7 +47,7 @@
             </el-card>
           </el-col>
           <el-col :span="12">
-            <el-card shadow="hover" class="stat-card" @click="router.push('/dormmanager/visitor')">
+            <el-card shadow="hover" class="stat-card" @click="router.push('/dormmanager/visitor')" role="button" tabindex="0" @keydown.enter="router.push('/dormmanager/visitor')" @keydown.space.prevent="router.push('/dormmanager/visitor')">
               <div class="stat-body">
                 <div class="stat-icon bg-blue"><el-icon><component :is="UserCheck" /></el-icon></div>
                 <div class="stat-info">
@@ -58,7 +59,7 @@
             </el-card>
           </el-col>
           <el-col :span="12">
-            <el-card shadow="hover" class="stat-card" @click="router.push('/dormmanager/late-return')">
+            <el-card shadow="hover" class="stat-card" @click="router.push('/dormmanager/late-return')" role="button" tabindex="0" @keydown.enter="router.push('/dormmanager/late-return')" @keydown.space.prevent="router.push('/dormmanager/late-return')">
               <div class="stat-body">
                 <div class="stat-icon bg-red"><el-icon><component :is="Clock" /></el-icon></div>
                 <div class="stat-info">
@@ -78,8 +79,8 @@
           <template #header>
             <div class="card-header">
               <span class="card-title">楼栋业务动态</span>
-              <div style="display: flex; gap: 12px; align-items: center;">
-                <el-select v-model="selectedBuilding" placeholder="选择楼栋查看" style="width: 150px" size="small" clearable>
+              <div class="card-header-toolbar">
+                <el-select v-model="selectedBuilding" placeholder="选择楼栋查看" class="building-select" size="small" clearable>
                   <el-option v-for="b in buildings" :key="b.id" :label="b.name" :value="b.id" />
                 </el-select>
                 <el-radio-group v-model="dynamicsView" size="small">
@@ -89,14 +90,22 @@
               </div>
             </div>
           </template>
-          <div class="rooms-grid">
-            <div v-for="room in filteredRooms" :key="room.id" class="room-box" :class="{'is-warning': room.warning}" @click="openRoomDetail(room)">
-              <div class="room-number">{{ room.buildingName }}-{{ room.number }}</div>
-              <div class="room-dots">
-                <span v-for="i in room.capacity" :key="i" class="dot" :class="{ filled: i <= room.occupied }"></span>
+          <template v-if="!loading">
+            <div v-if="dynamicsView === 'room'" class="rooms-grid">
+              <div v-for="room in filteredRooms" :key="room.id" class="room-box" :class="{'is-warning': room.warning}" @click="openRoomDetail(room)" role="button" tabindex="0" @keydown.enter="openRoomDetail(room)" @keydown.space.prevent="openRoomDetail(room)">
+                <div class="room-number">{{ room.buildingName }}-{{ room.number }}</div>
+                <div class="room-dots">
+                  <span v-for="i in room.capacity" :key="i" class="dot" :class="{ filled: i <= room.occupied }"></span>
+                </div>
+                <div v-if="room.warning" class="room-warning-icon">!</div>
               </div>
-              <div v-if="room.warning" class="room-warning-icon">!</div>
             </div>
+            <div v-else class="hygiene-view">
+              <el-empty description="暂无卫生评比数据" :image-size="60"></el-empty>
+            </div>
+          </template>
+          <div v-else class="rooms-grid-skeleton">
+            <div v-for="i in 12" :key="i" class="skeleton skeleton-text" style="height: 80px;"></div>
           </div>
         </el-card>
 
@@ -132,7 +141,7 @@
               <template #header>
                 <div class="card-header">
                   <span class="card-title">待处理报修</span>
-                  <el-button type="primary" link>全部</el-button>
+                  <el-button type="primary" link @click="router.push('/dormmanager/repair')">全部</el-button>
                 </div>
               </template>
               <div class="mini-list">
@@ -149,7 +158,7 @@
               <template #header>
                 <div class="card-header">
                   <span class="card-title">访客预约</span>
-                  <el-button type="primary" link>全部</el-button>
+                  <el-button type="primary" link @click="router.push('/dormmanager/visitor')">全部</el-button>
                 </div>
               </template>
               <el-empty description="今日无预约" :image-size="80"></el-empty>
@@ -166,26 +175,26 @@
             <div class="card-header"><span class="card-title">快捷工具</span></div>
           </template>
           <div class="tools-grid">
-            <div class="tool-btn" @click="router.push('/dormmanager/checkin')">
-              <el-icon :size="24" color="#3b82f6"><component :is="UserPlus" /></el-icon>
+            <button type="button" class="tool-btn" @click="router.push('/dormmanager/checkin')" aria-label="入住办理">
+              <el-icon :size="24" color="var(--el-color-primary)"><component :is="UserPlus" /></el-icon>
               <span>入住办理</span>
-            </div>
-            <div class="tool-btn" @click="router.push('/dormmanager/repair')">
-              <el-icon :size="24" color="#3b82f6"><component :is="Settings" /></el-icon>
+            </button>
+            <button type="button" class="tool-btn" @click="router.push('/dormmanager/repair')" aria-label="报修派工">
+              <el-icon :size="24" color="var(--el-color-primary)"><component :is="Settings" /></el-icon>
               <span>报修派工</span>
-            </div>
-            <div class="tool-btn" @click="router.push('/dormmanager/hygiene')">
-              <el-icon :size="24" color="#3b82f6"><component :is="Medal" /></el-icon>
+            </button>
+            <button type="button" class="tool-btn" @click="router.push('/dormmanager/hygiene')" aria-label="卫生评分">
+              <el-icon :size="24" color="var(--el-color-primary)"><component :is="Medal" /></el-icon>
               <span>卫生评分</span>
-            </div>
-            <div class="tool-btn" @click="router.push('/dormmanager/visitor')">
-              <el-icon :size="24" color="#3b82f6"><component :is="UserCheck" /></el-icon>
+            </button>
+            <button type="button" class="tool-btn" @click="router.push('/dormmanager/visitor')" aria-label="访客登记">
+              <el-icon :size="24" color="var(--el-color-primary)"><component :is="UserCheck" /></el-icon>
               <span>访客登记</span>
-            </div>
-            <div class="tool-btn" @click="router.push('/dormmanager/late-return')">
-              <el-icon :size="24" color="#3b82f6"><component :is="Clock" /></el-icon>
+            </button>
+            <button type="button" class="tool-btn" @click="router.push('/dormmanager/late-return')" aria-label="晚归登记">
+              <el-icon :size="24" color="var(--el-color-primary)"><component :is="Clock" /></el-icon>
               <span>晚归登记</span>
-            </div>
+            </button>
           </div>
         </el-card>
 
@@ -214,8 +223,8 @@
           </template>
           <div class="notice-list">
             <div v-for="n in notices" :key="n.id" class="notice-item">
-              <el-icon :color="n.type === 'alert' ? '#f59e0b' : '#3b82f6'">
-                <component :is="n.type === 'alert' ? 'AlertCircle' : 'Info'" />
+              <el-icon :color="n.type === 'alert' ? 'var(--warn)' : 'var(--primary)'">
+                <component :is="n.type === 'alert' ? AlertCircle : Info" />
               </el-icon>
               <span>{{ n.title }}</span>
             </div>
@@ -228,11 +237,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-  import { Bell, RefreshCw as Refresh, User, Settings, UserCheck, Clock, ChevronRight, UserPlus, Medal, Info, AlertCircle } from '@lucide/vue'
-import { getBeds, getRooms } from '../../api/room'
+import { RefreshCw as Refresh, User, Settings, UserCheck, Clock, ChevronRight, UserPlus, Medal, Info, AlertCircle } from '@lucide/vue'
+import { getRooms } from '../../api/room'
 import { getBuildings } from '../../api/building'
 import { getRepairs } from '../../api/repair'
 import { getVisitorRecords } from '../../api/visitor'
@@ -249,6 +258,8 @@ const residentCount = ref(0)
 const pendingRepairCount = ref(0)
 const todayVisitorCount = ref(0)
 const lateReturnCount = ref(0)
+const totalBedCount = ref(0)
+const loading = ref(false)
 const rooms = ref([])
 const buildings = ref([])
 const selectedBuilding = ref('')
@@ -298,6 +309,7 @@ const getOccupantForBed = (index) => {
 }
 
 const loadData = async () => {
+  loading.value = true
   try {
     const [repairList, visitors, buildingList, buildingStatsRes, memoRecords, noticeRecords] = await Promise.all([
       getRepairs(), getVisitorRecords(), getBuildings(), request({ url: '/dashboard/buildings', method: 'get' }),
@@ -322,6 +334,7 @@ const loadData = async () => {
     // Calculate resident count from building stats
     if (buildingStatsRes) {
       residentCount.value = buildingStatsRes.reduce((acc, curr) => acc + (curr.occupiedBeds || 0), 0)
+      totalBedCount.value = buildingStatsRes.reduce((acc, curr) => acc + (curr.totalBeds || 0), 0)
     }
     
     const pendings = repairList.filter(r => r.status === 'PENDING')
@@ -346,6 +359,8 @@ const loadData = async () => {
     }
   } catch (e) {
     console.error('Failed to load workbench data', e)
+  } finally {
+    loading.value = false
   }
 }
 
@@ -370,7 +385,6 @@ const fetchRoomsForBuilding = async (bId) => {
   }
 }
 
-import { watch } from 'vue'
 watch(selectedBuilding, (newVal) => {
   fetchRoomsForBuilding(newVal)
 })
@@ -407,13 +421,14 @@ onMounted(() => loadData())
 }
 
 .text-blue {
-  color: #3b82f6;
+  color: var(--primary);
   font-weight: 500;
 }
 
 .hero-actions {
   display: flex;
-  gap: 12px;
+  align-items: center;
+  gap: 16px;
 }
 
 .stats-grid {
@@ -452,10 +467,10 @@ onMounted(() => loadData())
   font-size: 24px;
 }
 
-.bg-blue { background: var(--primary-2); color: #3b82f6; }
-.bg-orange { background: var(--orange-2); color: #f97316; }
+.bg-blue { background: var(--primary-2); color: var(--primary); }
+.bg-orange { background: var(--orange-2); color: var(--orange); }
 .bg-red { background: var(--danger-2); color: var(--danger); }
-.text-red { color: #ef4444 !important; }
+.text-red { color: var(--danger) !important; }
 
 .stat-info {
   flex: 1;
@@ -503,10 +518,20 @@ onMounted(() => loadData())
   color: var(--text);
 }
 
+.card-header-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.building-select {
+  width: 150px;
+}
+
 .rooms-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 12px;
   padding: 16px 0;
 }
 
@@ -525,8 +550,8 @@ onMounted(() => loadData())
 }
 
 .room-box:hover {
-  border-color: #3b82f6;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px var(--primary-2);
 }
 
 .room-box.is-warning {
@@ -553,7 +578,7 @@ onMounted(() => loadData())
 }
 
 .dot.filled {
-  background-color: #3b82f6;
+  background-color: var(--primary);
 }
 
 .room-warning-icon {
@@ -562,8 +587,8 @@ onMounted(() => loadData())
   right: -6px;
   width: 16px;
   height: 16px;
-  background-color: #ef4444;
-  color: #fff;
+  background-color: var(--danger);
+  color: var(--surface);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -608,6 +633,7 @@ onMounted(() => loadData())
 
 .tool-btn {
   background: var(--bg);
+  border: 0;
   border-radius: 12px;
   padding: 16px 0;
   display: flex;
@@ -615,6 +641,7 @@ onMounted(() => loadData())
   align-items: center;
   gap: 8px;
   cursor: pointer;
+  font: inherit;
   transition: background 0.2s;
 }
 
@@ -648,8 +675,8 @@ onMounted(() => loadData())
   margin-top: 6px;
 }
 
-.dot-orange { background-color: #f59e0b; }
-.dot-blue { background-color: #3b82f6; }
+.dot-orange { background-color: var(--warn); }
+.dot-blue { background-color: var(--primary); }
 
 .memo-title {
   font-size: 14px;
@@ -697,28 +724,28 @@ onMounted(() => loadData())
 .plan-border {
   position: absolute;
   top: 0; left: 24px; right: 24px; bottom: 0;
-  border: 4px solid #cbd5e1;
+  border: 4px solid var(--line);
   border-radius: 12px;
 }
 .plan-border::before {
   content: '';
   position: absolute;
   top: -4px; left: 10%; width: 60px; height: 8px;
-  background: #fff;
+  background: var(--surface);
 }
 .plan-border::after {
   content: '';
   position: absolute;
   bottom: -4px; right: 10%; width: 80px; height: 8px;
-  background: #fff;
+  background: var(--surface);
 }
 .door-label {
   position: absolute;
   top: -12px;
   left: calc(24px + 10% + 15px);
-  background: #fff;
+  background: var(--surface);
   padding: 0 12px;
-  color: #94a3b8;
+  color: var(--sub);
   font-weight: 500;
   font-size: 14px;
 }
@@ -726,9 +753,9 @@ onMounted(() => loadData())
   position: absolute;
   bottom: -12px;
   right: calc(24px + 10% + 15px);
-  background: #fff;
+  background: var(--surface);
   padding: 0 12px;
-  color: #94a3b8;
+  color: var(--sub);
   font-weight: 500;
   font-size: 14px;
 }
@@ -750,9 +777,9 @@ onMounted(() => loadData())
 .bed-box {
   width: 80px;
   height: 48px;
-  border: 2px solid #e2e8f0;
+  border: 2px solid var(--line);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--bg);
   display: grid;
   place-items: center;
   box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
@@ -760,27 +787,87 @@ onMounted(() => loadData())
 }
 .bed-number {
   font-weight: 600;
-  color: #64748b;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 .bed-owner {
-  color: #475569;
+  color: var(--text-secondary);
   font-size: 14px;
   font-weight: 500;
 }
 .bed-slot.is-occupied .bed-box {
-  border-color: #94a3b8;
-  background: #f1f5f9;
+  border-color: var(--sub);
+  background: var(--muted);
 }
 .bed-slot.is-occupied .bed-number {
-  color: #475569;
+  color: var(--text-secondary);
 }
 .bed-slot.is-empty .bed-box {
-  border: 2px dashed #e2e8f0;
-  background: #fff;
+  border: 2px dashed var(--line);
+  background: var(--surface);
 }
 .bed-slot.is-empty .bed-number,
 .bed-slot.is-empty .bed-owner {
-  color: #cbd5e1;
+  color: var(--sub);
+}
+
+.rooms-grid-skeleton {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 12px;
+  padding: 16px 0;
+}
+
+.rooms-grid-skeleton .skeleton {
+  border-radius: 8px;
+}
+
+/* === Responsive === */
+@media (max-width: 1024px) {
+  .workbench-container :deep(.el-col) {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+
+  .hero-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .tools-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .stats-grid :deep(.el-col) {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+
+  .tools-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .rooms-grid {
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  }
+
+  .beds-grid {
+    gap: 20px 30px !important;
+  }
+}
+
+.hygiene-view {
+  padding: 32px 0;
+  display: flex;
+  justify-content: center;
 }
 </style>

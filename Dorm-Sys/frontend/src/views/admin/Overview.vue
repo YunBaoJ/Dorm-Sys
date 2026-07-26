@@ -13,7 +13,7 @@
                 <p>全局数据监控 · 资源动态调度</p>
               </div>
             </div>
-            <div class="hero-actions" style="display: flex; align-items: center; gap: 24px;">
+            <div class="hero-actions">
               <WeatherWidget />
               <div class="hero-time">
                 <div class="time-main">{{ currentTime.time }}</div>
@@ -43,7 +43,7 @@
           >
             <template #title>
               <span class="alert-text">{{ alert.title }}</span>
-              <el-button size="small" :type="alert.type" plain class="alert-btn" @click="$router.push(alert.url)">{{ alert.action }}</el-button>
+              <el-button size="small" :type="alert.type" plain class="alert-btn" @click="router.push(alert.url)">{{ alert.action }}</el-button>
             </template>
           </el-alert>
           <el-empty v-if="alerts.length === 0" description="暂无系统异常预警" :image-size="60"></el-empty>
@@ -62,21 +62,21 @@
           </template>
           
           <el-row :gutter="20" v-loading="loading">
-            <el-col :span="viewMode === 'grid' ? 12 : 24" v-for="b in pagedBuildings" :key="b.id" style="margin-bottom: 16px;">
-              <div class="building-item" :style="viewMode === 'list' ? 'display: flex; align-items: center; gap: 20px;' : ''">
-                <div class="building-head" :style="viewMode === 'list' ? 'margin-bottom: 0; min-width: 120px;' : ''">
+            <el-col :span="viewMode === 'grid' ? 12 : 24" v-for="b in pagedBuildings" :key="b.id" class="building-col">
+              <div class="building-item" :class="{ 'building-item--list': viewMode === 'list' }">
+                <div class="building-head" :class="{ 'building-head--list': viewMode === 'list' }">
                   <span class="building-name">{{ b.name }}</span>
                   <span class="building-percent">{{ b.percentage }}%</span>
                 </div>
-                <el-progress :percentage="b.percentage" :show-text="false" :stroke-width="8" color="#3b82f6" :style="viewMode === 'list' ? 'flex: 1;' : ''" />
-                <div class="building-foot" :style="viewMode === 'list' ? 'margin-top: 0; min-width: 150px; justify-content: flex-end; gap: 12px;' : ''">
+                <el-progress :percentage="b.percentage" :show-text="false" :stroke-width="8" class="building-progress" :class="{ 'building-progress--list': viewMode === 'list' }" />
+                <div class="building-foot" :class="{ 'building-foot--list': viewMode === 'list' }">
                   <span class="building-meta">{{ b.occupiedBeds }}/{{ b.totalBeds }} 床</span>
                   <el-tag size="small" type="primary" effect="plain">{{ b.status }}</el-tag>
                 </div>
               </div>
             </el-col>
           </el-row>
-          <div style="display: flex; justify-content: flex-end; margin-top: 8px;" v-if="buildings.length > pageSize">
+          <div class="pagination-wrapper" v-if="buildings.length > pageSize">
             <el-pagination
               background
               layout="prev, pager, next"
@@ -135,7 +135,7 @@
           <template #header>
             <div class="card-header"><span>资源监控</span></div>
           </template>
-          <div class="resource-list">
+          <div class="resource-list" v-loading="loading">
             <div class="res-item">
               <div class="res-head">
                 <span>数据库连接</span>
@@ -165,19 +165,19 @@
           <template #header>
             <div class="card-header"><span>管理工作台</span></div>
           </template>
-          <div class="workbench-grid">
-            <div class="wb-btn" @click="router.push('/admin/users/list')">
-              <el-icon :size="24" color="#3b82f6"><component :is="User" /></el-icon>
+          <div class="workbench-grid" v-loading="loading">
+            <button type="button" class="wb-btn" @click="router.push('/admin/users/list')" aria-label="用户管理">
+              <el-icon :size="24" ><component :is="User" /></el-icon>
               <span>用户</span>
-            </div>
-            <div class="wb-btn" @click="router.push('/admin/resources/buildings')">
-              <el-icon :size="24" color="#3b82f6"><component :is="Building" /></el-icon>
+            </button>
+            <button type="button" class="wb-btn" @click="router.push('/admin/resources/buildings')" aria-label="楼栋管理">
+              <el-icon :size="24" ><component :is="Building" /></el-icon>
               <span>楼栋</span>
-            </div>
-            <div class="wb-btn" @click="router.push('/admin/resources/rooms')">
-              <el-icon :size="24" color="#3b82f6"><component :is="Home" /></el-icon>
+            </button>
+            <button type="button" class="wb-btn" @click="router.push('/admin/resources/rooms')" aria-label="房间管理">
+              <el-icon :size="24" ><component :is="Home" /></el-icon>
               <span>房间</span>
-            </div>
+            </button>
           </div>
         </el-card>
 
@@ -190,7 +190,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Monitor, User, Users, Building, Home } from '@lucide/vue'
-import request from '../../utils/request'
 import WeatherWidget from '../../components/WeatherWidget.vue'
 import { getStats, getBuildingStats, getAlerts } from '../../api/dashboard'
 
@@ -281,6 +280,12 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
 }
 
 .hero-text {
@@ -413,10 +418,10 @@ onMounted(() => {
   font-size: 24px;
 }
 
-.bg-blue { background: var(--primary-2); color: #3b82f6; }
-.bg-orange { background: var(--orange-2); color: #f97316; }
-.bg-cyan { background: var(--info-2); color: #06b6d4; }
-.bg-yellow { background: var(--warn-2); color: #eab308; }
+.bg-blue { background: var(--primary-2); color: var(--primary); }
+.bg-orange { background: var(--orange-2); color: var(--orange); }
+.bg-cyan { background: var(--info-2); color: var(--info); }
+.bg-yellow { background: var(--warn-2); color: var(--warn); }
 
 .biz-info {
   flex: 1;
@@ -464,7 +469,7 @@ onMounted(() => {
   line-height: 1.5;
 }
 
-.text-blue { color: #3b82f6; }
+.text-blue { color: var(--primary); }
 
 .workbench-grid {
   display: grid;
@@ -474,6 +479,7 @@ onMounted(() => {
 
 .wb-btn {
   background: var(--bg);
+  border: 0;
   border-radius: 12px;
   padding: 16px 0;
   display: flex;
@@ -481,6 +487,7 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   cursor: pointer;
+  font: inherit;
   transition: background 0.2s;
 }
 
@@ -488,8 +495,79 @@ onMounted(() => {
   background: var(--line);
 }
 
+.wb-btn :deep(.el-icon) {
+  color: var(--primary);
+}
+
 .wb-btn span {
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+.building-col {
+  margin-bottom: 16px;
+}
+
+.building-item--list {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.building-head--list {
+  margin-bottom: 0;
+  min-width: 120px;
+}
+
+.building-progress--list {
+  flex: 1;
+}
+
+.building-foot--list {
+  margin-top: 0;
+  min-width: 150px;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+/* === Responsive === */
+@media (max-width: 1024px) {
+  .overview-container :deep(.el-col) {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .hero-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .workbench-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .hero-actions {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .time-main {
+    font-size: 24px;
+  }
 }
 </style>

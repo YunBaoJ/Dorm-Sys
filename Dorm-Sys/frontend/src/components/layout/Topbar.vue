@@ -1,7 +1,9 @@
 <template>
   <el-header class="topbar-container" height="60px">
     <div class="topbar-left">
-      <el-icon class="toggle-icon" @click="toggleSidebar"><component :is="MenuIcon" /></el-icon>
+      <button type="button" class="toggle-btn" aria-label="切换侧边栏" @click="toggleSidebar">
+        <el-icon><component :is="MenuIcon" /></el-icon>
+      </button>
       <el-breadcrumb separator="/" class="breadcrumb">
         <el-breadcrumb-item>{{ groupName }}</el-breadcrumb-item>
         <el-breadcrumb-item>{{ currentPageName }}</el-breadcrumb-item>
@@ -12,7 +14,9 @@
       <button class="action-button" type="button" title="刷新页面" :disabled="isRefreshing" @click="refreshPage">
         <RefreshCw :class="{ 'is-rotating': isRefreshing }" />
       </button>
-      <el-icon class="action-icon" @click="toggleTheme"><component :is="appStore.theme === 'dark' ? Sun : Moon" /></el-icon>
+      <button type="button" class="action-button" title="切换主题" aria-label="切换主题" @click="toggleTheme">
+        <el-icon><component :is="appStore.theme === 'dark' ? Sun : Moon" /></el-icon>
+      </button>
 
       <el-popover
         v-model:visible="notificationVisible"
@@ -172,7 +176,7 @@ function refreshPage() {
   ElLoading.service({
     lock: true,
     text: '正在刷新页面...',
-    background: 'rgba(241, 245, 249, 0.72)'
+    background: appStore.theme === 'dark' ? 'rgba(15, 23, 42, 0.72)' : 'rgba(241, 245, 249, 0.72)'
   })
   setTimeout(() => {
     window.location.reload()
@@ -329,15 +333,28 @@ function handleCommand(cmd) {
   gap: 16px;
 }
 
-.toggle-icon {
-  font-size: 20px;
-  cursor: pointer;
+.toggle-btn {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
   color: var(--sub);
-  transition: color 0.2s;
+  cursor: pointer;
+  font-size: 20px;
+  transition: background-color 0.2s, color 0.2s;
 }
 
-.toggle-icon:hover {
+.toggle-btn:hover {
+  background: var(--primary-2);
   color: var(--el-color-primary);
+}
+
+.toggle-btn:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 2px;
 }
 
 .breadcrumb {
@@ -495,7 +512,7 @@ function handleCommand(cmd) {
   margin-right: 5px;
   border-radius: 4px;
   padding: 2px 5px;
-  background: rgba(59, 130, 246, 0.12);
+  background: var(--primary-2);
   color: var(--el-color-primary);
   font-size: 11px;
 }

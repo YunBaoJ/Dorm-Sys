@@ -463,7 +463,7 @@ onUnmounted(() => stopPolling())
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #4ade80;
+  background: var(--ok);
   box-shadow: 0 0 6px rgba(74, 222, 128, 0.6);
 }
 
@@ -633,19 +633,19 @@ onUnmounted(() => stopPolling())
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: #eaf1ff;
-  color: #2563eb;
+  background: var(--primary-2);
+  color: var(--primary);
 }
 
 .empty-title {
   font-size: 16px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--sub);
 }
 
 .empty-desc {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--sub);
 }
 
 /* Date separator */
@@ -658,7 +658,7 @@ onUnmounted(() => stopPolling())
 
 .date-separator span {
   background: rgba(226, 232, 240, 0.62);
-  color: #64748b;
+  color: var(--sub);
   font-size: 11px;
   font-weight: 500;
   padding: 3px 12px;
@@ -821,7 +821,7 @@ onUnmounted(() => stopPolling())
 }
 
 .send-btn.can-send:hover {
-  background: #1d4ed8;
+  background: var(--primary-hover);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
 

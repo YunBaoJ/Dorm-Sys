@@ -415,8 +415,8 @@ onMounted(() => {
   font-weight: bold;
 }
 
-.bg-blue { background: var(--primary-2); color: #3b82f6; border: 1px solid #dbeafe; }
-.bg-orange { background: var(--orange-2); color: #f97316; border: 1px solid #ffedd5; }
+.bg-blue { background: var(--primary-2); color: var(--primary); border: 1px solid var(--primary-2); }
+.bg-orange { background: var(--orange-2); color: var(--orange); border: 1px solid var(--orange-2); }
 
 .building-info {
   flex: 1;
@@ -476,8 +476,8 @@ onMounted(() => {
 }
 
 .text-dark { color: var(--text); }
-.text-blue { color: #3b82f6; }
-.text-orange { color: #f59e0b; }
+.text-blue { color: var(--primary); }
+.text-orange { color: var(--warn); }
 
 .building-location {
   display: flex;
@@ -546,9 +546,9 @@ onMounted(() => {
   font-size: 24px;
 }
 
-.bg-light-blue { background: var(--primary-2); color: #3b82f6; }
-.bg-light-orange { background: var(--orange-2); color: #f97316; }
-.bg-light-cyan { background: var(--info-2); color: #06b6d4; }
+.bg-light-blue { background: var(--primary-2); color: var(--primary); }
+.bg-light-orange { background: var(--orange-2); color: var(--orange); }
+.bg-light-cyan { background: var(--info-2); color: var(--info); }
 
 .asset-info {
   flex: 1;
@@ -588,7 +588,7 @@ onMounted(() => {
   height: 24px;
   border-radius: 50%;
   background: var(--primary-2);
-  color: #3b82f6;
+  color: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -628,6 +628,6 @@ onMounted(() => {
 }
 
 .tips-list li::marker {
-  color: #3b82f6;
+  color: var(--primary);
 }
 </style>

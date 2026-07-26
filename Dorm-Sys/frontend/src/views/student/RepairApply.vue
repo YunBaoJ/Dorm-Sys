@@ -156,7 +156,7 @@ const handleSubmit = async () => {
   padding: 16px; background: var(--bg); border-radius: 10px; margin-bottom: 12px;
 }
 .repair-badge {
-  width: 44px; height: 44px; border-radius: 12px; background: #3b82f6;
+  width: 44px; height: 44px; border-radius: 12px; background: var(--primary);
   color: white; font-weight: bold; font-size: 18px;
   display: flex; justify-content: center; align-items: center; flex-shrink: 0;
 }

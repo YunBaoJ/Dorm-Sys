@@ -77,9 +77,9 @@
               </linearGradient>
             </defs>
             <polygon :points="areaPoints" fill="url(#lineGrad)" />
-            <polyline :points="linePoints" fill="none" stroke="#3b82f6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+            <polyline :points="linePoints" fill="none" stroke="var(--primary)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
             <g v-for="(p, i) in parsedPoints" :key="i">
-              <circle :cx="p.x" :cy="p.y" r="4.5" fill="#fff" stroke="#3b82f6" stroke-width="2.5" />
+              <circle :cx="p.x" :cy="p.y" r="4.5" fill="var(--surface)" stroke="var(--primary)" stroke-width="2.5" />
               <text :x="p.x" :y="p.y - 14" fill="var(--text)" font-size="14" text-anchor="middle" font-weight="bold">{{ p.temp }}°</text>
               <text :x="p.x" :y="115" fill="var(--sub)" font-size="12" text-anchor="middle">{{ p.time }}</text>
             </g>
@@ -499,7 +499,7 @@ onMounted(() => {
   position: absolute;
   top: 0;
   height: 100%;
-  background: linear-gradient(90deg, #60a5fa, #f59e0b);
+  background: linear-gradient(90deg, var(--primary), var(--warn));
   border-radius: 2px;
 }
 </style>
