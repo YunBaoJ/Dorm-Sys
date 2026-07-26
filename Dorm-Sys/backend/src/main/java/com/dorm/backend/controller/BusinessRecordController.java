@@ -3,6 +3,7 @@ package com.dorm.backend.controller;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.dorm.backend.common.AuthUtils;
 import com.dorm.backend.common.Result;
+import com.dorm.backend.dto.AdminNoticeResponse;
 import com.dorm.backend.entity.BusinessRecord;
 import com.dorm.backend.service.BusinessRecordService;
 import com.dorm.backend.service.DormManagerScopeService;
@@ -23,8 +24,8 @@ public class BusinessRecordController {
     private DormManagerScopeService managerScopeService;
 
     @GetMapping("/list")
-    public Result<List<BusinessRecord>> list(@RequestParam(required = false) String type,
-                                             @RequestParam(required = false) String status) {
+    public Result<?> list(@RequestParam(required = false) String type,
+                          @RequestParam(required = false) String status) {
         QueryWrapper<BusinessRecord> queryWrapper = new QueryWrapper<>();
         if (AuthUtils.isStudent()) {
             if (type == null || type.isBlank() || "feedback".equals(type)) {
@@ -45,11 +46,16 @@ public class BusinessRecordController {
         if (type != null && !type.isBlank()) queryWrapper.eq("type", type);
         if (status != null && !status.isBlank()) queryWrapper.eq("status", status);
         queryWrapper.orderByDesc("create_time");
-        return Result.success(businessRecordService.list(queryWrapper));
+        List<BusinessRecord> records = businessRecordService.list(queryWrapper);
+        if (AuthUtils.isStudent() && "admin_notice".equals(type)) {
+            return Result.success(records.stream().map(AdminNoticeResponse::from).toList());
+        }
+        return Result.success(records);
     }
 
     @PostMapping("/save")
     public Result<Boolean> save(@RequestBody BusinessRecord record) {
+        boolean shouldSetAdminNoticeEventTime = false;
         if (record.getType() == null || record.getType().isBlank()) {
             return Result.error(400, "业务类型不能为空");
         }
@@ -111,12 +117,19 @@ public class BusinessRecordController {
                     return Result.error(403, "无权修改该记录");
                 }
                 record.setCreateTime(existing.getCreateTime());
+                record.setEventTime(existing.getEventTime());
+                shouldSetAdminNoticeEventTime = "草稿".equals(existing.getStatus())
+                        && "已发布".equals(record.getStatus())
+                        && existing.getEventTime() == null;
+            } else {
+                record.setEventTime(null);
+                shouldSetAdminNoticeEventTime = "已发布".equals(record.getStatus());
             }
             record.setCreatorId(AuthUtils.getCurrentUserId());
         }
 
         LocalDateTime now = LocalDateTime.now();
-        if ("admin_notice".equals(record.getType()) && "已发布".equals(record.getStatus())) {
+        if (shouldSetAdminNoticeEventTime) {
             record.setEventTime(now);
         }
         if (record.getId() == null && record.getCreateTime() == null) record.setCreateTime(now);
