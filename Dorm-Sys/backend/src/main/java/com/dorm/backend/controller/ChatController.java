@@ -8,10 +8,8 @@ import com.dorm.backend.entity.User;
 import com.dorm.backend.service.ChatMessageService;
 import com.dorm.backend.service.BedService;
 import com.dorm.backend.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.dorm.backend.common.AuthUtils;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -25,12 +23,15 @@ import com.dorm.backend.common.AuthUtils;
 @RequestMapping("/api/chat")
 public class ChatController {
 
-    @Autowired
-    private ChatMessageService chatMessageService;
-    @Autowired
-    private UserService userService;
-    @Autowired
-    private BedService bedService;
+    private final ChatMessageService chatMessageService;
+    private final UserService userService;
+    private final BedService bedService;
+
+    public ChatController(ChatMessageService chatMessageService, UserService userService, BedService bedService) {
+        this.chatMessageService = chatMessageService;
+        this.userService = userService;
+        this.bedService = bedService;
+    }
 
     /**
      * Send a message (private or group)
@@ -127,6 +128,30 @@ public class ChatController {
             conversations.add(conversation);
         });
         return Result.success(conversations);
+    }
+
+    @GetMapping("/notifications")
+    public Result<List<ChatMessage>> getNotifications() {
+        Long myId = AuthUtils.getCurrentUserId();
+        if (myId == null) return Result.error(401, "未登录");
+        Bed myBed = currentBed(myId);
+        if (myBed == null) return Result.success(new ArrayList<>());
+
+        QueryWrapper<ChatMessage> query = new QueryWrapper<>();
+        query.and(scope -> scope
+                .and(privateChat -> privateChat
+                        .eq("type", "PRIVATE")
+                        .eq("receiver_id", myId))
+                .or(groupChat -> groupChat
+                        .eq("type", "GROUP")
+                        .eq("room_id", myBed.getRoomId())
+                        .ne("sender_id", myId)))
+            .orderByDesc("id")
+            .last("LIMIT 30");
+
+        List<ChatMessage> messages = chatMessageService.list(query);
+        populateSenderInfo(messages);
+        return Result.success(messages);
     }
 
     /**

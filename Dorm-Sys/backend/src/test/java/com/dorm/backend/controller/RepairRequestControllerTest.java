@@ -3,11 +3,7 @@ package com.dorm.backend.controller;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.dorm.backend.entity.Bed;
 import com.dorm.backend.entity.RepairRequest;
-import com.dorm.backend.service.BedService;
-import com.dorm.backend.service.BuildingService;
-import com.dorm.backend.service.RepairRequestService;
-import com.dorm.backend.service.RoomService;
-import com.dorm.backend.service.UserService;
+import com.dorm.backend.service.*;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -36,12 +32,9 @@ class RepairRequestControllerTest {
         bed.setRoomId(4L);
         when(bedService.list(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any())).thenReturn(List.of(bed));
 
-        RepairRequestController controller = new RepairRequestController();
+        RepairRequestController controller = new RepairRequestController(repairRequestService, bedService, mock(DormManagerScopeService.class));
         ReflectionTestUtils.setField(controller, "repairRequestService", repairRequestService);
         ReflectionTestUtils.setField(controller, "bedService", bedService);
-        ReflectionTestUtils.setField(controller, "userService", mock(UserService.class));
-        ReflectionTestUtils.setField(controller, "roomService", mock(RoomService.class));
-        ReflectionTestUtils.setField(controller, "buildingService", mock(BuildingService.class));
 
         RepairRequest request = new RepairRequest();
         request.setSubmitterId(1L);
@@ -70,7 +63,7 @@ class RepairRequestControllerTest {
         httpRequest.setAttribute("currentUserRole", "student");
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(httpRequest));
 
-        RepairRequestController controller = new RepairRequestController();
+        RepairRequestController controller = new RepairRequestController(repairRequestService, bedService, mock(DormManagerScopeService.class));
         ReflectionTestUtils.setField(controller, "repairRequestService", repairRequestService);
         ReflectionTestUtils.setField(controller, "bedService", bedService);
 

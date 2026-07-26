@@ -1,68 +1,46 @@
 package com.dorm.backend.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.dorm.backend.common.Result;
+import com.dorm.backend.common.AuthUtils;
 import com.dorm.backend.entity.Bed;
 import com.dorm.backend.entity.User;
 import com.dorm.backend.entity.StayHistory;
 import com.dorm.backend.service.BedService;
 import com.dorm.backend.service.UserService;
 import com.dorm.backend.service.StayHistoryService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.dorm.backend.service.DormManagerScopeService;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.Date;
 import java.util.stream.Collectors;
 import java.util.Objects;
-import com.dorm.backend.common.AuthUtils;
-import com.dorm.backend.service.DormManagerScopeService;
 
 @RestController
 @RequestMapping("/api/bed")
 public class BedController {
 
-    @Autowired
-    private BedService bedService;
-    
-    @Autowired
-    private UserService userService;
-    
-    @Autowired
-    private StayHistoryService stayHistoryService;
+    private final BedService bedService;
+    private final UserService userService;
+    private final StayHistoryService stayHistoryService;
+    private final DormManagerScopeService managerScopeService;
 
-    @Autowired
-    private DormManagerScopeService managerScopeService;
+    public BedController(BedService bedService, UserService userService,
+                         StayHistoryService stayHistoryService, DormManagerScopeService managerScopeService) {
+        this.bedService = bedService;
+        this.userService = userService;
+        this.stayHistoryService = stayHistoryService;
+        this.managerScopeService = managerScopeService;
+    }
 
     @GetMapping("/list")
-    public Result<List<Bed>> list(@RequestParam(required = false) Long roomId, @RequestParam(required = false) String status) {
-        QueryWrapper<Bed> queryWrapper = new QueryWrapper<>();
-        if ("dormmanager".equals(AuthUtils.getCurrentUserRole())) {
-            List<Long> roomIds = managerScopeService.managedRoomIds(AuthUtils.getCurrentUserId());
-            if (roomIds.isEmpty() || (roomId != null && !roomIds.contains(roomId))) {
-                return Result.success(List.of());
-            }
-            if (roomId == null) queryWrapper.in("room_id", roomIds);
-            else queryWrapper.eq("room_id", roomId);
-        } else if (roomId != null) {
-            queryWrapper.eq("room_id", roomId);
-        }
-        if (status != null) {
-            queryWrapper.eq("status", status);
-        }
-        List<Bed> beds = bedService.list(queryWrapper);
-        
-        // Populate student names
-        List<User> students = userService.list();
-        Map<Long, String> studentMap = students.stream()
-            .collect(Collectors.toMap(User::getId, User::getName));
-            
-        for (Bed bed : beds) {
-            if (bed.getStudentId() != null) {
-                bed.setStudentName(studentMap.get(bed.getStudentId()));
-            }
-        }
-        
+    public Result<List<Bed>> list(@RequestParam(required = false) Long roomId, @RequestParam(required = false) String status,
+                                  @RequestParam(defaultValue = "1") Integer page,
+                                  @RequestParam(defaultValue = "100") Integer size) {
+        List<Bed> beds = bedService.listBedsWithDetails(roomId, status,
+                AuthUtils.getCurrentUserRole(), AuthUtils.getCurrentUserId());
         return Result.success(beds);
     }
 

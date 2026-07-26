@@ -3,10 +3,7 @@ package com.dorm.backend.controller;
 import com.dorm.backend.entity.Bed;
 import com.dorm.backend.entity.FeeBill;
 import com.dorm.backend.entity.TransferRequest;
-import com.dorm.backend.service.BedService;
-import com.dorm.backend.service.DormManagerScopeService;
-import com.dorm.backend.service.FeeBillService;
-import com.dorm.backend.service.TransferRequestService;
+import com.dorm.backend.service.*;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -40,7 +37,7 @@ class ScopeMutationAuthorizationTest {
         when(scopeService.canManageRoom(7L, 99L)).thenReturn(false);
         when(scopeService.canManageRoom(7L, 1L)).thenReturn(true);
 
-        BedController controller = new BedController();
+        BedController controller = new BedController(bedService, mock(UserService.class), mock(StayHistoryService.class), scopeService);
         ReflectionTestUtils.setField(controller, "bedService", bedService);
         ReflectionTestUtils.setField(controller, "managerScopeService", scopeService);
 
@@ -63,7 +60,7 @@ class ScopeMutationAuthorizationTest {
         when(feeBillService.getById(8L)).thenReturn(existing);
         when(scopeService.canManageRoom(7L, 99L)).thenReturn(false);
 
-        FeeBillController controller = new FeeBillController();
+        FeeBillController controller = new FeeBillController(feeBillService, scopeService);
         ReflectionTestUtils.setField(controller, "feeBillService", feeBillService);
         ReflectionTestUtils.setField(controller, "managerScopeService", scopeService);
 
@@ -95,7 +92,8 @@ class ScopeMutationAuthorizationTest {
         when(scopeService.canManageRoom(7L, 1L)).thenReturn(true);
         when(scopeService.canManageRoom(7L, 99L)).thenReturn(false);
 
-        TransferRequestController controller = new TransferRequestController();
+        TransferRequestController controller = new TransferRequestController(transferService, mock(UserService.class),
+            bedService, mock(RoomService.class), mock(BuildingService.class), scopeService);
         ReflectionTestUtils.setField(controller, "transferRequestService", transferService);
         ReflectionTestUtils.setField(controller, "bedService", bedService);
         ReflectionTestUtils.setField(controller, "managerScopeService", scopeService);

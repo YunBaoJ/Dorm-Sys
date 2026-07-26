@@ -10,7 +10,7 @@ export function getCalls(studentId) {
 
 export function saveCall(data) {
   return request({
-    url: data.id ? '/callRecord/update' : '/callRecord/add',
+    url: '/callRecord/save',
     method: 'post',
     data
   })

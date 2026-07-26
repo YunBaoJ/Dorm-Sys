@@ -13,9 +13,7 @@ public class PasswordService {
 
     public boolean matches(String rawPassword, String storedPassword) {
         if (rawPassword == null || storedPassword == null) return false;
-        return isEncoded(storedPassword)
-            ? encoder.matches(rawPassword, storedPassword)
-            : rawPassword.equals(storedPassword);
+        return encoder.matches(rawPassword, storedPassword);
     }
 
     public boolean isEncoded(String password) {

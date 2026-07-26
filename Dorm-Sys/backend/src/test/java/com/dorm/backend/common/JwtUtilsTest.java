@@ -13,7 +13,7 @@ class JwtUtilsTest {
     @Test
     @SuppressWarnings("unchecked")
     void generatedTokenCanBeParsedForRequestAuthentication() throws Exception {
-        JwtUtils jwtUtils = new JwtUtils();
+        JwtUtils jwtUtils = new JwtUtils("test-secret-for-jwt-utils-unit-test");
         String token = jwtUtils.generateToken(12L, "2022010001", "student");
 
         Method parseToken;

@@ -3,11 +3,7 @@ package com.dorm.backend.controller;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.dorm.backend.entity.Bed;
 import com.dorm.backend.entity.TransferRequest;
-import com.dorm.backend.service.BedService;
-import com.dorm.backend.service.BuildingService;
-import com.dorm.backend.service.RoomService;
-import com.dorm.backend.service.TransferRequestService;
-import com.dorm.backend.service.UserService;
+import com.dorm.backend.service.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -44,7 +40,8 @@ class TransferRequestControllerTest {
             .thenReturn(List.of(targetBed), List.of(currentBed), List.of(targetBed));
         when(transferRequestService.saveOrUpdate(any())).thenReturn(true);
 
-        TransferRequestController controller = new TransferRequestController();
+        TransferRequestController controller = new TransferRequestController(transferRequestService, mock(UserService.class),
+            bedService, mock(RoomService.class), mock(BuildingService.class), mock(DormManagerScopeService.class));
         ReflectionTestUtils.setField(controller, "transferRequestService", transferRequestService);
         ReflectionTestUtils.setField(controller, "bedService", bedService);
         ReflectionTestUtils.setField(controller, "userService", mock(UserService.class));

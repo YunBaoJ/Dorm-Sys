@@ -5,7 +5,6 @@ import com.dorm.backend.common.Result;
 import com.dorm.backend.common.AuthUtils;
 import com.dorm.backend.entity.*;
 import com.dorm.backend.service.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -20,32 +19,31 @@ import java.text.SimpleDateFormat;
 @RequestMapping("/api/dashboard")
 public class DashboardController {
 
-    @Autowired
-    private FeeBillService feeBillService;
-    
-    @Autowired
-    private RepairRequestService repairRequestService;
-    
-    @Autowired
-    private HygieneRecordService hygieneRecordService;
-    
-    @Autowired
-    private VisitorRecordService visitorRecordService;
-    
-    @Autowired
-    private BedService bedService;
-    
-    @Autowired
-    private RoomService roomService;
-    
-    @Autowired
-    private BuildingService buildingService;
+    private final FeeBillService feeBillService;
+    private final RepairRequestService repairRequestService;
+    private final HygieneRecordService hygieneRecordService;
+    private final VisitorRecordService visitorRecordService;
+    private final BedService bedService;
+    private final RoomService roomService;
+    private final BuildingService buildingService;
+    private final UserService userService;
+    private final DormManagerScopeService managerScopeService;
 
-    @Autowired
-    private UserService userService;
-
-    @Autowired
-    private DormManagerScopeService managerScopeService;
+    public DashboardController(FeeBillService feeBillService, RepairRequestService repairRequestService,
+                               HygieneRecordService hygieneRecordService, VisitorRecordService visitorRecordService,
+                               BedService bedService, RoomService roomService,
+                               BuildingService buildingService, UserService userService,
+                               DormManagerScopeService managerScopeService) {
+        this.feeBillService = feeBillService;
+        this.repairRequestService = repairRequestService;
+        this.hygieneRecordService = hygieneRecordService;
+        this.visitorRecordService = visitorRecordService;
+        this.bedService = bedService;
+        this.roomService = roomService;
+        this.buildingService = buildingService;
+        this.userService = userService;
+        this.managerScopeService = managerScopeService;
+    }
 
     @GetMapping("/stats")
     public Result<Map<String, Object>> getStats() {
@@ -217,40 +215,43 @@ public class DashboardController {
 
     @GetMapping("/buildings")
     public Result<List<Map<String, Object>>> getBuildingStats() {
-        List<Building> buildings = buildingService.list();
-        if ("dormmanager".equals(AuthUtils.getCurrentUserRole())) {
-            List<Long> managedBuildingIds = managerScopeService.managedBuildingIds(AuthUtils.getCurrentUserId());
-            buildings = buildings.stream().filter(building -> managedBuildingIds.contains(building.getId())).toList();
+        QueryWrapper<Building> bQw = new QueryWrapper<>();
+        String role = AuthUtils.getCurrentUserRole();
+        Long userId = AuthUtils.getCurrentUserId();
+        if ("dormmanager".equals(role) && userId != null) {
+            List<Long> managedBuildingIds = managerScopeService.managedBuildingIds(userId);
+            if (managedBuildingIds.isEmpty()) return Result.success(List.of());
+            bQw.in("id", managedBuildingIds);
         }
-        List<Room> allRooms = roomService.list();
-        List<Bed> allBeds = bedService.list();
-        
+        List<Building> buildings = buildingService.getBuildingsWithStats(bQw);
+        if (buildings.isEmpty()) return Result.success(List.of());
+
+        List<Long> buildingIds = buildings.stream().map(Building::getId).collect(Collectors.toList());
+        List<Room> rooms = roomService.list(new QueryWrapper<Room>().in("building_id", buildingIds));
+        Map<Long, List<Room>> roomsByBuilding = rooms.stream().collect(Collectors.groupingBy(Room::getBuildingId));
+        List<Long> roomIds = rooms.stream().map(Room::getId).collect(Collectors.toList());
+        List<Bed> beds = roomIds.isEmpty() ? List.of() : bedService.list(new QueryWrapper<Bed>().in("room_id", roomIds));
+        Map<Long, List<Bed>> bedsByRoom = beds.stream().collect(Collectors.groupingBy(Bed::getRoomId));
+
         List<Map<String, Object>> res = new ArrayList<>();
-        
         for (Building b : buildings) {
             Map<String, Object> stat = new HashMap<>();
             stat.put("id", b.getId());
             stat.put("name", b.getName());
-            
-            List<Room> bRooms = allRooms.stream().filter(r -> r.getBuildingId().equals(b.getId())).collect(Collectors.toList());
-            List<Long> bRoomIds = bRooms.stream().map(Room::getId).collect(Collectors.toList());
-            
-            List<Bed> bBeds = allBeds.stream().filter(bed -> bRoomIds.contains(bed.getRoomId())).collect(Collectors.toList());
-            
-            long occupied = bBeds.stream().filter(bed -> bed.getStudentId() != null).count();
-            int percentage = bBeds.isEmpty()
-                ? 0
-                : (int) Math.round(occupied * 100.0 / bBeds.size());
-            
-            stat.put("totalRooms", bRooms.size());
+            stat.put("totalRooms", b.getTotalRooms());
+
+            List<Bed> bBeds = roomsByBuilding.getOrDefault(b.getId(), List.of()).stream()
+                .flatMap(r -> bedsByRoom.getOrDefault(r.getId(), List.of()).stream())
+                .collect(Collectors.toList());
+            long occupiedBeds = bBeds.stream().filter(bed -> bed.getStudentId() != null).count();
+            int percentage = bBeds.isEmpty() ? 0 : (int) Math.round(occupiedBeds * 100.0 / bBeds.size());
+
             stat.put("totalBeds", bBeds.size());
-            stat.put("occupiedBeds", occupied);
+            stat.put("occupiedBeds", occupiedBeds);
             stat.put("percentage", percentage);
             stat.put("status", percentage >= 100 ? "已满" : percentage >= 80 ? "紧张" : "正常");
-            
             res.add(stat);
         }
-        
         return Result.success(res);
     }
     

@@ -45,6 +45,9 @@ const routes = [
   { path: '/admin/notices', component: () => import('../views/admin/Notices.vue') },
   { path: '/admin/operation-logs', component: () => import('../views/admin/OperationLogs.vue') },
   { path: '/admin/reports', component: () => import('../views/admin/Reports.vue') },
+
+  // 404 兜底
+  { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 
 const router = createRouter({

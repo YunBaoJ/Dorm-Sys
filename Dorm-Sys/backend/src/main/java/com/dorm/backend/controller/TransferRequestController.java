@@ -1,8 +1,10 @@
 package com.dorm.backend.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.dorm.backend.common.Result;
+import com.dorm.backend.common.AuthUtils;
 import com.dorm.backend.entity.TransferRequest;
 import com.dorm.backend.entity.User;
 import com.dorm.backend.entity.Bed;
@@ -13,94 +15,43 @@ import com.dorm.backend.service.UserService;
 import com.dorm.backend.service.BedService;
 import com.dorm.backend.service.RoomService;
 import com.dorm.backend.service.BuildingService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.dorm.backend.service.DormManagerScopeService;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import com.dorm.backend.common.AuthUtils;
-import com.dorm.backend.service.DormManagerScopeService;
 
 @RestController
 @RequestMapping("/api/transferRequest")
 public class TransferRequestController {
 
-    @Autowired
-    private TransferRequestService transferRequestService;
-    
-    @Autowired
-    private UserService userService;
-    
-    @Autowired
-    private BedService bedService;
-    
-    @Autowired
-    private RoomService roomService;
-    
-    @Autowired
-    private BuildingService buildingService;
+    private final TransferRequestService transferRequestService;
+    private final UserService userService;
+    private final BedService bedService;
+    private final RoomService roomService;
+    private final BuildingService buildingService;
+    private final DormManagerScopeService managerScopeService;
 
-    @Autowired
-    private DormManagerScopeService managerScopeService;
+    public TransferRequestController(TransferRequestService transferRequestService, UserService userService,
+                                     BedService bedService, RoomService roomService,
+                                     BuildingService buildingService, DormManagerScopeService managerScopeService) {
+        this.transferRequestService = transferRequestService;
+        this.userService = userService;
+        this.bedService = bedService;
+        this.roomService = roomService;
+        this.buildingService = buildingService;
+        this.managerScopeService = managerScopeService;
+    }
 
     @GetMapping("/list")
     public Result<List<TransferRequest>> list(@RequestParam(required = false) Long studentId,
-                                              @RequestParam(required = false) String status) {
-        QueryWrapper<TransferRequest> queryWrapper = new QueryWrapper<>();
-        if (AuthUtils.isStudent()) studentId = AuthUtils.getCurrentUserId();
-        if (studentId != null) queryWrapper.eq("student_id", studentId);
-        if (status != null && !status.isEmpty()) queryWrapper.eq("status", status);
-        
-        queryWrapper.orderByDesc("create_time");
-        List<TransferRequest> list = transferRequestService.list(queryWrapper);
-        
-        Map<Long, String> userMap = userService.list().stream()
-            .collect(Collectors.toMap(User::getId, User::getName));
-            
-        Map<Long, Bed> bedMap = bedService.list().stream()
-            .collect(Collectors.toMap(Bed::getId, b -> b));
-            
-        Map<Long, Room> roomMap = roomService.list().stream()
-            .collect(Collectors.toMap(Room::getId, r -> r));
-            
-        Map<Long, String> buildingMap = buildingService.list().stream()
-            .collect(Collectors.toMap(Building::getId, Building::getName));
-
-        if ("dormmanager".equals(AuthUtils.getCurrentUserRole())) {
-            List<Long> managedRoomIds = managerScopeService.managedRoomIds(AuthUtils.getCurrentUserId());
-            list = list.stream().filter(req -> {
-                Bed currentBed = bedMap.get(req.getCurrentBedId());
-                return currentBed != null && managedRoomIds.contains(currentBed.getRoomId());
-            }).toList();
-        }
-            
-        for (TransferRequest req : list) {
-            req.setStudentName(userMap.get(req.getStudentId()));
-            
-            // Format current bed string
-            Bed currentBed = bedMap.get(req.getCurrentBedId());
-            if (currentBed != null) {
-                Room r = roomMap.get(currentBed.getRoomId());
-                if (r != null) {
-                    String bName = buildingMap.get(r.getBuildingId());
-                    req.setCurrentBedName(bName + " " + r.getRoomNumber() + " - " + currentBed.getBedNumber());
-                }
-            }
-            
-            // Format target room string if specified
-            if (req.getTargetRoomId() != null) {
-                Room r = roomMap.get(req.getTargetRoomId());
-                if (r != null) {
-                    String bName = buildingMap.get(r.getBuildingId());
-                    req.setTargetRoomName(bName + " " + r.getRoomNumber());
-                }
-            }
-        }
-        
+                                              @RequestParam(required = false) String status,
+                                              @RequestParam(defaultValue = "1") Integer page,
+                                              @RequestParam(defaultValue = "100") Integer size) {
+        List<TransferRequest> list = transferRequestService.listTransferRequestsWithDetails(studentId, status,
+                AuthUtils.getCurrentUserRole(), AuthUtils.getCurrentUserId());
         return Result.success(list);
     }
 

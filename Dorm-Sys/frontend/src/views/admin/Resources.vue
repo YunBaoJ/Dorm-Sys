@@ -68,7 +68,7 @@
               <div class="building-actions">
                 <div class="status-toggle">
                   <span class="status-label">运营中</span>
-                  <el-switch v-model="b.active" />
+                  <el-switch v-model="b.active" :loading="b.statusSaving" @change="handleStatusChange(b)" />
                 </div>
                 <div class="btn-group">
                   <el-button type="primary" link @click="openEditDialog(b)"><el-icon class="el-icon--left"><component :is="Edit" /></el-icon>编辑</el-button>
@@ -92,21 +92,21 @@
               <div class="asset-icon bg-light-blue"><el-icon><component :is="Building" /></el-icon></div>
               <div class="asset-info">
                 <div class="asset-label">楼栋总数</div>
-                <div class="asset-value">2 <span>栋</span></div>
+                <div class="asset-value">{{ assetOverview.buildingCount }} <span>栋</span></div>
               </div>
             </div>
             <div class="asset-item">
               <div class="asset-icon bg-light-orange"><el-icon><component :is="Home" /></el-icon></div>
               <div class="asset-info">
                 <div class="asset-label">总床位数</div>
-                <div class="asset-value">4,850 <span>张</span></div>
+                <div class="asset-value">{{ assetOverview.totalBeds }} <span>张</span></div>
               </div>
             </div>
             <div class="asset-item">
               <div class="asset-icon bg-light-cyan"><el-icon><component :is="Clock" /></el-icon></div>
               <div class="asset-info">
                 <div class="asset-label">平均入住率</div>
-                <div class="asset-value">88.4 <span>%</span></div>
+                <div class="asset-value">{{ assetOverview.occupancyRate }} <span>%</span></div>
               </div>
             </div>
           </div>
@@ -188,11 +188,13 @@
 import { ref, computed, onMounted, reactive } from 'vue'
 import { Building2, Building, Home, Clock, Info, Search, RefreshCw as Refresh, Plus, MapPin, UserRound, Edit, Delete } from '@lucide/vue'
 import { getBuildingList, saveBuilding, deleteBuilding } from '../../api/building'
+import { getRooms } from '../../api/room'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const search = ref('')
 
 const buildings = ref([])
+const rooms = ref([])
 const loading = ref(false)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
@@ -203,6 +205,16 @@ const filteredBuildings = computed(() => {
   if (!search.value) return buildings.value
   const lowerSearch = search.value.toLowerCase()
   return buildings.value.filter(b => b.name.toLowerCase().includes(lowerSearch))
+})
+
+const assetOverview = computed(() => {
+  const totalBeds = rooms.value.reduce((sum, room) => sum + (Number(room.capacity) || 0), 0)
+  const occupiedBeds = rooms.value.reduce((sum, room) => sum + (Number(room.occupied) || 0), 0)
+  return {
+    buildingCount: buildings.value.length,
+    totalBeds,
+    occupancyRate: totalBeds ? Math.round((occupiedBeds / totalBeds) * 1000) / 10 : 0
+  }
 })
 
 const form = reactive({
@@ -222,8 +234,9 @@ const rules = {
 const loadBuildings = async () => {
   loading.value = true
   try {
-    const res = await getBuildingList()
-    buildings.value = res || []
+    const [buildingData, roomData] = await Promise.all([getBuildingList(), getRooms()])
+    buildings.value = buildingData || []
+    rooms.value = roomData || []
   } catch (error) {
     console.error(error)
   } finally {
@@ -251,6 +264,21 @@ const openEditDialog = (row) => {
   form.manager = row.manager
   form.location = row.location
   dialogVisible.value = true
+}
+
+const handleStatusChange = async (building) => {
+  const nextActive = building.active
+  building.statusSaving = true
+  try {
+    const { statusSaving, ...payload } = building
+    await saveBuilding(payload)
+    ElMessage.success(nextActive ? '楼栋已启用' : '楼栋已停用')
+  } catch (error) {
+    building.active = !nextActive
+    console.error(error)
+  } finally {
+    building.statusSaving = false
+  }
 }
 
 const submitForm = async () => {

@@ -1,27 +1,30 @@
 package com.dorm.backend.controller;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dorm.backend.entity.StayHistory;
 import com.dorm.backend.service.StayHistoryService;
 import com.dorm.backend.common.Result;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.dorm.backend.common.AuthUtils;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import java.util.List;
-import com.dorm.backend.common.AuthUtils;
 
 @RestController
 @RequestMapping("/api/stayHistory")
 public class StayHistoryController {
-    @Autowired
-    private StayHistoryService stayHistoryService;
+    private final StayHistoryService stayHistoryService;
+
+    public StayHistoryController(StayHistoryService stayHistoryService) {
+        this.stayHistoryService = stayHistoryService;
+    }
 
     @GetMapping("/list")
-    public Result<List<StayHistory>> list() {
+    public Result<List<StayHistory>> list(@RequestParam(defaultValue = "1") Integer page,
+                                          @RequestParam(defaultValue = "100") Integer size) {
         Long userId = AuthUtils.getCurrentUserId();
         QueryWrapper<StayHistory> query = new QueryWrapper<>();
         if ("student".equals(AuthUtils.getCurrentUserRole())) query.eq("student_id", userId);
-        return Result.success(stayHistoryService.list(query));
+        Page<StayHistory> pageResult = stayHistoryService.page(new Page<>(page, size), query);
+        return Result.success(pageResult.getRecords());
     }
 
     @GetMapping("/current")

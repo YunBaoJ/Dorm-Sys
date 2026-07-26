@@ -65,22 +65,19 @@ class AuthControllerTest {
     }
 
     @Test
-    void legacyPlaintextPasswordIsUpgradedAfterSuccessfulLogin() {
+    void bcryptLoginSucceeds() {
         UserService userService = mock(UserService.class);
-        when(userService.getOne(any())).thenReturn(loginUser());
+        User user = loginUser();
+        user.setPassword(new PasswordService().encode("123456"));
+        when(userService.getOne(any())).thenReturn(user);
 
         Result<Map<String, Object>> result = authController(userService).login(loginDTO());
 
         assertThat(result.getCode()).isEqualTo(200);
-        verify(userService, atLeastOnce()).update(any());
     }
 
     private AuthController authController(UserService userService) {
-        AuthController controller = new AuthController();
-        ReflectionTestUtils.setField(controller, "userService", userService);
-        ReflectionTestUtils.setField(controller, "jwtUtils", new JwtUtils());
-        ReflectionTestUtils.setField(controller, "passwordService", new PasswordService());
-        return controller;
+        return new AuthController(userService, new JwtUtils("test-secret-for-auth-controller-test"), new PasswordService());
     }
 
     private LoginDTO loginDTO() {
@@ -95,7 +92,7 @@ class AuthControllerTest {
         User user = new User();
         user.setId(1L);
         user.setUsername("student");
-        user.setPassword("123456");
+        user.setPassword(new PasswordService().encode("123456"));
         user.setRole("student");
         user.setEnabled(true);
         return user;

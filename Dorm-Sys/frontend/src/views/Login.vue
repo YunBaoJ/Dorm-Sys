@@ -149,7 +149,7 @@ const roles = [
 
 const form = reactive({
   username: '20240001',
-  password: '123456',
+  password: '',
   role: 'student',
   remember: true
 })

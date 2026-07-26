@@ -15,7 +15,7 @@
             </div>
             <div class="hero-actions">
               <el-button type="primary" @click="handleAdd"><el-icon class="el-icon--left"><component :is="Plus" /></el-icon>新增单间</el-button>
-              <el-button plain type="warning"><el-icon class="el-icon--left"><component :is="Files" /></el-icon>批量创建</el-button>
+              <el-button plain type="warning" @click="handleBatchAdd"><el-icon class="el-icon--left"><component :is="Files" /></el-icon>批量创建</el-button>
             </div>
           </div>
         </el-card>
@@ -92,22 +92,22 @@
             <div class="dash-item">
               <div class="dash-icon bg-light-blue"><el-icon color="#3b82f6"><component :is="Check" /></el-icon></div>
               <div class="dash-info">
-                <div class="dash-label">空闲房间</div>
-                <div class="dash-value">42 <span>间</span></div>
+                <div class="dash-label">可用房间</div>
+                <div class="dash-value">{{ roomStatus.available }} <span>间</span></div>
               </div>
             </div>
             <div class="dash-item">
               <div class="dash-icon bg-light-orange"><el-icon color="#f59e0b"><component :is="AlertCircle" /></el-icon></div>
               <div class="dash-info">
                 <div class="dash-label">满员房间</div>
-                <div class="dash-value">1,208 <span>间</span></div>
+                <div class="dash-value">{{ roomStatus.full }} <span>间</span></div>
               </div>
             </div>
             <div class="dash-item">
               <div class="dash-icon bg-gray"><el-icon color="var(--sub)"><component :is="Settings" /></el-icon></div>
               <div class="dash-info">
                 <div class="dash-label">维修中</div>
-                <div class="dash-value">15 <span>间</span></div>
+                <div class="dash-value">{{ roomStatus.maintenance }} <span>间</span></div>
               </div>
             </div>
           </div>
@@ -186,6 +186,53 @@
       </template>
     </el-dialog>
 
+    <el-dialog v-model="batchDialogVisible" title="批量创建房间" width="560px">
+      <el-form label-width="110px">
+        <el-form-item label="所属楼栋" required>
+          <el-select v-model="batchForm.buildingId" placeholder="请选择楼栋" style="width: 100%">
+            <el-option v-for="b in buildings" :key="b.id" :label="b.name" :value="b.id" />
+          </el-select>
+        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="起始楼层" required>
+              <el-input-number v-model="batchForm.startFloor" :min="1" :max="selectedBuildingFloors" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="结束楼层" required>
+              <el-input-number v-model="batchForm.endFloor" :min="batchForm.startFloor" :max="selectedBuildingFloors" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="每层房间数" required>
+              <el-input-number v-model="batchForm.roomsPerFloor" :min="1" :max="99" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="起始序号" required>
+              <el-input-number v-model="batchForm.startSequence" :min="1" :max="99" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="每间容量" required>
+              <el-input-number v-model="batchForm.capacity" :min="1" :max="12" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-alert
+          :title="`将创建 ${batchRoomCount} 个房间，并自动生成 ${batchRoomCount * batchForm.capacity} 个床位`"
+          type="info"
+          :closable="false"
+          show-icon
+        />
+      </el-form>
+      <template #footer>
+        <el-button @click="batchDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="batchSubmitting" @click="handleBatchSubmit">确认创建</el-button>
+      </template>
+    </el-dialog>
+
     <!-- Beds Drawer -->
     <el-drawer v-model="bedDrawerVisible" :title="`床位管理 - ${currentRoom?.buildingName} ${currentRoom?.roomNumber}`" size="500px">
       <div class="beds-container" v-loading="bedLoading">
@@ -212,7 +259,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { Home, Plus, Files, Search, RefreshCw as Refresh, Building, Edit, Eye, Trash2, Clock, Check, AlertCircle, Settings, Info } from '@lucide/vue'
-import { getRooms, saveRoom, deleteRoom, getBeds } from '../../api/room'
+import { getRooms, saveRoom, batchCreateRooms, deleteRoom, getBeds } from '../../api/room'
 import { getBuildings } from '../../api/building'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -228,6 +275,13 @@ const filteredRooms = computed(() => {
   return rooms.value.filter(r => (r.roomNumber || '').toLowerCase().includes(lowerSearch))
 })
 
+const roomStatus = computed(() => rooms.value.reduce((summary, room) => {
+  if (room.status === 'MAINTENANCE') summary.maintenance++
+  else if (room.status === 'FULL' || room.occupied >= room.capacity) summary.full++
+  else summary.available++
+  return summary
+}, { available: 0, full: 0, maintenance: 0 }))
+
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增房间')
 const form = ref({
@@ -237,6 +291,25 @@ const form = ref({
   floor: 1,
   capacity: 4,
   status: 'NORMAL'
+})
+
+const batchDialogVisible = ref(false)
+const batchSubmitting = ref(false)
+const batchForm = ref({
+  buildingId: null,
+  startFloor: 1,
+  endFloor: 1,
+  roomsPerFloor: 8,
+  startSequence: 1,
+  capacity: 4
+})
+const selectedBuildingFloors = computed(() => {
+  const building = buildings.value.find(item => item.id === batchForm.value.buildingId)
+  return Number(building?.floors) || 30
+})
+const batchRoomCount = computed(() => {
+  const floorCount = Math.max(0, batchForm.value.endFloor - batchForm.value.startFloor + 1)
+  return floorCount * batchForm.value.roomsPerFloor
 })
 
 const bedDrawerVisible = ref(false)
@@ -293,6 +366,46 @@ const handleAdd = () => {
     status: 'NORMAL'
   }
   dialogVisible.value = true
+}
+
+const handleBatchAdd = () => {
+  batchForm.value = {
+    buildingId: buildingFilter.value || buildings.value[0]?.id || null,
+    startFloor: 1,
+    endFloor: 1,
+    roomsPerFloor: 8,
+    startSequence: 1,
+    capacity: 4
+  }
+  batchDialogVisible.value = true
+}
+
+const handleBatchSubmit = async () => {
+  const data = batchForm.value
+  if (!data.buildingId) {
+    ElMessage.warning('请选择所属楼栋')
+    return
+  }
+  if (data.endFloor < data.startFloor || data.endFloor > selectedBuildingFloors.value) {
+    ElMessage.warning('请检查楼层范围')
+    return
+  }
+  if (data.startSequence + data.roomsPerFloor - 1 > 99) {
+    ElMessage.warning('房间序号不能超过 99')
+    return
+  }
+
+  batchSubmitting.value = true
+  try {
+    const count = await batchCreateRooms(data)
+    ElMessage.success(`已创建 ${count} 个房间及对应床位`)
+    batchDialogVisible.value = false
+    await fetchRooms()
+  } catch (error) {
+    console.error(error)
+  } finally {
+    batchSubmitting.value = false
+  }
 }
 
 const handleEdit = (row) => {

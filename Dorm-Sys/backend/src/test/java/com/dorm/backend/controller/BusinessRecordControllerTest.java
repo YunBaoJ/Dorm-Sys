@@ -2,6 +2,7 @@ package com.dorm.backend.controller;
 
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.dorm.backend.common.Result;
@@ -49,14 +50,16 @@ class BusinessRecordControllerTest {
         published.setReply("内部处理备注");
         published.setEventTime(LocalDateTime.of(2026, 7, 21, 11, 0));
         published.setUpdateTime(LocalDateTime.of(2026, 7, 21, 12, 0));
-        when(service.list(org.mockito.ArgumentMatchers.<Wrapper<BusinessRecord>>any()))
-                .thenReturn(List.of(draft, published));
-        org.mockito.Mockito.doReturn(List.of(published)).when(service).list(
+        when(service.page(org.mockito.ArgumentMatchers.<com.baomidou.mybatisplus.extension.plugins.pagination.Page<BusinessRecord>>any(),
+                org.mockito.ArgumentMatchers.<Wrapper<BusinessRecord>>any()))
+                .thenReturn(new Page<BusinessRecord>().setRecords(List.of(draft, published)));
+        org.mockito.Mockito.doReturn(new Page<BusinessRecord>().setRecords(List.of(published))).when(service).page(
+                org.mockito.ArgumentMatchers.<com.baomidou.mybatisplus.extension.plugins.pagination.Page<BusinessRecord>>any(),
                 org.mockito.ArgumentMatchers.argThat(queryWithParameters("admin_notice", "已发布")));
         BusinessRecordController controller = controller(service);
         authenticate(7L, "student");
 
-        Result<?> result = controller.list("admin_notice", "草稿");
+        Result<?> result = controller.list("admin_notice", "草稿", 1, 100);
 
         assertThat(result.getCode()).isEqualTo(200);
         JsonNode notice = new ObjectMapper().findAndRegisterModules().valueToTree(result.getData()).get(0);
@@ -165,13 +168,15 @@ class BusinessRecordControllerTest {
         BusinessRecordService service = mock(BusinessRecordService.class);
         BusinessRecord feedback = notice("feedback", "PENDING");
         BusinessRecord managerCall = notice("manager_call", "待呼叫");
-        when(service.list(org.mockito.ArgumentMatchers.<Wrapper<BusinessRecord>>any()))
-                .thenReturn(List.of(feedback, managerCall));
-        org.mockito.Mockito.doReturn(List.of(feedback)).when(service).list(
+        when(service.page(org.mockito.ArgumentMatchers.<com.baomidou.mybatisplus.extension.plugins.pagination.Page<BusinessRecord>>any(),
+                org.mockito.ArgumentMatchers.<Wrapper<BusinessRecord>>any()))
+                .thenReturn(new Page<BusinessRecord>().setRecords(List.of(feedback, managerCall)));
+        org.mockito.Mockito.doReturn(new Page<BusinessRecord>().setRecords(List.of(feedback))).when(service).page(
+                org.mockito.ArgumentMatchers.<com.baomidou.mybatisplus.extension.plugins.pagination.Page<BusinessRecord>>any(),
                 org.mockito.ArgumentMatchers.argThat(queryWithParameters("feedback")));
         BusinessRecordController controller = controller(service);
 
-        Result<?> result = controller.list("feedback", null);
+        Result<?> result = controller.list("feedback", null, 1, 100);
 
         assertThat(result.getData()).isEqualTo(List.of(feedback));
     }
@@ -183,14 +188,16 @@ class BusinessRecordControllerTest {
         ownFeedback.setCreatorId(7L);
         BusinessRecord otherFeedback = notice("feedback", "PENDING");
         otherFeedback.setCreatorId(8L);
-        when(service.list(org.mockito.ArgumentMatchers.<Wrapper<BusinessRecord>>any()))
-                .thenReturn(List.of(ownFeedback, otherFeedback));
-        org.mockito.Mockito.doReturn(List.of(ownFeedback)).when(service).list(
+        when(service.page(org.mockito.ArgumentMatchers.<com.baomidou.mybatisplus.extension.plugins.pagination.Page<BusinessRecord>>any(),
+                org.mockito.ArgumentMatchers.<Wrapper<BusinessRecord>>any()))
+                .thenReturn(new Page<BusinessRecord>().setRecords(List.of(ownFeedback, otherFeedback)));
+        org.mockito.Mockito.doReturn(new Page<BusinessRecord>().setRecords(List.of(ownFeedback))).when(service).page(
+                org.mockito.ArgumentMatchers.<com.baomidou.mybatisplus.extension.plugins.pagination.Page<BusinessRecord>>any(),
                 org.mockito.ArgumentMatchers.argThat(queryWithParameters("feedback", 7L)));
         BusinessRecordController controller = controller(service);
         authenticate(7L, "student");
 
-        Result<?> result = controller.list("feedback", null);
+        Result<?> result = controller.list("feedback", null, 1, 100);
 
         assertThat(result.getData()).isEqualTo(List.of(ownFeedback));
     }
@@ -198,8 +205,7 @@ class BusinessRecordControllerTest {
     @Test
     void studentCannotCreateManagerMessage() {
         BusinessRecordService service = mock(BusinessRecordService.class);
-        BusinessRecordController controller = new BusinessRecordController();
-        ReflectionTestUtils.setField(controller, "businessRecordService", service);
+        BusinessRecordController controller = new BusinessRecordController(service, mock(DormManagerScopeService.class));
 
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute("currentUserId", 7L);
@@ -218,8 +224,7 @@ class BusinessRecordControllerTest {
     void savePersistsRecord() {
         BusinessRecordService service = mock(BusinessRecordService.class);
         when(service.saveOrUpdate(any())).thenReturn(true);
-        BusinessRecordController controller = new BusinessRecordController();
-        ReflectionTestUtils.setField(controller, "businessRecordService", service);
+        BusinessRecordController controller = new BusinessRecordController(service, mock(DormManagerScopeService.class));
 
         BusinessRecord record = new BusinessRecord();
         record.setType("manager_call");
@@ -248,10 +253,7 @@ class BusinessRecordControllerTest {
     }
 
     private BusinessRecordController controller(BusinessRecordService service) {
-        BusinessRecordController controller = new BusinessRecordController();
-        ReflectionTestUtils.setField(controller, "businessRecordService", service);
-        ReflectionTestUtils.setField(controller, "managerScopeService", mock(DormManagerScopeService.class));
-        return controller;
+        return new BusinessRecordController(service, mock(DormManagerScopeService.class));
     }
 
     private void authenticate(Long userId, String role) {

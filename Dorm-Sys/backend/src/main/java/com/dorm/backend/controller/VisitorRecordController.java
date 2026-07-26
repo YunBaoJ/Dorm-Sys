@@ -1,53 +1,41 @@
 package com.dorm.backend.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.dorm.backend.common.Result;
+import com.dorm.backend.common.AuthUtils;
 import com.dorm.backend.entity.VisitorRecord;
 import com.dorm.backend.entity.User;
 import com.dorm.backend.service.VisitorRecordService;
 import com.dorm.backend.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.dorm.backend.service.DormManagerScopeService;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import com.dorm.backend.common.AuthUtils;
-import com.dorm.backend.service.DormManagerScopeService;
 
 @RestController
 @RequestMapping("/api/visitorRecord")
 public class VisitorRecordController {
 
-    @Autowired
-    private VisitorRecordService visitorRecordService;
-    
-    @Autowired
-    private UserService userService;
+    private final VisitorRecordService visitorRecordService;
+    private final UserService userService;
+    private final DormManagerScopeService managerScopeService;
 
-    @Autowired
-    private DormManagerScopeService managerScopeService;
+    public VisitorRecordController(VisitorRecordService visitorRecordService, UserService userService,
+                                   DormManagerScopeService managerScopeService) {
+        this.visitorRecordService = visitorRecordService;
+        this.userService = userService;
+        this.managerScopeService = managerScopeService;
+    }
 
     @GetMapping("/list")
-    public Result<List<VisitorRecord>> list(@RequestParam(required = false) Long studentId) {
-        QueryWrapper<VisitorRecord> qw = new QueryWrapper<>();
-        if (AuthUtils.isStudent()) studentId = AuthUtils.getCurrentUserId();
-        if ("dormmanager".equals(AuthUtils.getCurrentUserRole())) {
-            List<Long> studentIds = managerScopeService.managedStudentIds(AuthUtils.getCurrentUserId());
-            if (studentIds.isEmpty() || (studentId != null && !studentIds.contains(studentId))) return Result.success(List.of());
-            if (studentId == null) qw.in("student_id", studentIds);
-        }
-        if (studentId != null) qw.eq("student_id", studentId);
-        qw.orderByDesc("create_time");
-        
-        List<VisitorRecord> list = visitorRecordService.list(qw);
-        Map<Long, String> userMap = userService.list().stream()
-            .collect(Collectors.toMap(User::getId, User::getName));
-        for (VisitorRecord vr : list) {
-            vr.setStudentName(userMap.get(vr.getStudentId()));
-        }
+    public Result<List<VisitorRecord>> list(@RequestParam(required = false) Long studentId,
+                                            @RequestParam(defaultValue = "1") Integer page,
+                                            @RequestParam(defaultValue = "100") Integer size) {
+        List<VisitorRecord> list = visitorRecordService.listVisitorRecordsWithDetails(studentId,
+                AuthUtils.getCurrentUserRole(), AuthUtils.getCurrentUserId());
         return Result.success(list);
     }
 

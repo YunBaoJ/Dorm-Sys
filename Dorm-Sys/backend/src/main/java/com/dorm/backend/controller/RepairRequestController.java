@@ -1,86 +1,40 @@
 package com.dorm.backend.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.dorm.backend.common.Result;
+import com.dorm.backend.common.AuthUtils;
 import com.dorm.backend.entity.RepairRequest;
-import com.dorm.backend.entity.User;
-import com.dorm.backend.entity.Room;
-import com.dorm.backend.entity.Building;
 import com.dorm.backend.entity.Bed;
 import com.dorm.backend.service.RepairRequestService;
-import com.dorm.backend.service.UserService;
-import com.dorm.backend.service.RoomService;
-import com.dorm.backend.service.BuildingService;
 import com.dorm.backend.service.BedService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.dorm.backend.service.DormManagerScopeService;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import com.dorm.backend.common.AuthUtils;
-import com.dorm.backend.service.DormManagerScopeService;
 
 @RestController
 @RequestMapping("/api/repairRequest")
 public class RepairRequestController {
 
-    @Autowired
-    private RepairRequestService repairRequestService;
-    
-    @Autowired
-    private UserService userService;
-    
-    @Autowired
-    private RoomService roomService;
-    
-    @Autowired
-    private BuildingService buildingService;
+    private final RepairRequestService repairRequestService;
+    private final BedService bedService;
+    private final DormManagerScopeService managerScopeService;
 
-    @Autowired
-    private BedService bedService;
-
-    @Autowired
-    private DormManagerScopeService managerScopeService;
+    public RepairRequestController(RepairRequestService repairRequestService, BedService bedService,
+                                   DormManagerScopeService managerScopeService) {
+        this.repairRequestService = repairRequestService;
+        this.bedService = bedService;
+        this.managerScopeService = managerScopeService;
+    }
 
     @GetMapping("/list")
     public Result<List<RepairRequest>> list(@RequestParam(required = false) Long submitterId, 
-                                            @RequestParam(required = false) String status) {
-        QueryWrapper<RepairRequest> queryWrapper = new QueryWrapper<>();
-        if (AuthUtils.isStudent()) submitterId = AuthUtils.getCurrentUserId();
-        if ("dormmanager".equals(AuthUtils.getCurrentUserRole())) {
-            List<Long> roomIds = managerScopeService.managedRoomIds(AuthUtils.getCurrentUserId());
-            if (roomIds.isEmpty()) return Result.success(List.of());
-            queryWrapper.in("room_id", roomIds);
-        }
-        if (submitterId != null) queryWrapper.eq("submitter_id", submitterId);
-        if (status != null && !status.isEmpty()) queryWrapper.eq("status", status);
-        
-        queryWrapper.orderByDesc("create_time");
-        List<RepairRequest> list = repairRequestService.list(queryWrapper);
-        
-        Map<Long, String> userMap = userService.list().stream()
-            .collect(Collectors.toMap(User::getId, User::getName));
-            
-        Map<Long, Room> roomMap = roomService.list().stream()
-            .collect(Collectors.toMap(Room::getId, r -> r));
-            
-        Map<Long, String> buildingMap = buildingService.list().stream()
-            .collect(Collectors.toMap(Building::getId, Building::getName));
-            
-        for (RepairRequest req : list) {
-            req.setSubmitterName(userMap.get(req.getSubmitterId()));
-            if (req.getHandlerId() != null) req.setHandlerName(userMap.get(req.getHandlerId()));
-            
-            Room r = roomMap.get(req.getRoomId());
-            if (r != null) {
-                String bName = buildingMap.get(r.getBuildingId());
-                req.setRoomName((bName != null ? bName : "") + " " + r.getRoomNumber());
-            }
-        }
-        
+                                            @RequestParam(required = false) String status,
+                                            @RequestParam(defaultValue = "1") Integer page,
+                                            @RequestParam(defaultValue = "100") Integer size) {
+        List<RepairRequest> list = repairRequestService.listRepairRequestsWithDetails(submitterId, status,
+                AuthUtils.getCurrentUserRole(), AuthUtils.getCurrentUserId());
         return Result.success(list);
     }
 

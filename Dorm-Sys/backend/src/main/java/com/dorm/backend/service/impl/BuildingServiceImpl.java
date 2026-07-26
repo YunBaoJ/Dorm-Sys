@@ -11,20 +11,22 @@ import com.dorm.backend.entity.Room;
 import com.dorm.backend.entity.Bed;
 import com.dorm.backend.service.RoomService;
 import com.dorm.backend.service.BedService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
 public class BuildingServiceImpl extends ServiceImpl<BuildingMapper, Building> implements BuildingService {
-    
-    @Autowired
-    private RoomService roomService;
-    
-    @Autowired
-    private BedService bedService;
-    
+
+    private final RoomService roomService;
+    private final BedService bedService;
+
+    public BuildingServiceImpl(@Lazy RoomService roomService, @Lazy BedService bedService) {
+        this.roomService = roomService;
+        this.bedService = bedService;
+    }
+
     @Override
     public List<Building> getBuildingsWithStats(QueryWrapper<Building> bQw) {
         List<Building> buildings = this.list(bQw);

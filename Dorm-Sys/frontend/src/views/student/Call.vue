@@ -101,7 +101,7 @@ const handleSubmit = async () => {
   submitting.value = true
   try {
     await request({
-      url: '/callRecord/add',
+      url: '/callRecord/save',
       method: 'post',
       data: {
         studentId: userStore.userInfo?.id,

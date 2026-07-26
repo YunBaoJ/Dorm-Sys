@@ -1,12 +1,11 @@
 package com.dorm.backend.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dorm.backend.common.Result;
+import com.dorm.backend.common.AuthUtils;
 import com.dorm.backend.entity.User;
 import com.dorm.backend.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.dorm.backend.entity.StudentInfo;
@@ -18,7 +17,6 @@ import com.dorm.backend.service.AdminInfoService;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import com.dorm.backend.common.AuthUtils;
 import com.dorm.backend.service.BedService;
 import com.dorm.backend.entity.Bed;
 import com.dorm.backend.service.PasswordService;
@@ -28,36 +26,40 @@ import com.dorm.backend.service.DormManagerScopeService;
 @RequestMapping("/api/user")
 public class UserController {
 
-    @Autowired
-    private UserService userService;
-    
-    @Autowired
-    private StudentInfoService studentInfoService;
-    
-    @Autowired
-    private ManagerInfoService managerInfoService;
-    
-    @Autowired
-    private AdminInfoService adminInfoService;
+    private final UserService userService;
+    private final StudentInfoService studentInfoService;
+    private final ManagerInfoService managerInfoService;
+    private final AdminInfoService adminInfoService;
+    private final BedService bedService;
+    private final PasswordService passwordService;
+    private final DormManagerScopeService managerScopeService;
 
-    @Autowired
-    private BedService bedService;
-
-    @Autowired
-    private PasswordService passwordService;
-
-    @Autowired
-    private DormManagerScopeService managerScopeService;
+    public UserController(UserService userService, StudentInfoService studentInfoService,
+                          ManagerInfoService managerInfoService, AdminInfoService adminInfoService,
+                          BedService bedService, PasswordService passwordService,
+                          DormManagerScopeService managerScopeService) {
+        this.userService = userService;
+        this.studentInfoService = studentInfoService;
+        this.managerInfoService = managerInfoService;
+        this.adminInfoService = adminInfoService;
+        this.bedService = bedService;
+        this.passwordService = passwordService;
+        this.managerScopeService = managerScopeService;
+    }
 
     @GetMapping("/list")
-    public Result<List<User>> list() {
+    public Result<List<User>> list(@RequestParam(defaultValue = "1") Integer page,
+                                   @RequestParam(defaultValue = "100") Integer size) {
         List<User> users;
         if ("dormmanager".equals(AuthUtils.getCurrentUserRole())) {
             List<Long> studentIds = managerScopeService.managedStudentIds(AuthUtils.getCurrentUserId());
             if (studentIds.isEmpty()) return Result.success(List.of());
-            users = userService.list(new QueryWrapper<User>().eq("role", "student").in("id", studentIds));
+            Page<User> pageResult = userService.page(new Page<>(page, size),
+                new QueryWrapper<User>().eq("role", "student").in("id", studentIds));
+            users = pageResult.getRecords();
         } else {
-            users = userService.list();
+            Page<User> pageResult = userService.page(new Page<>(page, size));
+            users = pageResult.getRecords();
         }
         List<StudentInfo> students = studentInfoService.list();
         Map<Long, StudentInfo> studentMap = students.stream()

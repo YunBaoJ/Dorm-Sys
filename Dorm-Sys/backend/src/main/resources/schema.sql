@@ -1,12 +1,11 @@
+-- 数据库初始化（URL 中已含 createDatabaseIfNotExist=true，此处保留兼容）
 CREATE DATABASE IF NOT EXISTS dormitory DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
 USE dormitory;
 
 -- ----------------------------
 -- 1. 系统用户表
 -- ----------------------------
-DROP TABLE IF EXISTS `sys_user`;
-CREATE TABLE `sys_user` (
+CREATE TABLE IF NOT EXISTS `sys_user` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `username` varchar(50) NOT NULL COMMENT '账号',
   `password` varchar(100) NOT NULL COMMENT '密码',
@@ -27,8 +26,7 @@ CREATE TABLE `sys_user` (
 -- ----------------------------
 -- 2. 楼栋表
 -- ----------------------------
-DROP TABLE IF EXISTS `building`;
-CREATE TABLE `building` (
+CREATE TABLE IF NOT EXISTS `building` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `name` varchar(50) NOT NULL COMMENT '楼栋名称',
   `type` varchar(20) DEFAULT '男生楼' COMMENT '楼栋类型',
@@ -36,9 +34,9 @@ CREATE TABLE `building` (
   `manager` varchar(50) DEFAULT NULL COMMENT '负责人',
   `location` varchar(100) DEFAULT NULL COMMENT '位置信息',
   `active` tinyint(1) DEFAULT 1 COMMENT '是否运营中',
-  `total_rooms` int(11) DEFAULT 0,
-  `occupied_rooms` int(11) DEFAULT 0,
-  `free_rooms` int(11) DEFAULT 0,
+  `total_rooms` int(11) DEFAULT 0 COMMENT '冗余字段：房间总数，由业务逻辑维护',
+  `occupied_rooms` int(11) DEFAULT 0 COMMENT '冗余字段：已入住房间数，由业务逻辑维护',
+  `free_rooms` int(11) DEFAULT 0 COMMENT '冗余字段：空房间数，由业务逻辑维护',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`)
@@ -47,8 +45,7 @@ CREATE TABLE `building` (
 -- ----------------------------
 -- 3. 房间表
 -- ----------------------------
-DROP TABLE IF EXISTS `room`;
-CREATE TABLE `room` (
+CREATE TABLE IF NOT EXISTS `room` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `building_id` bigint(20) NOT NULL COMMENT '关联楼栋ID',
   `room_number` varchar(20) NOT NULL COMMENT '房间号',
@@ -64,8 +61,7 @@ CREATE TABLE `room` (
 -- ----------------------------
 -- 4. 床位表
 -- ----------------------------
-DROP TABLE IF EXISTS `bed`;
-CREATE TABLE `bed` (
+CREATE TABLE IF NOT EXISTS `bed` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `room_id` bigint(20) NOT NULL COMMENT '关联房间ID',
   `bed_number` varchar(20) NOT NULL COMMENT '床位编号',
@@ -80,8 +76,7 @@ CREATE TABLE `bed` (
 -- ----------------------------
 -- 5. 报修表
 -- ----------------------------
-DROP TABLE IF EXISTS `repair_request`;
-CREATE TABLE `repair_request` (
+CREATE TABLE IF NOT EXISTS `repair_request` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `submitter_id` bigint(20) NOT NULL COMMENT '提交人ID',
   `room_id` bigint(20) NOT NULL COMMENT '关联房间ID',
@@ -99,8 +94,7 @@ CREATE TABLE `repair_request` (
 -- ----------------------------
 -- 6. 访客表
 -- ----------------------------
-DROP TABLE IF EXISTS `visitor_record`;
-CREATE TABLE `visitor_record` (
+CREATE TABLE IF NOT EXISTS `visitor_record` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `student_id` bigint(20) NOT NULL COMMENT '受访学生ID',
   `visitor_name` varchar(50) NOT NULL COMMENT '访客姓名',
@@ -111,14 +105,14 @@ CREATE TABLE `visitor_record` (
   `status` varchar(20) DEFAULT 'PENDING' COMMENT '状态(PENDING, APPROVED, LEFT)',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_student_id` (`student_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='访客记录表';
 
 -- ----------------------------
 -- 7. 调宿申请表
 -- ----------------------------
-DROP TABLE IF EXISTS `transfer_request`;
-CREATE TABLE `transfer_request` (
+CREATE TABLE IF NOT EXISTS `transfer_request` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `student_id` bigint(20) NOT NULL COMMENT '申请学生ID',
   `current_bed_id` bigint(20) NOT NULL COMMENT '当前床位ID',
@@ -127,14 +121,14 @@ CREATE TABLE `transfer_request` (
   `status` varchar(20) DEFAULT 'PENDING' COMMENT '状态(PENDING, APPROVED, REJECTED)',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_student_id` (`student_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='调宿申请表';
 
 -- ----------------------------
 -- 8. 水电费账单表
 -- ----------------------------
-DROP TABLE IF EXISTS `fee_bill`;
-CREATE TABLE `fee_bill` (
+CREATE TABLE IF NOT EXISTS `fee_bill` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `room_id` bigint(20) NOT NULL COMMENT '关联房间ID',
   `type` varchar(20) NOT NULL COMMENT '费用类型(WATER, ELECTRICITY)',
@@ -150,8 +144,7 @@ CREATE TABLE `fee_bill` (
 -- ----------------------------
 -- 9. 卫生检查表
 -- ----------------------------
-DROP TABLE IF EXISTS `hygiene_record`;
-CREATE TABLE `hygiene_record` (
+CREATE TABLE IF NOT EXISTS `hygiene_record` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `room_id` bigint(20) NOT NULL COMMENT '被检查房间ID',
   `inspector_id` bigint(20) NOT NULL COMMENT '检查人ID(宿管)',
@@ -160,14 +153,15 @@ CREATE TABLE `hygiene_record` (
   `check_date` date NOT NULL COMMENT '检查日期',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_hygiene_room_id` (`room_id`),
+  KEY `idx_hygiene_check_date` (`check_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='卫生检查记录表';
 
 -- ----------------------------
 -- 10. 智能通话预约表
 -- ----------------------------
-DROP TABLE IF EXISTS `call_record`;
-CREATE TABLE `call_record` (
+CREATE TABLE IF NOT EXISTS `call_record` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `student_id` bigint(20) NOT NULL COMMENT '发起学生ID',
   `topic` varchar(100) NOT NULL COMMENT '通话事由',
@@ -175,14 +169,14 @@ CREATE TABLE `call_record` (
   `status` varchar(20) DEFAULT 'PENDING' COMMENT '状态(PENDING, ACCEPTED, FINISHED)',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '发起时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_call_student_id` (`student_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='智能通话预约表';
 
 -- ----------------------------
 -- 11. 意见反馈表
 -- ----------------------------
-DROP TABLE IF EXISTS `feedback`;
-CREATE TABLE `feedback` (
+CREATE TABLE IF NOT EXISTS `feedback` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `student_id` bigint(20) NOT NULL COMMENT '提交学生ID',
   `type` varchar(50) NOT NULL COMMENT '反馈类型',
@@ -191,11 +185,52 @@ CREATE TABLE `feedback` (
   `status` varchar(20) DEFAULT 'UNREAD' COMMENT '状态(UNREAD, REPLIED)',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '提交时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_feedback_student_id` (`student_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='意见反馈表';
 
--- 初始化测试数据
-INSERT INTO `sys_user` (`username`, `password`, `role`, `name`, `avatar`, `class_name`, `email`, `phone`) VALUES
+-- ----------------------------
+-- 12. 操作日志表（原由 Java CommandLineRunner 创建）
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS `operation_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `operator_id` bigint NOT NULL,
+  `operator_name` varchar(100) NOT NULL,
+  `module` varchar(50) NOT NULL,
+  `action` varchar(20) NOT NULL,
+  `path` varchar(255) NOT NULL,
+  `result` varchar(20) NOT NULL,
+  `summary` varchar(255) DEFAULT NULL,
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_operation_log_time` (`create_time`),
+  KEY `idx_operation_log_module` (`module`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作日志表';
+
+-- ----------------------------
+-- 13. 通用业务记录表（原由 Java CommandLineRunner 创建）
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS `business_record` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `type` varchar(50) NOT NULL COMMENT '业务类型',
+  `title` varchar(100) NOT NULL COMMENT '标题',
+  `owner` varchar(100) DEFAULT NULL COMMENT '对象/联系人/位置',
+  `description` text COMMENT '说明',
+  `status` varchar(30) DEFAULT NULL COMMENT '状态',
+  `creator_id` bigint DEFAULT NULL COMMENT '创建人ID',
+  `event_time` datetime DEFAULT NULL COMMENT '业务时间',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_business_record_type` (`type`),
+  KEY `idx_business_record_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='通用业务记录表';
+
+-- 初始化测试数据（用户名唯一，重复时自动跳过）
+INSERT IGNORE INTO `sys_user` (`username`, `password`, `role`, `name`, `avatar`, `class_name`, `email`, `phone`) VALUES
 ('20240001', '$2b$12$fkepBhQatdh.trQqZmPZcuZwJhLFNz1I6DuLntDfPnQiv5YlaTRrC', 'student', '张伟', '/images/avatar.jpg', '计科2201', 'stu001@stu.edu.cn', '13800010001'),
 ('manager1', '$2b$12$fkepBhQatdh.trQqZmPZcuZwJhLFNz1I6DuLntDfPnQiv5YlaTRrC', 'dormmanager', '王叔', NULL, NULL, NULL, NULL),
 ('admin', '$2b$12$fkepBhQatdh.trQqZmPZcuZwJhLFNz1I6DuLntDfPnQiv5YlaTRrC', 'admin', '超级管理员', NULL, NULL, NULL, NULL);
+
+-- 补充索引（如使用 JPA 自动建表则下方索引由 JPA 自动创建，此处保留用于手动建库参考）
+CREATE INDEX IF NOT EXISTS idx_late_return_student_id ON late_return_record(student_id);

@@ -8,7 +8,6 @@ import com.dorm.backend.entity.User;
 import com.dorm.backend.service.UserService;
 import com.dorm.backend.service.PasswordService;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -18,14 +17,15 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
+    private final JwtUtils jwtUtils;
+    private final PasswordService passwordService;
 
-    @Autowired
-    private JwtUtils jwtUtils;
-
-    @Autowired
-    private PasswordService passwordService;
+    public AuthController(UserService userService, JwtUtils jwtUtils, PasswordService passwordService) {
+        this.userService = userService;
+        this.jwtUtils = jwtUtils;
+        this.passwordService = passwordService;
+    }
 
     @PostMapping("/login")
     public Result<Map<String, Object>> login(@RequestBody LoginDTO loginDTO) {

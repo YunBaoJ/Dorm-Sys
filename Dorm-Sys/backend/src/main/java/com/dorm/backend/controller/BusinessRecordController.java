@@ -1,5 +1,6 @@
 package com.dorm.backend.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.dorm.backend.common.AuthUtils;
 import com.dorm.backend.common.Result;
@@ -7,7 +8,6 @@ import com.dorm.backend.dto.AdminNoticeResponse;
 import com.dorm.backend.entity.BusinessRecord;
 import com.dorm.backend.service.BusinessRecordService;
 import com.dorm.backend.service.DormManagerScopeService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -17,15 +17,19 @@ import java.util.List;
 @RequestMapping("/api/businessRecord")
 public class BusinessRecordController {
 
-    @Autowired
-    private BusinessRecordService businessRecordService;
+    private final BusinessRecordService businessRecordService;
+    private final DormManagerScopeService managerScopeService;
 
-    @Autowired
-    private DormManagerScopeService managerScopeService;
+    public BusinessRecordController(BusinessRecordService businessRecordService, DormManagerScopeService managerScopeService) {
+        this.businessRecordService = businessRecordService;
+        this.managerScopeService = managerScopeService;
+    }
 
     @GetMapping("/list")
     public Result<?> list(@RequestParam(required = false) String type,
-                          @RequestParam(required = false) String status) {
+                          @RequestParam(required = false) String status,
+                          @RequestParam(defaultValue = "1") Integer page,
+                          @RequestParam(defaultValue = "100") Integer size) {
         QueryWrapper<BusinessRecord> queryWrapper = new QueryWrapper<>();
         if (AuthUtils.isStudent()) {
             if (type == null || type.isBlank() || "feedback".equals(type)) {
@@ -46,7 +50,8 @@ public class BusinessRecordController {
         if (type != null && !type.isBlank()) queryWrapper.eq("type", type);
         if (status != null && !status.isBlank()) queryWrapper.eq("status", status);
         queryWrapper.orderByDesc("create_time");
-        List<BusinessRecord> records = businessRecordService.list(queryWrapper);
+        Page<BusinessRecord> pageResult = businessRecordService.page(new Page<>(page, size), queryWrapper);
+        List<BusinessRecord> records = pageResult.getRecords();
         if (AuthUtils.isStudent() && "admin_notice".equals(type)) {
             return Result.success(records.stream().map(AdminNoticeResponse::from).toList());
         }

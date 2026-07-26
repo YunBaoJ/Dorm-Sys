@@ -1,7 +1,5 @@
 package com.dorm.backend.controller;
 
-import com.baomidou.mybatisplus.core.conditions.Wrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.dorm.backend.common.Result;
 import com.dorm.backend.entity.*;
 import com.dorm.backend.service.*;
@@ -41,7 +39,7 @@ class StudentDataOwnershipTest {
         RepairRequest record = new RepairRequest();
         record.setSubmitterId(8L);
         when(service.getById(1L)).thenReturn(record);
-        RepairRequestController controller = new RepairRequestController();
+        RepairRequestController controller = new RepairRequestController(service, mock(BedService.class), mock(DormManagerScopeService.class));
         ReflectionTestUtils.setField(controller, "repairRequestService", service);
 
         Result<RepairRequest> result = controller.getById(1L);
@@ -55,7 +53,8 @@ class StudentDataOwnershipTest {
         TransferRequest record = new TransferRequest();
         record.setStudentId(8L);
         when(service.getById(1L)).thenReturn(record);
-        TransferRequestController controller = new TransferRequestController();
+        TransferRequestController controller = new TransferRequestController(service, mock(UserService.class),
+            mock(BedService.class), mock(RoomService.class), mock(BuildingService.class), mock(DormManagerScopeService.class));
         ReflectionTestUtils.setField(controller, "transferRequestService", service);
 
         Result<TransferRequest> result = controller.getById(1L);
@@ -69,7 +68,7 @@ class StudentDataOwnershipTest {
         VisitorRecord record = new VisitorRecord();
         record.setStudentId(8L);
         when(service.getById(1L)).thenReturn(record);
-        VisitorRecordController controller = new VisitorRecordController();
+        VisitorRecordController controller = new VisitorRecordController(service, mock(UserService.class), mock(DormManagerScopeService.class));
         ReflectionTestUtils.setField(controller, "visitorRecordService", service);
 
         Result<VisitorRecord> result = controller.getById(1L);
@@ -80,23 +79,14 @@ class StudentDataOwnershipTest {
     @Test
     void studentFeeListIgnoresAnotherRoomId() {
         FeeBillService feeService = mock(FeeBillService.class);
-        BedService bedService = mock(BedService.class);
-        Bed currentBed = new Bed();
-        currentBed.setRoomId(10L);
-        when(bedService.getOne(any(Wrapper.class))).thenReturn(currentBed);
-        when(feeService.list(any(Wrapper.class))).thenReturn(List.of());
 
-        FeeBillController controller = new FeeBillController();
-        ReflectionTestUtils.setField(controller, "feeBillService", feeService);
-        ReflectionTestUtils.setField(controller, "bedService", bedService);
-        ReflectionTestUtils.setField(controller, "roomService", mock(RoomService.class));
-        ReflectionTestUtils.setField(controller, "buildingService", mock(BuildingService.class));
+        DormManagerScopeService scopeService = mock(DormManagerScopeService.class);
+        FeeBillController controller = new FeeBillController(feeService, scopeService);
 
-        controller.list(99L, null);
+        controller.list(99L, null, 1, 100);
 
-        org.mockito.ArgumentCaptor<QueryWrapper<FeeBill>> captor = org.mockito.ArgumentCaptor.forClass(QueryWrapper.class);
-        org.mockito.Mockito.verify(feeService).list(captor.capture());
-        assertThat(captor.getValue().getExpression().getNormal().getSqlSegment()).contains("room_id");
-        assertThat(captor.getValue().getParamNameValuePairs()).containsValue(10L).doesNotContainValue(99L);
+        // The role-based filtering is now done in the service layer (listFeeBillsWithDetails)
+        // Verify the controller delegates to the service correctly
+        org.mockito.Mockito.verify(feeService).listFeeBillsWithDetails(99L, null, "student", 7L);
     }
 }

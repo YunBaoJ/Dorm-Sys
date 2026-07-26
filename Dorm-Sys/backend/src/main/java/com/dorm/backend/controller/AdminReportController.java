@@ -1,5 +1,6 @@
 package com.dorm.backend.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.dorm.backend.common.AuthUtils;
 import com.dorm.backend.common.Result;
 import com.dorm.backend.entity.Bed;
@@ -17,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @RestController
@@ -39,40 +39,49 @@ public class AdminReportController {
     public Result<Map<String, Object>> summary() {
         if (!"admin".equals(AuthUtils.getCurrentUserRole())) return Result.error(403, "仅管理员可查看数据报表");
         List<Building> buildings = buildingService.list();
-        List<Room> rooms = roomService.list();
-        List<Bed> beds = bedService.list();
-        List<RepairRequest> repairs = repairRequestService.list();
-        Map<Long, Room> roomsById = rooms.stream().collect(Collectors.toMap(Room::getId, Function.identity()));
-        long occupiedBeds = beds.stream().filter(item -> item.getStudentId() != null || "OCCUPIED".equals(item.getStatus())).count();
-        long completedRepairs = repairs.stream().filter(item -> "COMPLETED".equals(item.getStatus())).count();
+        long roomCount = roomService.count();
+        long totalBeds = bedService.count();
+        long occupiedBeds = bedService.count(new QueryWrapper<Bed>()
+            .and(w -> w.isNotNull("student_id").or().eq("status", "OCCUPIED")));
+        long repairCount = repairRequestService.count();
+        long completedRepairs = repairRequestService.count(new QueryWrapper<RepairRequest>().eq("status", "COMPLETED"));
+
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("buildingCount", buildings.size());
-        data.put("roomCount", rooms.size());
-        data.put("totalBeds", beds.size());
+        data.put("buildingCount", (long) buildings.size());
+        data.put("roomCount", roomCount);
+        data.put("totalBeds", totalBeds);
         data.put("occupiedBeds", occupiedBeds);
-        data.put("emptyBeds", Math.max(0, beds.size() - occupiedBeds));
-        data.put("occupancyRate", rate(occupiedBeds, beds.size()));
-        data.put("repairCount", repairs.size());
+        data.put("emptyBeds", Math.max(0, totalBeds - occupiedBeds));
+        data.put("occupancyRate", rate(occupiedBeds, totalBeds));
+        data.put("repairCount", repairCount);
         data.put("completedRepairs", completedRepairs);
-        data.put("repairCompletionRate", rate(completedRepairs, repairs.size()));
-        data.put("buildings", buildings.stream().map(building -> buildingRow(building, rooms, beds, roomsById)).toList());
+        data.put("repairCompletionRate", rate(completedRepairs, repairCount));
+
+        // Per-building data using targeted queries
+        List<Long> buildingIds = buildings.stream().map(Building::getId).collect(Collectors.toList());
+        List<Room> rooms = buildingIds.isEmpty() ? List.of() : roomService.list(new QueryWrapper<Room>().in("building_id", buildingIds));
+        Map<Long, List<Room>> roomsByBuilding = rooms.stream().collect(Collectors.groupingBy(Room::getBuildingId));
+        List<Long> roomIds = rooms.stream().map(Room::getId).collect(Collectors.toList());
+        List<Bed> beds = roomIds.isEmpty() ? List.of() : bedService.list(new QueryWrapper<Bed>().in("room_id", roomIds));
+        Map<Long, List<Bed>> bedsByRoom = beds.stream().collect(Collectors.groupingBy(Bed::getRoomId));
+
+        data.put("buildings", buildings.stream().map(building -> buildingRow(building, roomsByBuilding, bedsByRoom)).toList());
         return Result.success(data);
     }
 
-    private Map<String, Object> buildingRow(Building building, List<Room> rooms, List<Bed> beds, Map<Long, Room> roomsById) {
-        List<Room> ownedRooms = rooms.stream().filter(item -> building.getId().equals(item.getBuildingId())).toList();
-        long totalBeds = beds.stream().filter(item -> belongsToBuilding(item, building.getId(), roomsById)).count();
-        long occupiedBeds = beds.stream().filter(item -> belongsToBuilding(item, building.getId(), roomsById))
-                .filter(item -> item.getStudentId() != null || "OCCUPIED".equals(item.getStatus())).count();
+    private Map<String, Object> buildingRow(Building building, Map<Long, List<Room>> roomsByBuilding, Map<Long, List<Bed>> bedsByRoom) {
+        List<Room> ownedRooms = roomsByBuilding.getOrDefault(building.getId(), List.of());
+        long totalBeds = ownedRooms.stream()
+            .flatMap(r -> bedsByRoom.getOrDefault(r.getId(), List.of()).stream())
+            .count();
+        long occupiedBeds = ownedRooms.stream()
+            .flatMap(r -> bedsByRoom.getOrDefault(r.getId(), List.of()).stream())
+            .filter(item -> item.getStudentId() != null || "OCCUPIED".equals(item.getStatus()))
+            .count();
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("id", building.getId()); row.put("name", building.getName()); row.put("roomCount", ownedRooms.size());
         row.put("totalBeds", totalBeds); row.put("occupiedBeds", occupiedBeds); row.put("occupancyRate", rate(occupiedBeds, totalBeds));
         return row;
-    }
-
-    private boolean belongsToBuilding(Bed bed, Long buildingId, Map<Long, Room> roomsById) {
-        Room room = roomsById.get(bed.getRoomId());
-        return room != null && buildingId.equals(room.getBuildingId());
     }
 
     private int rate(long numerator, long denominator) {

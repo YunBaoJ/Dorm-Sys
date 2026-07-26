@@ -3,6 +3,8 @@ import { ElMessage } from 'element-plus'
 import { useUserStore } from '../store/user'
 import router from '../router'
 
+let handlingUnauthorized = false
+
 // 1. 创建 Axios 实例 (中央邮局)
 const service = axios.create({
   baseURL: '/api', // 后端接口基础路径
@@ -48,11 +50,18 @@ service.interceptors.response.use(
       switch (response.status) {
         case 401:
           message = '登录状态过期，请重新登录'
-          // 自动跳转回登录页
           const userStore = useUserStore()
+          if (!userStore.token || handlingUnauthorized) {
+            return Promise.reject(error)
+          }
+          handlingUnauthorized = true
           userStore.logout()
-          router.push('/login')
-          break
+          router.replace('/login')
+          ElMessage({ message, type: 'error', grouping: true })
+          setTimeout(() => {
+            handlingUnauthorized = false
+          }, 1500)
+          return Promise.reject(error)
         case 403:
           message = '您没有权限访问此接口'
           break
@@ -68,7 +77,7 @@ service.interceptors.response.use(
     } else if (error.message.includes('timeout')) {
       message = '请求超时，请检查网络'
     }
-    ElMessage.error(message)
+    ElMessage({ message, type: 'error', grouping: true })
     return Promise.reject(error)
   }
 )

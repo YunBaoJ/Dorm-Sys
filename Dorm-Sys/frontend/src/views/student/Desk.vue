@@ -6,14 +6,16 @@
         <div style="display: flex; align-items: center; gap: 18px;">
           <!-- Empty avatar for placeholder, style kept from prototype -->
           <div style="width: 56px; height: 56px; border-radius: 16px; background: linear-gradient(145deg, var(--primary), #5ba6ff); color: white; display: grid; place-items: center; font-size: 24px; box-shadow: 0 6px 16px rgba(47, 140, 255, .35); font-weight: bold;">
-            张
+            {{ (userStore.userInfo?.name || '同')[0] }}
           </div>
           <div>
-            <h1 style="margin: 0; font-size: 22px;">早安，{{ userStore.userInfo?.name || '同学' }} 👋</h1>
-            <p style="margin: 4px 0 0; color: var(--sub); font-size: 14px;">开启高效的一天吧！</p>
+            <h1 style="margin: 0; font-size: 22px;">{{ greeting }}，{{ userStore.userInfo?.name || '同学' }} 👋</h1>
+            <p style="margin: 4px 0 0; color: var(--sub); font-size: 14px;">{{ currentTime }}</p>
           </div>
         </div>
-        <WeatherWidget />
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <WeatherWidget />
+        </div>
       </div>
     </div>
 
@@ -218,7 +220,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getBusinessRecords } from '../../api/businessRecord'
 import request from '../../utils/request'
@@ -231,6 +233,27 @@ import WeatherWidget from '../../components/WeatherWidget.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
+
+const weekNames = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
+
+const greeting = computed(() => {
+  const hour = new Date().getHours()
+  if (hour < 12) return '早上好'
+  if (hour < 18) return '下午好'
+  return '晚上好'
+})
+
+const currentTime = computed(() => {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = now.getMonth() + 1
+  const d = now.getDate()
+  const w = weekNames[now.getDay()]
+  const h = String(now.getHours()).padStart(2, '0')
+  const min = String(now.getMinutes()).padStart(2, '0')
+  return `${y}年${m}月${d}日${w} ${h}:${min}`
+})
+
 const hoverBanner = ref(false)
 const notices = ref([])
 const currentDormLabel = ref('加载中')

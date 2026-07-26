@@ -63,13 +63,10 @@ class DashboardControllerTest {
         request.setAttribute("currentUserRole", "student");
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 
-        DashboardController controller = new DashboardController();
-        ReflectionTestUtils.setField(controller, "bedService", bedService);
-        ReflectionTestUtils.setField(controller, "roomService", roomService);
-        ReflectionTestUtils.setField(controller, "buildingService", buildingService);
-        ReflectionTestUtils.setField(controller, "userService", userService);
-        ReflectionTestUtils.setField(controller, "repairRequestService", mock(RepairRequestService.class));
-        ReflectionTestUtils.setField(controller, "hygieneRecordService", mock(HygieneRecordService.class));
+        DashboardController controller = new DashboardController(mock(FeeBillService.class), mock(RepairRequestService.class),
+            mock(HygieneRecordService.class), mock(VisitorRecordService.class),
+            bedService, roomService, buildingService, userService,
+            mock(DormManagerScopeService.class));
 
         Result<Map<String, Object>> result = controller.getDormDashboard();
 
@@ -88,8 +85,10 @@ class DashboardControllerTest {
         request.setAttribute("currentUserId", 7L);
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 
-        DashboardController controller = new DashboardController();
-        ReflectionTestUtils.setField(controller, "bedService", bedService);
+        DashboardController controller = new DashboardController(mock(FeeBillService.class), mock(RepairRequestService.class),
+            mock(HygieneRecordService.class), mock(VisitorRecordService.class),
+            bedService, mock(RoomService.class), mock(BuildingService.class),
+            mock(UserService.class), mock(DormManagerScopeService.class));
 
         Result<Map<String, Object>> result = controller.getDormDashboard();
 
@@ -106,10 +105,10 @@ class DashboardControllerTest {
         when(buildingService.count()).thenReturn(2L);
         when(roomService.count()).thenReturn(16L);
 
-        DashboardController controller = new DashboardController();
-        ReflectionTestUtils.setField(controller, "userService", userService);
-        ReflectionTestUtils.setField(controller, "buildingService", buildingService);
-        ReflectionTestUtils.setField(controller, "roomService", roomService);
+        DashboardController controller = new DashboardController(mock(FeeBillService.class), mock(RepairRequestService.class),
+            mock(HygieneRecordService.class), mock(VisitorRecordService.class),
+            mock(BedService.class), roomService, buildingService, userService,
+            mock(DormManagerScopeService.class));
 
         Result<Map<String, Object>> result = controller.getStats();
 
@@ -125,10 +124,10 @@ class DashboardControllerTest {
         RepairRequestService repairService = mock(RepairRequestService.class);
         when(repairService.count(any(Wrapper.class))).thenReturn(3L);
 
-        DashboardController controller = new DashboardController();
-        ReflectionTestUtils.setField(controller, "repairRequestService", repairService);
-        ReflectionTestUtils.setField(controller, "visitorRecordService", mock(VisitorRecordService.class));
-        ReflectionTestUtils.setField(controller, "roomService", mock(RoomService.class));
+        DashboardController controller = new DashboardController(mock(FeeBillService.class), repairService,
+            mock(HygieneRecordService.class), mock(VisitorRecordService.class),
+            mock(BedService.class), mock(RoomService.class), mock(BuildingService.class),
+            mock(UserService.class), mock(DormManagerScopeService.class));
 
         Result<List<Map<String, Object>>> result = controller.getAlerts();
 
@@ -147,12 +146,18 @@ class DashboardControllerTest {
         Building mine = new Building();
         mine.setId(1L);
         mine.setName("明德楼");
+        mine.setTotalRooms(2);
+        mine.setOccupiedRooms(1);
+        mine.setFreeRooms(1);
         Building other = new Building();
         other.setId(2L);
         other.setName("至善楼");
-        when(buildingService.list()).thenReturn(List.of(mine, other));
-        when(roomService.list()).thenReturn(List.of());
-        when(bedService.list()).thenReturn(List.of());
+        other.setTotalRooms(3);
+        other.setOccupiedRooms(2);
+        other.setFreeRooms(1);
+        when(buildingService.getBuildingsWithStats(any())).thenReturn(List.of(mine));
+        when(roomService.list(any(Wrapper.class))).thenReturn(List.of());
+        when(bedService.list(any(Wrapper.class))).thenReturn(List.of());
         when(scopeService.managedBuildingIds(7L)).thenReturn(List.of(1L));
 
         MockHttpServletRequest request = new MockHttpServletRequest();
@@ -160,11 +165,10 @@ class DashboardControllerTest {
         request.setAttribute("currentUserRole", "dormmanager");
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 
-        DashboardController controller = new DashboardController();
-        ReflectionTestUtils.setField(controller, "buildingService", buildingService);
-        ReflectionTestUtils.setField(controller, "roomService", roomService);
-        ReflectionTestUtils.setField(controller, "bedService", bedService);
-        ReflectionTestUtils.setField(controller, "managerScopeService", scopeService);
+        DashboardController controller = new DashboardController(mock(FeeBillService.class), mock(RepairRequestService.class),
+            mock(HygieneRecordService.class), mock(VisitorRecordService.class),
+            bedService, roomService, buildingService, mock(UserService.class),
+            scopeService);
 
         Result<List<Map<String, Object>>> result = controller.getBuildingStats();
 
@@ -180,12 +184,13 @@ class DashboardControllerTest {
         Building building = new Building();
         building.setId(1L);
         building.setName("Test Building");
+        building.setTotalRooms(1);
         Room room = new Room();
         room.setId(10L);
         room.setBuildingId(1L);
-        when(buildingService.list()).thenReturn(List.of(building));
-        when(roomService.list()).thenReturn(List.of(room));
-        when(bedService.list()).thenReturn(List.of(
+        when(buildingService.getBuildingsWithStats(any())).thenReturn(List.of(building));
+        when(roomService.list(any(Wrapper.class))).thenReturn(List.of(room));
+        when(bedService.list(any(Wrapper.class))).thenReturn(List.of(
             bed(1L, 10L, 7L, "101-1"),
             bed(2L, 10L, null, "101-2"),
             bed(3L, 10L, null, "101-3"),
@@ -197,10 +202,10 @@ class DashboardControllerTest {
         request.setAttribute("currentUserRole", "admin");
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 
-        DashboardController controller = new DashboardController();
-        ReflectionTestUtils.setField(controller, "buildingService", buildingService);
-        ReflectionTestUtils.setField(controller, "roomService", roomService);
-        ReflectionTestUtils.setField(controller, "bedService", bedService);
+        DashboardController controller = new DashboardController(mock(FeeBillService.class), mock(RepairRequestService.class),
+            mock(HygieneRecordService.class), mock(VisitorRecordService.class),
+            bedService, roomService, buildingService, mock(UserService.class),
+            mock(DormManagerScopeService.class));
 
         Result<List<Map<String, Object>>> result = controller.getBuildingStats();
 

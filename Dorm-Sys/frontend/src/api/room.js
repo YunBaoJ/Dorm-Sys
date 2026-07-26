@@ -16,6 +16,14 @@ export function saveRoom(data) {
   })
 }
 
+export function batchCreateRooms(data) {
+  return request({
+    url: '/room/batch',
+    method: 'post',
+    data
+  })
+}
+
 export function deleteRoom(id) {
   return request({
     url: `/room/${id}`,

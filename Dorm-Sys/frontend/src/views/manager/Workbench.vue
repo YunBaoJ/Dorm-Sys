@@ -8,7 +8,7 @@
           <div class="hero-content">
             <div class="hero-text">
               <h2>您好，{{ userStore.userInfo?.name || '宿管' }} 老师</h2>
-              <p>今天是 2026年3月27日星期五，目前楼栋运行状态：<span class="text-blue">良好</span></p>
+              <p>今天是 {{ todayDisplay }}，目前楼栋运行状态：<span class="text-blue">良好</span></p>
             </div>
             <div class="hero-actions" style="display: flex; align-items: center; gap: 16px;">
               <WeatherWidget />
@@ -182,10 +182,6 @@
               <el-icon :size="24" color="#3b82f6"><component :is="UserCheck" /></el-icon>
               <span>访客登记</span>
             </div>
-            <div class="tool-btn" @click="router.push('/dormmanager/patrol')">
-              <el-icon :size="24" color="#3b82f6"><component :is="MessageCircle" /></el-icon>
-              <span>AI 巡查报告</span>
-            </div>
             <div class="tool-btn" @click="router.push('/dormmanager/late-return')">
               <el-icon :size="24" color="#3b82f6"><component :is="Clock" /></el-icon>
               <span>晚归登记</span>
@@ -235,7 +231,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Bell, RefreshCw as Refresh, User, Settings, UserCheck, Clock, ChevronRight, UserPlus, Medal, MessageCircle, Info, AlertCircle } from '@lucide/vue'
+  import { Bell, RefreshCw as Refresh, User, Settings, UserCheck, Clock, ChevronRight, UserPlus, Medal, Info, AlertCircle } from '@lucide/vue'
 import { getBeds, getRooms } from '../../api/room'
 import { getBuildings } from '../../api/building'
 import { getRepairs } from '../../api/repair'
@@ -264,6 +260,18 @@ const roomDialogVisible = ref(false)
 const selectedRoom = ref(null)
 const roomDetailBeds = ref([])
 const roomDetailLoading = ref(false)
+
+const weekNames = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
+const todayDisplay = computed(() => {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = now.getMonth() + 1
+  const d = now.getDate()
+  const w = weekNames[now.getDay()]
+  const h = String(now.getHours()).padStart(2, '0')
+  const min = String(now.getMinutes()).padStart(2, '0')
+  return `${y}年${m}月${d}日${w} ${h}:${min}`
+})
 
 const filteredRooms = computed(() => {
   if (!selectedBuilding.value) return rooms.value

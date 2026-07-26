@@ -1,12 +1,9 @@
 package com.dorm.backend.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dorm.backend.common.Result;
 import com.dorm.backend.entity.User;
-import com.dorm.backend.service.UserService;
-import com.dorm.backend.service.StudentInfoService;
-import com.dorm.backend.service.ManagerInfoService;
-import com.dorm.backend.service.AdminInfoService;
-import com.dorm.backend.service.PasswordService;
+import com.dorm.backend.service.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -31,16 +28,17 @@ class UserControllerTest {
         user.setId(1L);
         user.setUsername("student");
         user.setPassword("123456");
-        when(userService.list()).thenReturn(List.of(user));
+        when(userService.page(any())).thenReturn(new Page<User>().setRecords(List.of(user)));
 
-        UserController controller = new UserController();
-        ReflectionTestUtils.setField(controller, "userService", userService);
-        ReflectionTestUtils.setField(controller, "studentInfoService", mock(StudentInfoService.class));
-        ReflectionTestUtils.setField(controller, "managerInfoService", mock(ManagerInfoService.class));
-        ReflectionTestUtils.setField(controller, "adminInfoService", mock(AdminInfoService.class));
-        ReflectionTestUtils.setField(controller, "passwordService", new PasswordService());
+        StudentInfoService studentInfoService = mock(StudentInfoService.class);
+        when(studentInfoService.list()).thenReturn(List.of());
 
-        Result<List<User>> result = controller.list();
+        UserController controller = new UserController(userService, studentInfoService,
+            mock(ManagerInfoService.class), mock(AdminInfoService.class),
+            mock(com.dorm.backend.service.BedService.class), new PasswordService(),
+            mock(com.dorm.backend.service.DormManagerScopeService.class));
+
+        Result<List<User>> result = controller.list(1, 100);
 
         assertThat(result.getData()).extracting(User::getPassword).containsOnlyNulls();
     }
@@ -69,12 +67,10 @@ class UserControllerTest {
         submitted.setName("张伟");
         submitted.setPhone("13800138000");
 
-        UserController controller = new UserController();
-        ReflectionTestUtils.setField(controller, "userService", userService);
-        ReflectionTestUtils.setField(controller, "studentInfoService", mock(StudentInfoService.class));
-        ReflectionTestUtils.setField(controller, "managerInfoService", mock(ManagerInfoService.class));
-        ReflectionTestUtils.setField(controller, "adminInfoService", mock(AdminInfoService.class));
-        ReflectionTestUtils.setField(controller, "passwordService", new PasswordService());
+        UserController controller = new UserController(userService, mock(StudentInfoService.class),
+            mock(ManagerInfoService.class), mock(AdminInfoService.class),
+            mock(com.dorm.backend.service.BedService.class), new PasswordService(),
+            mock(com.dorm.backend.service.DormManagerScopeService.class));
         controller.save(submitted);
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);

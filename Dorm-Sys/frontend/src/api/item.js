@@ -9,7 +9,7 @@ export function getItems() {
 
 export function saveItem(data) {
   return request({
-    url: data.id ? '/itemRecord/update' : '/itemRecord/add',
+    url: '/itemRecord/save',
     method: 'post',
     data
   })

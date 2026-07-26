@@ -16,8 +16,8 @@
             <div class="hero-actions" style="display: flex; align-items: center; gap: 24px;">
               <WeatherWidget />
               <div class="hero-time">
-                <div class="time-main">22:18</div>
-                <div class="time-sub">3月27日星期五</div>
+                <div class="time-main">{{ currentTime.time }}</div>
+                <div class="time-sub">{{ currentTime.date }}</div>
               </div>
             </div>
           </div>
@@ -198,6 +198,17 @@ const router = useRouter()
 const viewMode = ref('grid')
 const loading = ref(false)
 const loadError = ref(false)
+
+const weekNames = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
+const currentTime = computed(() => {
+  const now = new Date()
+  const h = String(now.getHours()).padStart(2, '0')
+  const m = String(now.getMinutes()).padStart(2, '0')
+  return {
+    time: `${h}:${m}`,
+    date: `${now.getMonth() + 1}月${now.getDate()}日${weekNames[now.getDay()]}`
+  }
+})
 
 const stats = ref({})
 const buildings = ref([])

@@ -9,7 +9,7 @@ export function getLateReturns() {
 
 export function saveLateReturn(data) {
   return request({
-    url: data.id ? '/lateReturnRecord/update' : '/lateReturnRecord/add',
+    url: '/lateReturnRecord/save',
     method: 'post',
     data
   })

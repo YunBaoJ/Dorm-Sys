@@ -1,27 +1,30 @@
 package com.dorm.backend.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dorm.backend.common.Result;
+import com.dorm.backend.common.AuthUtils;
 import com.dorm.backend.entity.Building;
 import com.dorm.backend.service.BuildingService;
+import com.dorm.backend.service.DormManagerScopeService;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import com.dorm.backend.common.AuthUtils;
-import com.dorm.backend.service.DormManagerScopeService;
 
 @RestController
 @RequestMapping("/api/building")
 public class BuildingController {
 
-    @Autowired
-    private BuildingService buildingService;
-    
-    @Autowired
-    private DormManagerScopeService managerScopeService;
+    private final BuildingService buildingService;
+    private final DormManagerScopeService managerScopeService;
+
+    public BuildingController(BuildingService buildingService, DormManagerScopeService managerScopeService) {
+        this.buildingService = buildingService;
+        this.managerScopeService = managerScopeService;
+    }
 
     @GetMapping("/list")
-    public Result<List<Building>> list() {
+    public Result<List<Building>> list(@RequestParam(defaultValue = "1") Integer page,
+                                       @RequestParam(defaultValue = "100") Integer size) {
         QueryWrapper<Building> bQw = new QueryWrapper<>();
         
         String role = AuthUtils.getCurrentUserRole();

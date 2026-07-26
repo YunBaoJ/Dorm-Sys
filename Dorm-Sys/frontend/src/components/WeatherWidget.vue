@@ -1,6 +1,6 @@
 <template>
+  <!-- Trigger Button -->
   <div class="weather-widget">
-    <!-- Trigger Button -->
     <div class="weather-brief" @click="dialogVisible = true" style="cursor: pointer; display: flex; align-items: center; gap: 16px; padding: 12px 20px; background: var(--muted); border-radius: 12px; transition: transform 0.2s;">
       <div style="text-align: center;">
         <div style="font-size: 28px; line-height: 1;">{{ weather.emoji }}</div>
@@ -17,98 +17,100 @@
         </div>
       </div>
     </div>
-
-    <!-- Weather Dialog (Horizontal Rectangle) -->
-    <el-dialog v-model="dialogVisible" width="1100px" destroy-on-close :show-close="false" class="weather-dialog-horizontal">
-      <template #header="{ close }">
-        <div style="display: flex; justify-content: flex-end; width: 100%;">
-          <el-icon @click="close" style="cursor: pointer; font-size: 22px; color: var(--sub);"><component :is="X" /></el-icon>
-        </div>
-      </template>
-
-      <div class="weather-card" v-loading="loadingForecast">
-        
-        <!-- 第一层：当前地方与当前天气 -->
-        <div class="layer-location">
-          <div class="loc-header" v-if="!isSearching">
-            <div style="display: flex; align-items: center; gap: 16px;">
-              <div class="loc-title">
-                <el-icon><component :is="Location" /></el-icon>
-                <span>{{ location.name }}</span>
-              </div>
-              <el-button link type="primary" @click="isSearching = true">更换城市</el-button>
-            </div>
-            <div class="current-weather-display">
-              <div class="cw-temp">{{ weather.temp }}<span class="cw-unit">℃</span></div>
-              <div class="cw-desc">{{ weather.emoji }} {{ weather.desc }} · {{ weather.wind }}</div>
-            </div>
-          </div>
-          
-          <div class="loc-search" v-else>
-            <div style="display: flex; gap: 12px; width: 100%; align-items: center;">
-              <div style="font-weight: 600; min-width: 80px;">搜索城市:</div>
-              <el-input v-model="searchQuery" placeholder="输入城市名称，如：上海" @keyup.enter="searchLocation" style="flex: 1; max-width: 300px;">
-                <template #prefix><el-icon><component :is="Search" /></el-icon></template>
-              </el-input>
-              <el-button type="primary" @click="searchLocation" :loading="searching">搜索</el-button>
-              <el-button @click="isSearching = false">取消</el-button>
-            </div>
-            <div class="search-results-h" v-if="searchResults.length > 0">
-              <div v-for="res in searchResults" :key="res.id" @click="selectLocation(res)" class="search-item-h">
-                <span style="font-weight: 500;">{{ res.name }}</span>
-                <span class="search-meta">{{ res.admin1 || '' }}{{ res.admin1 ? ', ' : '' }}{{ res.country }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 第二层：今天天气的折线图 -->
-        <div class="layer-hourly" v-if="hourlyData.length > 0 && !isSearching">
-          <div class="layer-title">今日趋势 (未来24小时)</div>
-          <div class="chart-container">
-            <!-- svg width set to 100% of the 1100px body -->
-            <svg width="100%" height="120" viewBox="0 0 1000 120" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="rgba(59, 130, 246, 0.3)" />
-                  <stop offset="100%" stop-color="rgba(59, 130, 246, 0)" />
-                </linearGradient>
-              </defs>
-              <polygon :points="areaPoints" fill="url(#lineGrad)" />
-              <polyline :points="linePoints" fill="none" stroke="#3b82f6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-              <g v-for="(p, i) in parsedPoints" :key="i">
-                <circle :cx="p.x" :cy="p.y" r="4.5" fill="#fff" stroke="#3b82f6" stroke-width="2.5" />
-                <text :x="p.x" :y="p.y - 14" fill="var(--text)" font-size="14" text-anchor="middle" font-weight="bold">{{ p.temp }}°</text>
-                <text :x="p.x" :y="115" fill="var(--sub)" font-size="12" text-anchor="middle">{{ p.time }}</text>
-              </g>
-            </svg>
-          </div>
-        </div>
-
-        <!-- 第三层：近七天的天气简要 -->
-        <div class="layer-daily" v-if="!isSearching">
-          <div class="layer-title" style="margin-bottom: 12px;">近七天天气简要</div>
-          <div class="daily-list-horizontal">
-            <div v-for="(day, idx) in dailyForecast" :key="idx" class="daily-item-h">
-              <div class="daily-date-h">{{ day.dateLabel }}</div>
-              <div class="daily-icon-h">
-                <span class="d-emoji-h">{{ day.emoji }}</span> 
-                <span class="d-desc-h">{{ day.desc }}</span>
-              </div>
-              <div class="daily-temp-h">
-                <span class="min-temp-h">{{ day.minTemp }}°</span>
-                <span class="max-temp-h">{{ day.maxTemp }}°</span>
-              </div>
-              <div class="temp-bar-bg-h">
-                <div class="temp-bar-fill-h" :style="getTempBarStyle(day)"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-      </div>
-    </el-dialog>
   </div>
+
+  <!-- Weather Dialog — explicitly teleported to body via Vue Teleport -->
+  <Teleport to="body">
+    <el-dialog v-model="dialogVisible" width="1100px" destroy-on-close :show-close="false" class="weather-dialog-horizontal">
+    <template #header="{ close }">
+      <div style="display: flex; justify-content: flex-end; width: 100%;">
+        <el-icon @click="close" style="cursor: pointer; font-size: 22px; color: var(--sub);"><component :is="X" /></el-icon>
+      </div>
+    </template>
+
+    <div class="weather-card" v-loading="loadingForecast">
+      
+      <!-- 第一层：当前地方与当前天气 -->
+      <div class="layer-location">
+        <div class="loc-header" v-if="!isSearching">
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <div class="loc-title">
+              <el-icon><component :is="Location" /></el-icon>
+              <span>{{ location.name }}</span>
+            </div>
+            <el-button link type="primary" @click="isSearching = true">更换城市</el-button>
+          </div>
+          <div class="current-weather-display">
+            <div class="cw-temp">{{ weather.temp }}<span class="cw-unit">℃</span></div>
+            <div class="cw-desc">{{ weather.emoji }} {{ weather.desc }} · {{ weather.wind }}</div>
+          </div>
+        </div>
+        
+        <div class="loc-search" v-else>
+          <div style="display: flex; gap: 12px; width: 100%; align-items: center;">
+            <div style="font-weight: 600; min-width: 80px;">搜索城市:</div>
+            <el-input v-model="searchQuery" placeholder="输入城市名称，如：上海" @keyup.enter="searchLocation" style="flex: 1; max-width: 300px;">
+              <template #prefix><el-icon><component :is="Search" /></el-icon></template>
+            </el-input>
+            <el-button type="primary" @click="searchLocation" :loading="searching">搜索</el-button>
+            <el-button @click="isSearching = false">取消</el-button>
+          </div>
+          <div class="search-results-h" v-if="searchResults.length > 0">
+            <div v-for="res in searchResults" :key="res.id" @click="selectLocation(res)" class="search-item-h">
+              <span style="font-weight: 500;">{{ res.name }}</span>
+              <span class="search-meta">{{ res.admin1 || '' }}{{ res.admin1 ? ', ' : '' }}{{ res.country }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 第二层：今天天气的折线图 -->
+      <div class="layer-hourly" v-if="hourlyData.length > 0 && !isSearching">
+        <div class="layer-title">今日趋势 (未来24小时)</div>
+        <div class="chart-container">
+          <!-- svg width set to 100% of the 1100px body -->
+          <svg width="100%" height="120" viewBox="0 0 1000 120" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="rgba(59, 130, 246, 0.3)" />
+                <stop offset="100%" stop-color="rgba(59, 130, 246, 0)" />
+              </linearGradient>
+            </defs>
+            <polygon :points="areaPoints" fill="url(#lineGrad)" />
+            <polyline :points="linePoints" fill="none" stroke="#3b82f6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+            <g v-for="(p, i) in parsedPoints" :key="i">
+              <circle :cx="p.x" :cy="p.y" r="4.5" fill="#fff" stroke="#3b82f6" stroke-width="2.5" />
+              <text :x="p.x" :y="p.y - 14" fill="var(--text)" font-size="14" text-anchor="middle" font-weight="bold">{{ p.temp }}°</text>
+              <text :x="p.x" :y="115" fill="var(--sub)" font-size="12" text-anchor="middle">{{ p.time }}</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <!-- 第三层：近七天的天气简要 -->
+      <div class="layer-daily" v-if="!isSearching">
+        <div class="layer-title" style="margin-bottom: 12px;">近七天天气简要</div>
+        <div class="daily-list-horizontal">
+          <div v-for="(day, idx) in dailyForecast" :key="idx" class="daily-item-h">
+            <div class="daily-date-h">{{ day.dateLabel }}</div>
+            <div class="daily-icon-h">
+              <span class="d-emoji-h">{{ day.emoji }}</span> 
+              <span class="d-desc-h">{{ day.desc }}</span>
+            </div>
+            <div class="daily-temp-h">
+              <span class="min-temp-h">{{ day.minTemp }}°</span>
+              <span class="max-temp-h">{{ day.maxTemp }}°</span>
+            </div>
+            <div class="temp-bar-bg-h">
+              <div class="temp-bar-fill-h" :style="getTempBarStyle(day)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+    </div>
+  </el-dialog>
+  </Teleport>
 </template>
 
 <script setup>
