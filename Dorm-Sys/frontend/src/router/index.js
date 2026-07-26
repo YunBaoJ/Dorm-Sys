@@ -31,7 +31,6 @@ const routes = [
   { path: '/dormmanager/late-return', component: () => import('../views/manager/LateReturn.vue') },
   { path: '/dormmanager/items', component: () => import('../views/manager/Items.vue') },
   { path: '/dormmanager/messages', component: () => import('../views/manager/Messages.vue') },
-  { path: '/dormmanager/patrol', component: () => import('../views/manager/Patrol.vue') },
   { path: '/dormmanager/call', component: () => import('../views/manager/Call.vue') },
   { path: '/dormmanager/feedback', component: () => import('../views/manager/Feedback.vue') },
   { path: '/dormmanager/profile', component: () => import('../views/manager/Profile.vue') },
@@ -43,6 +42,9 @@ const routes = [
   { path: '/admin/resources/buildings', component: () => import('../views/admin/Resources.vue') },
   { path: '/admin/resources/rooms', component: () => import('../views/admin/Rooms.vue') },
   { path: '/admin/repairs/list', component: () => import('../views/admin/Repairs.vue') },
+  { path: '/admin/notices', component: () => import('../views/admin/Notices.vue') },
+  { path: '/admin/operation-logs', component: () => import('../views/admin/OperationLogs.vue') },
+  { path: '/admin/reports', component: () => import('../views/admin/Reports.vue') },
 ]
 
 const router = createRouter({

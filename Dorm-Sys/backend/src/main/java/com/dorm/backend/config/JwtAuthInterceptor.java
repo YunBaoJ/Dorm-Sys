@@ -90,7 +90,8 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
     private boolean isAdminOnlyRead(HttpServletRequest request, String role) {
         if ("admin".equals(role) || !"GET".equalsIgnoreCase(request.getMethod())) return false;
         String path = request.getRequestURI();
-        return path.equals("/api/dashboard/stats") || path.equals("/api/dashboard/alerts");
+        return path.equals("/api/dashboard/stats") || path.equals("/api/dashboard/alerts")
+                || path.startsWith("/api/operationLog/") || path.startsWith("/api/admin/report/");
     }
 
     private void writeForbidden(HttpServletResponse response, String message) throws Exception {

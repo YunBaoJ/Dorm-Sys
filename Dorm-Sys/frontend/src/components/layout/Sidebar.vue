@@ -42,7 +42,6 @@ import { useRoute } from 'vue-router'
 import { appStore } from '../../store/app'
 import { useUserStore } from '../../store/user'
 import {
-  Bot,
   Building,
   Building2,
   ClipboardList,
@@ -63,7 +62,9 @@ import {
   UserRoundCheck,
   Video,
   WalletCards,
-  Newspaper
+  Newspaper,
+  FileText,
+  ChartNoAxesCombined
 } from '@lucide/vue'
 
 const route = useRoute()
@@ -82,7 +83,10 @@ const navMap = {
         { path: '/admin/resources/rooms', label: '房间管理' }
       ]
     },
-    { path: '/admin/repairs/list', label: '报修监控', icon: Settings }
+    { path: '/admin/repairs/list', label: '报修监控', icon: Settings },
+    { path: '/admin/notices', label: '公告管理', icon: Newspaper },
+    { path: '/admin/operation-logs', label: '操作日志', icon: FileText },
+    { path: '/admin/reports', label: '数据报表', icon: ChartNoAxesCombined }
   ],
   dormmanager: [
     { path: '/dormmanager/workbench', label: '工作台', icon: ClipboardList },
@@ -95,7 +99,6 @@ const navMap = {
     { path: '/dormmanager/items', label: '物品出入', icon: Package },
     { path: '/dormmanager/messages', label: '消息通知', icon: Mail },
     { path: '/dormmanager/feedback', label: '意见反馈', icon: MessageCircle },
-    { path: '/dormmanager/patrol', label: 'AI巡查', icon: Bot },
     { path: '/dormmanager/call', label: '智能通话', icon: Video },
     { path: '/dormmanager/transfer', label: '调宿审批', icon: Repeat2 },
     { path: '/dormmanager/profile', label: '个人中心', icon: User }
