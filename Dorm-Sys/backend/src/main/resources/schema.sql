@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS `sys_user` (
   `password` varchar(100) NOT NULL COMMENT '密码',
   `role` varchar(20) NOT NULL COMMENT '角色(student/dormmanager/admin)',
   `name` varchar(50) NOT NULL COMMENT '真实姓名',
+  `gender` varchar(10) DEFAULT NULL COMMENT '性别',
   `avatar` varchar(255) DEFAULT NULL COMMENT '头像链接',
   `class_name` varchar(50) DEFAULT NULL COMMENT '班级',
   `email` varchar(50) DEFAULT NULL COMMENT '邮箱',
@@ -21,6 +22,8 @@ CREATE TABLE IF NOT EXISTS `sys_user` (
   UNIQUE KEY `uk_username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
+-- 兼容已有表（Railway 上已建表但缺 gender 列）
+ALTER TABLE `sys_user` ADD COLUMN `gender` varchar(10) DEFAULT NULL COMMENT '性别' AFTER `name`;
 
 -- ----------------------------
 -- 2. 楼栋表
@@ -327,10 +330,10 @@ CREATE TABLE IF NOT EXISTS `admin_info` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='管理员扩展信息表';
 
 -- 初始化测试数据（用户名唯一，重复时自动跳过）
-INSERT IGNORE INTO `sys_user` (`username`, `password`, `role`, `name`, `avatar`, `class_name`, `email`, `phone`) VALUES
-('20240001', '$2b$12$fkepBhQatdh.trQqZmPZcuZwJhLFNz1I6DuLntDfPnQiv5YlaTRrC', 'student', '张伟', '/images/avatar.jpg', '计科2201', 'stu001@stu.edu.cn', '13800010001'),
-('manager1', '$2b$12$fkepBhQatdh.trQqZmPZcuZwJhLFNz1I6DuLntDfPnQiv5YlaTRrC', 'dormmanager', '王叔', NULL, NULL, NULL, NULL),
-('admin', '$2b$12$fkepBhQatdh.trQqZmPZcuZwJhLFNz1I6DuLntDfPnQiv5YlaTRrC', 'admin', '超级管理员', NULL, NULL, NULL, NULL);
+INSERT IGNORE INTO `sys_user` (`username`, `password`, `role`, `name`, `gender`, `avatar`, `class_name`, `email`, `phone`) VALUES
+('20240001', '$2b$12$fkepBhQatdh.trQqZmPZcuZwJhLFNz1I6DuLntDfPnQiv5YlaTRrC', 'student', '张伟', '男', '/images/avatar.jpg', '计科2201', 'stu001@stu.edu.cn', '13800010001'),
+('manager1', '$2b$12$fkepBhQatdh.trQqZmPZcuZwJhLFNz1I6DuLntDfPnQiv5YlaTRrC', 'dormmanager', '王叔', '男', NULL, NULL, NULL, NULL),
+('admin', '$2b$12$fkepBhQatdh.trQqZmPZcuZwJhLFNz1I6DuLntDfPnQiv5YlaTRrC', 'admin', '超级管理员', NULL, NULL, NULL, NULL, NULL);
 
 -- 初始化系统公告数据
 INSERT IGNORE INTO `business_record` (`type`, `title`, `description`, `status`, `creator_id`, `event_time`) VALUES
