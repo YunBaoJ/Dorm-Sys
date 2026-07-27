@@ -106,9 +106,10 @@ const submitAdd = async () => {
   submitting.value = true
   try {
     await saveItem({
-      itemName: form.value.title,
-      studentName: form.value.owner,
-      status: 'BORROWED'
+      title: form.value.title,
+      owner: form.value.owner,
+      description: form.value.description,
+      status: 'PENDING'
     })
     ElMessage.success('登记成功')
     dialogVisible.value = false
@@ -121,9 +122,10 @@ const submitAdd = async () => {
 }
 
 const updateStatus = async (row, newStatus) => {
+  const actionText = newStatus === 'RELEASED' ? '确认放行该物品？' : '确认该物品已归还？'
   try {
-    await ElMessageBox.confirm('确认该物品已归还？', '提示', { type: 'warning' })
-    await saveItem({ id: row.id, status: 'RETURNED' })
+    await ElMessageBox.confirm(actionText, '提示', { type: 'warning' })
+    await saveItem({ id: row.id, status: newStatus })
     ElMessage.success('操作成功')
     fetchItems()
   } catch (e) { console.error(e);

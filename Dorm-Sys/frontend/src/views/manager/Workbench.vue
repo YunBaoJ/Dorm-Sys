@@ -243,15 +243,29 @@
             <div class="card-header"><span class="card-title">系统通知</span></div>
           </template>
           <div class="notice-list">
-            <div v-for="n in notices" :key="n.id" class="notice-item">
-              <el-icon :color="n.type === 'alert' ? 'var(--warn)' : 'var(--primary)'">
-                <component :is="n.type === 'alert' ? AlertCircle : Info" />
-              </el-icon>
-              <span>{{ n.title }}</span>
+            <div v-for="n in notices" :key="n.id" class="notice-item" :class="{ unread: !n.read }" @click="openNoticeDialog(n)">
+              <span class="notice-dot" :class="n.read ? 'dot-gray' : 'dot-primary'" aria-hidden="true"></span>
+              <div class="notice-content-wrap">
+                <span class="notice-title">{{ n.title }}</span>
+                <span class="notice-desc">{{ n.description?.substring(0, 28) }}{{ n.description?.length > 28 ? '...' : '' }}</span>
+              </div>
             </div>
             <el-empty v-if="notices.length === 0" description="暂无通知" :image-size="40"></el-empty>
           </div>
         </el-card>
+
+        <!-- Notice Dialog -->
+        <el-dialog v-model="noticeDialogVisible" :title="currentNotice?.title || '通知详情'" width="420px" destroy-on-close>
+          <div class="notice-detail-body">
+            <div class="notice-detail-time" v-if="currentNotice?.createTime">发布时间：{{ currentNotice.createTime }}</div>
+            <div class="notice-detail-content">{{ currentNotice?.description || '暂无详细内容' }}</div>
+          </div>
+          <template #footer>
+            <span class="dialog-footer">
+              <el-button type="primary" @click="noticeDialogVisible = false">知道了</el-button>
+            </span>
+          </template>
+        </el-dialog>
       </el-col>
     </el-row>
   </div>
@@ -293,6 +307,43 @@ const memoDialogVisible = ref(false)
 const memoEditId = ref(null)
 const memoForm = ref({ title: '', description: '' })
 const memoSaving = ref(false)
+
+// Notice read tracking
+const noticeDialogVisible = ref(false)
+const currentNotice = ref({})
+const seenNoticeIds = ref(new Set())
+
+function loadSeenNotices() {
+  try {
+    const key = `dorm-notices-read:${userStore.userInfo?.id || 'guest'}`
+    const stored = JSON.parse(localStorage.getItem(key) || '[]')
+    seenNoticeIds.value = new Set(Array.isArray(stored) ? stored : [])
+  } catch {
+    seenNoticeIds.value = new Set()
+  }
+}
+
+function saveSeenNotices() {
+  const key = `dorm-notices-read:${userStore.userInfo?.id || 'guest'}`
+  localStorage.setItem(key, JSON.stringify([...seenNoticeIds.value]))
+}
+
+const openNoticeDialog = (notice) => {
+  try {
+    currentNotice.value = notice
+    if (!seenNoticeIds.value.has(notice.id)) {
+      const next = new Set(seenNoticeIds.value)
+      next.add(notice.id)
+      seenNoticeIds.value = next
+      saveSeenNotices()
+      const idx = notices.value.findIndex(n => n.id === notice.id)
+      if (idx !== -1) notices.value[idx].read = true
+    }
+    noticeDialogVisible.value = true
+  } catch (e) {
+    console.error('openNoticeDialog error', e)
+  }
+}
 
 const openMemoDialog = (memo) => {
   if (memo) {
@@ -388,18 +439,24 @@ const getOccupantForBed = (index) => {
 }
 
 const loadData = async () => {
+  loadSeenNotices()
   loading.value = true
   try {
     const [repairList, visitors, buildingList, buildingStatsRes, noticeRecords] = await Promise.all([
       getRepairs(), getVisitorRecords(), getBuildings(), request({ url: '/dashboard/buildings', method: 'get' }),
-      getBusinessRecords('system_notices')
+      getBusinessRecords('admin_notice')
     ])
     
-    notices.value = (noticeRecords || []).slice(0, 3).map((r, i) => ({
-      id: r.id,
-      title: r.title,
-      type: i === 1 ? 'alert' : 'info'
-    }))
+    notices.value = (noticeRecords || [])
+      .map(r => ({
+        id: r.id,
+        title: r.title || '',
+        description: r.description || '',
+        createTime: r.createTime ? r.createTime.replace('T', ' ').substring(0, 16) : '',
+        read: seenNoticeIds.value.has(r.id)
+      }))
+      .sort((a, b) => (a.read ? 1 : 0) - (b.read ? 1 : 0))
+      .slice(0, 3)
     
     loadMemos()
     
@@ -783,14 +840,83 @@ onMounted(() => loadData())
   display: flex;
   flex-direction: column;
   gap: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .notice-item {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--bg);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.notice-item:hover {
+  background: var(--el-color-primary-light-9);
+}
+
+.notice-item.unread {
+  background: var(--primary-2);
+}
+
+.notice-dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  margin-top: 6px;
+  border-radius: 50%;
+}
+
+.dot-gray { background: var(--line); }
+.dot-primary { background: var(--el-color-primary); }
+
+.notice-content-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.notice-title {
   font-size: 13px;
-  line-height: 1.5;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.notice-item.unread .notice-title {
+  color: var(--el-color-primary);
+}
+
+.notice-desc {
+  font-size: 12px;
+  color: var(--sub);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notice-detail-body {
+  padding: 0 4px;
+}
+
+.notice-detail-time {
+  font-size: 13px;
+  color: var(--sub);
+  margin-bottom: 16px;
+}
+
+.notice-detail-content {
+  font-size: 15px;
+  color: var(--text);
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* Bed Layout Styles */

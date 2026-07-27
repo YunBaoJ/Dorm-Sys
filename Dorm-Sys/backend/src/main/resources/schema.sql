@@ -226,11 +226,115 @@ CREATE TABLE IF NOT EXISTS `business_record` (
   KEY `idx_business_record_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='通用业务记录表';
 
+-- ----------------------------
+-- 14. 物品出入登记表
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS `item_record` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `title` varchar(100) NOT NULL COMMENT '物品名称',
+  `owner` varchar(100) DEFAULT NULL COMMENT '经办人/房间',
+  `description` text COMMENT '详细说明',
+  `status` varchar(30) DEFAULT 'PENDING' COMMENT '状态(PENDING/RELEASED/RETURNED)',
+  `creator_id` bigint DEFAULT NULL COMMENT '创建人ID',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物品出入登记表';
+
+-- ----------------------------
+-- 15. 晚归登记表
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS `late_return_record` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `student_id` bigint NOT NULL COMMENT '学生ID',
+  `student_name` varchar(50) DEFAULT NULL COMMENT '学生姓名',
+  `room_number` varchar(20) DEFAULT NULL COMMENT '房间号',
+  `reason` text COMMENT '晚归原因',
+  `status` varchar(30) DEFAULT 'PENDING' COMMENT '状态(PENDING/CONFIRMED)',
+  `return_time` datetime DEFAULT NULL COMMENT '晚归时间',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_late_return_student_id` (`student_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='晚归登记表';
+
+-- ----------------------------
+-- 16. 聊天消息表
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS `chat_message` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `sender_id` bigint NOT NULL COMMENT '发送者ID',
+  `receiver_id` bigint DEFAULT NULL COMMENT '接收者ID(私聊)',
+  `room_id` bigint DEFAULT NULL COMMENT '房间ID(群聊)',
+  `type` varchar(20) NOT NULL COMMENT '类型(PRIVATE/GROUP)',
+  `content` text NOT NULL COMMENT '消息内容',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '发送时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_chat_sender` (`sender_id`),
+  KEY `idx_chat_receiver` (`receiver_id`),
+  KEY `idx_chat_room` (`room_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='聊天消息表';
+
+-- ----------------------------
+-- 17. 住宿历史表
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS `stay_history` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `student_id` bigint NOT NULL COMMENT '学生ID',
+  `bed_id` bigint NOT NULL COMMENT '床位ID',
+  `check_in_date` datetime NOT NULL COMMENT '入住时间',
+  `check_out_date` datetime DEFAULT NULL COMMENT '退宿时间',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_stay_student` (`student_id`),
+  KEY `idx_stay_bed` (`bed_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='住宿历史表';
+
+-- ----------------------------
+-- 18. 学生扩展信息表
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS `student_info` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint NOT NULL COMMENT '关联用户ID',
+  `class_name` varchar(50) DEFAULT NULL COMMENT '班级',
+  `major` varchar(50) DEFAULT NULL COMMENT '专业',
+  `enrollment_year` int DEFAULT NULL COMMENT '入学年份',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_student_info_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学生扩展信息表';
+
+-- ----------------------------
+-- 19. 宿管扩展信息表
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS `manager_info` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint NOT NULL COMMENT '关联用户ID',
+  `employee_no` varchar(50) DEFAULT NULL COMMENT '工号',
+  `building_id` bigint DEFAULT NULL COMMENT '管辖楼栋ID',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_manager_info_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='宿管扩展信息表';
+
+-- ----------------------------
+-- 20. 管理员扩展信息表
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS `admin_info` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint NOT NULL COMMENT '关联用户ID',
+  `department` varchar(50) DEFAULT NULL COMMENT '部门',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_admin_info_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='管理员扩展信息表';
+
 -- 初始化测试数据（用户名唯一，重复时自动跳过）
 INSERT IGNORE INTO `sys_user` (`username`, `password`, `role`, `name`, `avatar`, `class_name`, `email`, `phone`) VALUES
 ('20240001', '$2b$12$fkepBhQatdh.trQqZmPZcuZwJhLFNz1I6DuLntDfPnQiv5YlaTRrC', 'student', '张伟', '/images/avatar.jpg', '计科2201', 'stu001@stu.edu.cn', '13800010001'),
 ('manager1', '$2b$12$fkepBhQatdh.trQqZmPZcuZwJhLFNz1I6DuLntDfPnQiv5YlaTRrC', 'dormmanager', '王叔', NULL, NULL, NULL, NULL),
 ('admin', '$2b$12$fkepBhQatdh.trQqZmPZcuZwJhLFNz1I6DuLntDfPnQiv5YlaTRrC', 'admin', '超级管理员', NULL, NULL, NULL, NULL);
 
--- 补充索引（如使用 JPA 自动建表则下方索引由 JPA 自动创建，此处保留用于手动建库参考）
-CREATE INDEX IF NOT EXISTS idx_late_return_student_id ON late_return_record(student_id);
+-- 初始化系统公告数据
+INSERT IGNORE INTO `business_record` (`type`, `title`, `description`, `status`, `creator_id`, `event_time`) VALUES
+('admin_notice', '宿舍楼消防演练通知', '各位同学：\n兹定于本周六（8月1日）上午10:00进行宿舍楼消防疏散演练，届时将启动消防警报，请各位同学听到警报后有序撤离至楼下空地集合。\n注意事项：\n1. 请勿使用电梯\n2. 请随身携带湿毛巾\n3. 请勿嬉戏打闹\n请各寝室长做好组织工作。', '已发布', 3, '2026-07-28 10:00:00'),
+('admin_notice', '关于暑假留校安排的通知', '根据学校暑假工作安排，暑假期间留校学生需在宿管处登记，办理留校手续。\n暑假期间宿舍楼开放时间调整为：早6:30-晚22:30。\n请同学们注意用电安全，严禁使用违规电器。', '已发布', 3, '2026-07-25 08:00:00'),
+('admin_notice', '宿舍水电费缴纳提醒', '2026年7月份水电费已统计完毕，请各位同学及时在系统内查询并缴纳。\n缴费截止日期：2026年8月10日。\n逾期未缴者将影响宿舍用电。', '已发布', 3, '2026-07-20 14:00:00');

@@ -23,13 +23,10 @@
       <!-- Left Stack -->
       <div class="left-stack">
         <!-- Banner -->
-        <div class="card dash-banner"
-             @mouseover="hoverBanner = true" @mouseleave="hoverBanner = false"
-             :style="hoverBanner ? 'transform: translateY(-2px); box-shadow: 0 8px 24px rgba(59, 130, 246, .12);' : 'box-shadow: var(--shadow);'">
+        <div class="card dash-banner">
           <div class="banner-inner">
             <div class="banner-left">
-              <div class="banner-icon"
-                   :style="hoverBanner ? 'transform: scale(1.05)' : ''">
+              <div class="banner-icon">
                 <el-icon :size="24"><component :is="Home" /></el-icon>
               </div>
               <div>
@@ -158,19 +155,34 @@
             <h2>校园公告</h2>
             <a class="mini-link" @click="router.push('/student/notice')">更多</a>
           </div>
-          <div class="card-body list">
-            <div v-for="n in notices" :key="n.id" class="notice-item-card">
-              <div class="notice-head">
-                <span class="notice-title text-truncate">{{ n.title }}</span>
-                <span class="tag tag-sm" :class="n.pinned ? 'warn' : 'gray'">
-                  {{ n.pinned ? '置顶' : '通知' }}
-                </span>
+          <div class="card-body list scroll-notices">
+            <div v-for="n in notices" :key="n.id" class="notice-item-card" @click="openNotice(n)" role="button" tabindex="0" @keydown.enter="openNotice(n)">
+              <span class="notice-dot-sm" :class="n.read ? 'dot-sm-gray' : 'dot-sm-primary'" aria-hidden="true"></span>
+              <div class="notice-card-body">
+                <div class="notice-head">
+                  <span class="notice-title text-truncate">{{ n.title }}</span>
+                  <span class="tag tag-sm" :class="n.pinned ? 'warn' : 'gray'">
+                    {{ n.pinned ? '置顶' : '通知' }}
+                  </span>
+                </div>
+                <div class="notice-date">{{ n.date }} 发布</div>
               </div>
-              <div class="notice-date">{{ n.date }} 发布</div>
             </div>
             <el-empty v-if="notices.length === 0" description="暂无公告" :image-size="40"></el-empty>
           </div>
         </div>
+        <!-- Notice Detail Dialog -->
+        <el-dialog v-model="noticeDialogVisible" :title="currentNotice?.title || '公告详情'" width="520px" destroy-on-close>
+          <div class="notice-detail-body">
+            <div class="notice-detail-time" v-if="currentNotice?.displayTime">发布时间：{{ currentNotice.displayTime }}</div>
+            <div class="notice-detail-content">{{ currentNotice?.description || '暂无详细内容' }}</div>
+          </div>
+          <template #footer>
+            <span class="dialog-footer">
+              <el-button type="primary" @click="noticeDialogVisible = false">知道了</el-button>
+            </span>
+          </template>
+        </el-dialog>
 
         <!-- Roommates -->
         <div class="card">
@@ -263,8 +275,9 @@ const currentTime = computed(() => {
   return `${y}年${m}月${d}日${w} ${h}:${min}`
 })
 
-const hoverBanner = ref(false)
 const notices = ref([])
+const noticeDialogVisible = ref(false)
+const currentNotice = ref({})
 const currentDormLabel = ref('加载中')
 const roommates = ref([])
 const dash = ref({})
@@ -302,14 +315,64 @@ const fetchDormSummary = async () => {
   }
 }
 
+function loadSeenNotices() {
+  try {
+    const key = `student-notices-read:${userStore.userInfo?.id || 'guest'}`
+    const stored = JSON.parse(localStorage.getItem(key) || '[]')
+    seenNoticeIds.value = new Set(Array.isArray(stored) ? stored : [])
+  } catch { seenNoticeIds.value = new Set() }
+}
+
+function saveSeenNotices() {
+  const key = `student-notices-read:${userStore.userInfo?.id || 'guest'}`
+  localStorage.setItem(key, JSON.stringify([...seenNoticeIds.value]))
+}
+
+const seenNoticeIds = ref(new Set())
+
+const openNotice = (notice) => {
+  currentNotice.value = notice
+  if (!seenNoticeIds.value.has(notice.id)) {
+    const next = new Set(seenNoticeIds.value)
+    next.add(notice.id)
+    seenNoticeIds.value = next
+    saveSeenNotices()
+    const idx = notices.value.findIndex(n => n.id === notice.id)
+    if (idx !== -1) notices.value[idx].read = true
+  }
+  noticeDialogVisible.value = true
+}
+
+const formatTime = (value) => {
+  if (!value) return ''
+  return String(value).replace('T', ' ').substring(0, 16)
+}
+
 const fetchNotices = async () => {
-  const records = await getBusinessRecords('manager_messages', '已发布')
-  notices.value = (records || []).slice(0, 3).map((record, index) => ({
-    id: record.id,
-    title: record.title,
-    date: (record.createTime || '').replace('T', ' ').slice(0, 10),
-    pinned: index === 0
-  }))
+  loadSeenNotices()
+  try {
+    const [adminNotices, managerMessages] = await Promise.all([
+      getBusinessRecords('admin_notice', '已发布'),
+      getBusinessRecords('manager_messages', '已发布')
+    ])
+    const all = [...(adminNotices || []), ...(managerMessages || [])]
+      .map((r, index) => ({
+        id: r.id,
+        title: r.title || '',
+        description: r.description || '',
+        displayTime: formatTime(r.eventTime || r.createTime),
+        date: (r.createTime || '').replace('T', ' ').slice(0, 10),
+        pinned: index === 0,
+        read: seenNoticeIds.value.has(r.id)
+      }))
+      .sort((a, b) => {
+        if (a.read !== b.read) return a.read ? 1 : -1
+        return 0
+      })
+    notices.value = all.slice(0, 4)
+  } catch (e) {
+    console.error('获取公告失败', e)
+  }
 }
 
 onMounted(() => {
@@ -414,7 +477,6 @@ onMounted(() => {
   color: #fff;
   border-radius: 14px;
   box-shadow: 0 6px 16px rgba(59, 130, 246, .3);
-  transition: transform .2s ease;
   flex-shrink: 0;
 }
 
@@ -505,15 +567,65 @@ onMounted(() => {
 }
 
 /* === Notices === */
+.desk-container .card:hover {
+  transform: none;
+  box-shadow: var(--shadow);
+}
+
 .notice-item-card {
   display: flex;
-  flex-direction: column;
   align-items: flex-start;
+  gap: 10px;
   background: var(--surface);
   border: 1px solid var(--line);
   color: var(--text);
   padding: 14px 18px;
   border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.notice-item-card:hover {
+  background: var(--el-color-primary-light-9);
+}
+
+.notice-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.scroll-notices {
+  max-height: 370px;
+  overflow-y: auto;
+}
+
+.notice-dot-sm {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-top: 8px;
+}
+
+.dot-sm-gray { background: var(--line); }
+.dot-sm-primary { background: var(--el-color-primary); }
+
+.notice-detail-body {
+  padding: 0 4px;
+}
+
+.notice-detail-time {
+  font-size: 13px;
+  color: var(--sub);
+  margin-bottom: 16px;
+}
+
+.notice-detail-content {
+  font-size: 15px;
+  color: var(--text);
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .notice-head {

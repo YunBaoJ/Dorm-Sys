@@ -14,6 +14,7 @@ public class ItemRecord {
     private String owner;
     private String description;
     private String status;
+    private Long creatorId;
     private java.time.LocalDateTime createTime;
     private java.time.LocalDateTime updateTime;
 }

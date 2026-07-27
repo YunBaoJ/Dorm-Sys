@@ -133,6 +133,8 @@ const navItems = computed(() => navMap[userStore.role] || navMap.student)
 
 .sidebar-logo {
   height: 60px;
+  min-height: 60px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   padding: 0 16px;
