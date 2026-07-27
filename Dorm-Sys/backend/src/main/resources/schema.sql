@@ -219,6 +219,7 @@ CREATE TABLE IF NOT EXISTS `business_record` (
   `owner` varchar(100) DEFAULT NULL COMMENT '对象/联系人/位置',
   `description` text COMMENT '说明',
   `status` varchar(30) DEFAULT NULL COMMENT '状态',
+  `reply` text DEFAULT NULL COMMENT '回复内容',
   `creator_id` bigint DEFAULT NULL COMMENT '创建人ID',
   `event_time` datetime DEFAULT NULL COMMENT '业务时间',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
