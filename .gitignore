@@ -1,4 +1,16 @@
-锘縨uban/
+# === 论文文档（体积大，非项目源码） ===
+Document/
+
+# === 截图/原型（体积大且非必需） ===
+muban/
 dorm-prototype/
 
+# === 个人工具配置 ===
+.agents/
+.superpowers/
+docs/superpowers/
+codex_guidelines.md
+skills-lock.json
+
+# === 运行时日志 ===
 Dorm-Sys/backend-run.*.log

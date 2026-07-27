@@ -6,8 +6,10 @@ import router from '../router'
 let handlingUnauthorized = false
 
 // 1. 创建 Axios 实例 (中央邮局)
+// 生产环境通过 VITE_API_BASE_URL 环境变量指定后端地址
+// 开发环境使用 Vite proxy 转发 /api → 后端
 const service = axios.create({
-  baseURL: '/api', // 后端接口基础路径
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   timeout: 5000 // 请求超时时间 (5秒)
 })
 

@@ -1,10 +1,13 @@
 # === 前端 ===
 frontend/node_modules/
 frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
 
 # === 后端 ===
 backend/target/
 backend/logs/
+backend/*.log
 
 # === IDE / 工具 ===
 .idea/
@@ -18,4 +21,6 @@ backend/logs/
 Thumbs.db
 
 # === 环境配置（含数据库密码） ===
+# 这些是本机专属配置，不含默认值，各机器需自行创建
 backend/src/main/resources/application-local.yml
+backend/src/main/resources/application-prod.yml
