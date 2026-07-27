@@ -201,20 +201,41 @@
         <!-- Management Memos -->
         <el-card shadow="never" class="side-card memos-card">
           <template #header>
-            <div class="card-header"><span class="card-title">管理备忘</span></div>
+            <div class="card-header">
+              <span class="card-title">备忘录</span>
+              <el-button type="primary" link @click="router.push('/dormmanager/memos')">查看更多</el-button>
+            </div>
           </template>
           <div class="memos-list">
-            <div v-for="m in memos" :key="m.id" class="memo-item">
-              <div class="memo-dot" :class="m.urgent ? 'dot-orange' : 'dot-blue'"></div>
+            <div v-for="m in memos" :key="m.id" class="memo-item" @click="openMemoDialog(m)">
+              <div class="memo-dot" :class="m.status === 'DONE' ? 'dot-green' : 'dot-blue'"></div>
               <div class="memo-content">
                 <div class="memo-title">{{ m.title }}</div>
-                <div class="memo-time">{{ m.time }}</div>
+                <div class="memo-time">{{ m.status === 'DONE' ? '已办' : '待办' }}</div>
               </div>
             </div>
             <el-empty v-if="memos.length === 0" description="暂无备忘" :image-size="40"></el-empty>
-            <el-button class="add-memo-btn" plain>+ 添加备忘</el-button>
+            <el-button class="add-memo-btn" plain @click="openMemoDialog()">+ 快速备忘</el-button>
           </div>
         </el-card>
+
+        <!-- Quick Memo Dialog -->
+        <el-dialog v-model="memoDialogVisible" :title="memoEditId ? '编辑备忘：' + memoForm.title : '快速备忘'" width="420px" destroy-on-close>
+          <el-form :model="memoForm" label-position="top">
+            <el-form-item label="标题" required>
+              <el-input v-model="memoForm.title" placeholder="输入标题" maxlength="50" />
+            </el-form-item>
+            <el-form-item label="内容">
+              <el-input v-model="memoForm.description" type="textarea" :rows="4" placeholder="输入详情（可选）" maxlength="500" />
+            </el-form-item>
+          </el-form>
+          <template #footer>
+            <span class="dialog-footer">
+              <el-button @click="memoDialogVisible = false">取消</el-button>
+              <el-button type="primary" @click="saveMemo" :loading="memoSaving">保存</el-button>
+            </span>
+          </template>
+        </el-dialog>
 
         <!-- System Notices -->
         <el-card shadow="never" class="side-card notices-card">
@@ -245,7 +266,7 @@ import { getRooms } from '../../api/room'
 import { getBuildings } from '../../api/building'
 import { getRepairs } from '../../api/repair'
 import { getVisitorRecords } from '../../api/visitor'
-import { getBusinessRecords } from '../../api/businessRecord'
+import { getBusinessRecords, saveBusinessRecord } from '../../api/businessRecord'
 import { useUserStore } from '../../store/user'
 import request from '../../utils/request'
 import WeatherWidget from '../../components/WeatherWidget.vue'
@@ -266,6 +287,64 @@ const selectedBuilding = ref('')
 const pendingRepairs = ref([])
 const memos = ref([])
 const notices = ref([])
+
+// Memo CRUD
+const memoDialogVisible = ref(false)
+const memoEditId = ref(null)
+const memoForm = ref({ title: '', description: '' })
+const memoSaving = ref(false)
+
+const openMemoDialog = (memo) => {
+  if (memo) {
+    memoEditId.value = memo.id
+    memoForm.value = { title: memo.title, description: memo.description || '' }
+  } else {
+    memoEditId.value = null
+    memoForm.value = { title: '', description: '' }
+  }
+  memoDialogVisible.value = true
+}
+
+const saveMemo = async () => {
+  if (!memoForm.value.title.trim()) {
+    ElMessage.warning('请输入标题')
+    return
+  }
+  memoSaving.value = true
+  try {
+    await saveBusinessRecord({
+      id: memoEditId.value || undefined,
+      type: 'manager_memos',
+      title: memoForm.value.title.trim(),
+      description: memoForm.value.description.trim(),
+      status: 'PENDING',
+      creatorId: userStore.userInfo?.id
+    })
+    ElMessage.success(memoEditId.value ? '已更新' : '已添加')
+    memoDialogVisible.value = false
+    loadMemos()
+  } catch (e) { console.error(e)
+    ElMessage.error('操作失败')
+  } finally {
+    memoSaving.value = false
+  }
+}
+
+const loadMemos = async () => {
+  try {
+    const memoRecords = await getBusinessRecords('manager_memos')
+    memos.value = (memoRecords || [])
+      .map(r => ({
+        id: r.id,
+        title: r.title || '备忘',
+        description: r.description || '',
+        status: r.status === 'DONE' ? 'DONE' : 'PENDING',
+        createTime: r.createTime
+      }))
+      .sort((a, b) => a.status === 'PENDING' && b.status === 'DONE' ? -1 : a.status === 'DONE' && b.status === 'PENDING' ? 1 : 0)
+      .slice(0, 3)
+  } catch (e) { console.error(e) }
+}
 
 const roomDialogVisible = ref(false)
 const selectedRoom = ref(null)
@@ -311,23 +390,18 @@ const getOccupantForBed = (index) => {
 const loadData = async () => {
   loading.value = true
   try {
-    const [repairList, visitors, buildingList, buildingStatsRes, memoRecords, noticeRecords] = await Promise.all([
+    const [repairList, visitors, buildingList, buildingStatsRes, noticeRecords] = await Promise.all([
       getRepairs(), getVisitorRecords(), getBuildings(), request({ url: '/dashboard/buildings', method: 'get' }),
-      getBusinessRecords('manager_memos'), getBusinessRecords('system_notices')
+      getBusinessRecords('system_notices')
     ])
-    
-    memos.value = (memoRecords || []).slice(0, 3).map((r, i) => ({
-      id: r.id,
-      title: r.title,
-      time: r.status || '全天',
-      urgent: i === 0
-    }))
     
     notices.value = (noticeRecords || []).slice(0, 3).map((r, i) => ({
       id: r.id,
       title: r.title,
       type: i === 1 ? 'alert' : 'info'
     }))
+    
+    loadMemos()
     
     buildings.value = buildingList || []
     
@@ -658,6 +732,9 @@ onMounted(() => loadData())
   display: flex;
   flex-direction: column;
   gap: 16px;
+  max-height: 360px;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .memo-item {
@@ -666,6 +743,12 @@ onMounted(() => loadData())
   background: var(--bg);
   padding: 12px;
   border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.memo-item:hover {
+  background: var(--el-color-primary-light-9);
 }
 
 .memo-dot {
@@ -677,6 +760,7 @@ onMounted(() => loadData())
 
 .dot-orange { background-color: var(--warn); }
 .dot-blue { background-color: var(--primary); }
+.dot-green { background-color: var(--success); }
 
 .memo-title {
   font-size: 14px;

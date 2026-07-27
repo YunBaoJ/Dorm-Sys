@@ -229,42 +229,176 @@ function markAllRead() {
 }
 
 async function fetchNotifications() {
-  if (userStore.role !== 'student' || !userStore.token) {
+  if (!userStore.token) {
     notifications.value = []
     return
   }
 
   loadingNotifications.value = true
   try {
-    const [noticeRecords, chatMessages] = await Promise.all([
-      request({
-        url: '/businessRecord/list',
-        method: 'get',
-        params: { type: 'manager_messages', status: '已发布' }
-      }),
-      request({ url: '/chat/notifications', method: 'get' })
-    ])
+    if (userStore.role === 'dormmanager') {
+      const [callRecords, feedbackRecords, pendingRepairs, pendingTransfers, pendingVisitors] = await Promise.all([
+        request({ url: '/callRecord/list', method: 'get' }),
+        request({ url: '/businessRecord/list', method: 'get', params: { type: 'feedback' } }),
+        request({ url: '/repairRequest/list', method: 'get', params: { status: 'PENDING' } }),
+        request({ url: '/transferRequest/list', method: 'get', params: { status: 'PENDING' } }),
+        request({ url: '/visitorRecord/list', method: 'get' })
+      ])
 
-    const notices = (noticeRecords || []).map(item => ({
-      key: `notice:${item.id}`,
-      kindLabel: '公告',
-      title: item.title || '宿管发布了新公告',
-      content: item.description || '点击查看公告详情',
-      createTime: item.createTime,
-      route: '/student/notice'
-    }))
-    const chats = (chatMessages || []).map(item => ({
-      key: `chat:${item.id}`,
-      kindLabel: item.type === 'GROUP' ? '群聊' : '私聊',
-      title: `${item.senderName || '室友'}发来新消息`,
-      content: item.content,
-      createTime: item.createTime,
-      route: '/student/dorm'
-    }))
+      const pendingCalls = (callRecords || [])
+        .filter(item => item.status === 'PENDING')
+        .map(item => ({
+          key: `call:${item.id}`,
+          kindLabel: '通话',
+          title: `学生发起了通话预约`,
+          content: item.topic || '',
+          createTime: item.createTime,
+          route: '/dormmanager/call'
+        }))
+      const pendingFeedbacks = (feedbackRecords || [])
+        .filter(item => item.status === 'PENDING')
+        .map(item => ({
+          key: `feedback:${item.id}`,
+          kindLabel: '反馈',
+          title: `学生提交了${item.title || '新反馈'}`,
+          content: item.description || '',
+          createTime: item.createTime,
+          route: '/dormmanager/feedback'
+        }))
 
-    notifications.value = [...notices, ...chats]
-      .sort((a, b) => new Date(b.createTime || 0) - new Date(a.createTime || 0))
-      .slice(0, 30)
+      // 新报修申请通知
+      const newRepairs = (pendingRepairs || [])
+        .map(item => ({
+          key: `repair:${item.id}`,
+          kindLabel: '报修',
+          title: `学生提交了报修申请`,
+          content: item.description?.substring(0, 50) || '',
+          createTime: item.createTime,
+          route: '/dormmanager/repair'
+        }))
+
+      // 新调宿申请通知
+      const newTransfers = (pendingTransfers || [])
+        .map(item => ({
+          key: `transfer:${item.id}`,
+          kindLabel: '调宿',
+          title: `学生提交了调宿申请`,
+          content: item.reason?.substring(0, 50) || '',
+          createTime: item.createTime,
+          route: '/dormmanager/transfer'
+        }))
+
+      // 新访客预约通知
+      const newVisitors = (pendingVisitors || [])
+        .filter(item => item.status === 'PENDING')
+        .map(item => ({
+          key: `visitor:${item.id}`,
+          kindLabel: '访客',
+          title: `学生提交了访客预约`,
+          content: `${item.visitorName || '访客'}${item.relation ? ' (' + item.relation + ')' : ''}`,
+          createTime: item.createTime,
+          route: '/dormmanager/visitor'
+        }))
+
+      notifications.value = [...pendingCalls, ...pendingFeedbacks, ...newRepairs, ...newTransfers, ...newVisitors]
+        .sort((a, b) => new Date(b.createTime || 0) - new Date(a.createTime || 0))
+        .slice(0, 30)
+    } else {
+      const [noticeRecords, chatMessages, feedbackRecords, callRecords, myRepairs, myTransfers, myVisitors] = await Promise.all([
+        request({
+          url: '/businessRecord/list',
+          method: 'get',
+          params: { type: 'manager_messages', status: '已发布' }
+        }),
+        request({ url: '/chat/notifications', method: 'get' }),
+        request({ url: '/businessRecord/list', method: 'get', params: { type: 'feedback' } }),
+        request({ url: '/callRecord/list', method: 'get' }),
+        request({ url: '/repairRequest/list', method: 'get', params: { submitterId: userStore.userInfo?.id } }),
+        request({ url: '/transferRequest/list', method: 'get', params: { studentId: userStore.userInfo?.id } }),
+        request({ url: '/visitorRecord/list', method: 'get', params: { studentId: userStore.userInfo?.id } })
+      ])
+
+      const notices = (noticeRecords || []).map(item => ({
+        key: `notice:${item.id}`,
+        kindLabel: '公告',
+        title: item.title || '宿管发布了新公告',
+        content: item.description || '点击查看公告详情',
+        createTime: item.createTime,
+        route: '/student/notice'
+      }))
+      const chats = (chatMessages || []).map(item => ({
+        key: `chat:${item.id}`,
+        kindLabel: item.type === 'GROUP' ? '群聊' : '私聊',
+        title: `${item.senderName || '室友'}发来新消息`,
+        content: item.content,
+        createTime: item.createTime,
+        route: '/student/dorm'
+      }))
+
+      // 反馈已回复通知
+      const myRepliedFeedbacks = (feedbackRecords || [])
+        .filter(item => item.creatorId === userStore.userInfo?.id && item.status === 'REPLIED')
+        .map(item => ({
+          key: `feedback-reply:${item.id}`,
+          kindLabel: '反馈',
+          title: `你的「${item.title || '反馈'}」已回复`,
+          content: item.reply || '点击查看回复详情',
+          createTime: item.createTime,
+          route: '/student/feedback'
+        }))
+
+      // 通话状态变更通知
+      const myCallUpdates = (callRecords || [])
+        .filter(item => item.studentId === userStore.userInfo?.id && item.status !== 'PENDING')
+        .map(item => ({
+          key: `call:${item.id}`,
+          kindLabel: '通话',
+          title: `通话预约${item.status === 'ACCEPTED' ? '已接通' : '已结束'}`,
+          content: item.topic || '通话预约',
+          createTime: item.createTime,
+          route: '/student/call'
+        }))
+
+      // 报修进度通知
+      const myRepairUpdates = (myRepairs || [])
+        .filter(item => item.status !== 'PENDING')
+        .map(item => ({
+          key: `myrepair:${item.id}`,
+          kindLabel: '报修',
+          title: `报修${item.status === 'PROCESSING' ? '已接单' : '已完成'}`,
+          content: item.description?.substring(0, 50) || '',
+          createTime: item.createTime,
+          route: '/student/repair'
+        }))
+
+      // 调宿审批结果通知
+      const myTransferResults = (myTransfers || [])
+        .filter(item => item.status !== 'PENDING')
+        .map(item => ({
+          key: `mytransfer:${item.id}`,
+          kindLabel: '调宿',
+          title: `调宿申请${item.status === 'APPROVED' ? '已通过' : '已驳回'}`,
+          content: item.reason?.substring(0, 50) || '',
+          createTime: item.createTime,
+          route: '/student/transfer'
+        }))
+
+      // 访客审批结果通知
+      const myVisitorUpdates = (myVisitors || [])
+        .filter(item => item.status !== 'PENDING')
+        .map(item => ({
+          key: `myvisitor:${item.id}`,
+          kindLabel: '访客',
+          title: `访客预约${item.status === 'APPROVED' ? '已批准' : '已离开'}`,
+          content: item.visitorName || '',
+          createTime: item.createTime,
+          route: '/student/visitor'
+        }))
+
+      notifications.value = [...notices, ...chats, ...myRepliedFeedbacks, ...myCallUpdates, ...myRepairUpdates, ...myTransferResults, ...myVisitorUpdates]
+        .sort((a, b) => new Date(b.createTime || 0) - new Date(a.createTime || 0))
+        .slice(0, 30)
+    }
   } catch (error) {
     console.error('Failed to fetch topbar notifications', error)
   } finally {
@@ -295,7 +429,7 @@ function restartNotificationPolling() {
   notificationTimer = null
   loadSeenNotifications()
   notifications.value = []
-  if (userStore.role === 'student' && userStore.token) {
+  if (userStore.token) {
     fetchNotifications()
     notificationTimer = setInterval(fetchNotifications, 8000)
   }

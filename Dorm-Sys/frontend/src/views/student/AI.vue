@@ -119,12 +119,12 @@ const scrollToBottom = () => {
 
 <style scoped>
 .assistant-page { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; max-width: 1280px; margin: 0 auto; }
-.chat-card { display: grid; grid-template-rows: auto minmax(360px, 1fr) auto auto; min-height: calc(100dvh - 136px); overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.chat-card { display: grid; grid-template-rows: auto 1fr auto auto; height: calc(100dvh - 136px); overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .chat-header { display: flex; align-items: center; gap: 14px; padding: 20px 24px; border-bottom: 1px solid var(--line); }
 .assistant-mark { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 8px; background: var(--primary-2); color: var(--primary); }
 .chat-header h2 { margin: 0 0 4px; color: var(--text); font-size: 19px; }
 .chat-header p, .disclaimer { margin: 0; color: var(--sub); font-size: 13px; }
-.message-panel { overflow-y: auto; padding: 24px; background: var(--bg); }
+.message-panel { overflow-y: auto; padding: 24px; background: var(--bg); min-height: 0; }
 .empty-state { display: grid; min-height: 100%; place-content: center; justify-items: center; gap: 16px; color: var(--sub); text-align: center; }
 .empty-state strong { color: var(--text); }
 .prompt-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: min(100%, 480px); }
@@ -166,7 +166,7 @@ const scrollToBottom = () => {
 }
 @media (max-width: 600px) {
   .assistant-sidebar { grid-template-columns: 1fr; }
-  .chat-card { min-height: calc(100dvh - 112px); border-radius: 0; }
+  .chat-card { height: calc(100dvh - 112px); border-radius: 0; }
   .prompt-grid { grid-template-columns: 1fr; }
   .bubble { max-width: 88%; }
 }

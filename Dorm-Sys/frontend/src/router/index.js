@@ -31,6 +31,7 @@ const routes = [
   { path: '/dormmanager/late-return', component: () => import('../views/manager/LateReturn.vue') },
   { path: '/dormmanager/items', component: () => import('../views/manager/Items.vue') },
   { path: '/dormmanager/messages', component: () => import('../views/manager/Messages.vue') },
+  { path: '/dormmanager/memos', component: () => import('../views/manager/Memos.vue') },
   { path: '/dormmanager/call', component: () => import('../views/manager/Call.vue') },
   { path: '/dormmanager/feedback', component: () => import('../views/manager/Feedback.vue') },
   { path: '/dormmanager/profile', component: () => import('../views/manager/Profile.vue') },

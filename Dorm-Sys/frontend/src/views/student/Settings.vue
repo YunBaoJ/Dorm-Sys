@@ -18,8 +18,8 @@
             <el-form-item label="学号">
               <el-input v-model="form.username" disabled />
             </el-form-item>
-            <el-form-item label="姓名" prop="name">
-              <el-input v-model.trim="form.name" maxlength="20" />
+            <el-form-item label="姓名">
+              <el-input v-model.trim="form.name" disabled />
             </el-form-item>
             <el-form-item label="班级" prop="className">
               <el-input v-model.trim="form.className" maxlength="40" />
