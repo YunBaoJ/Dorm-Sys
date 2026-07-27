@@ -6,8 +6,9 @@ frontend/dist/
 backend/target/
 backend/logs/
 
-# === IDE ===
+# === IDE / 工具 ===
 .idea/
+.qoder/
 *.iml
 .vscode/
 *.swp
