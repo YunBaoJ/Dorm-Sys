@@ -1,6 +1,5 @@
--- 数据库初始化（URL 中已含 createDatabaseIfNotExist=true，此处保留兼容）
-CREATE DATABASE IF NOT EXISTS dormitory DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE dormitory;
+-- 数据库初始化：表结构（URL 中已含 createDatabaseIfNotExist=true）
+-- 使用当前连接指定的数据库，不切换库
 
 -- ----------------------------
 -- 1. 系统用户表
