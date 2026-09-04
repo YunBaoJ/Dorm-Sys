@@ -10,15 +10,18 @@ import com.dorm.backend.entity.User;
 import com.dorm.backend.entity.Bed;
 import com.dorm.backend.entity.Room;
 import com.dorm.backend.entity.Building;
+import com.dorm.backend.entity.StayHistory;
 import com.dorm.backend.service.TransferRequestService;
 import com.dorm.backend.service.UserService;
 import com.dorm.backend.service.BedService;
 import com.dorm.backend.service.RoomService;
 import com.dorm.backend.service.BuildingService;
+import com.dorm.backend.service.StayHistoryService;
 import com.dorm.backend.service.DormManagerScopeService;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -32,16 +35,19 @@ public class TransferRequestController {
     private final BedService bedService;
     private final RoomService roomService;
     private final BuildingService buildingService;
+    private final StayHistoryService stayHistoryService;
     private final DormManagerScopeService managerScopeService;
 
     public TransferRequestController(TransferRequestService transferRequestService, UserService userService,
                                      BedService bedService, RoomService roomService,
-                                     BuildingService buildingService, DormManagerScopeService managerScopeService) {
+                                     BuildingService buildingService, StayHistoryService stayHistoryService,
+                                     DormManagerScopeService managerScopeService) {
         this.transferRequestService = transferRequestService;
         this.userService = userService;
         this.bedService = bedService;
         this.roomService = roomService;
         this.buildingService = buildingService;
+        this.stayHistoryService = stayHistoryService;
         this.managerScopeService = managerScopeService;
     }
 
@@ -99,7 +105,10 @@ public class TransferRequestController {
                 return transferResult;
             }
         }
-        return Result.success(transferRequestService.saveOrUpdate(transferRequest));
+        if (!transferRequestService.saveOrUpdate(transferRequest)) {
+            throw new IllegalStateException("保存调宿申请失败");
+        }
+        return Result.success(true);
     }
 
     @DeleteMapping("/{id}")
@@ -130,6 +139,10 @@ public class TransferRequestController {
         if (transferRequest.getTargetRoomId() == null) {
             return Result.error(400, "批准调宿时必须指定目标房间");
         }
+        Room targetRoom = roomService.getById(transferRequest.getTargetRoomId());
+        if (targetRoom != null && "MAINTENANCE".equals(targetRoom.getStatus())) {
+            return Result.error(400, "维修中的房间不能作为调宿目标");
+        }
 
         Bed currentBed = findCurrentBed(transferRequest);
         if (currentBed != null && transferRequest.getTargetRoomId().equals(currentBed.getRoomId())) {
@@ -147,8 +160,11 @@ public class TransferRequestController {
 
         targetBed.setStudentId(transferRequest.getStudentId());
         targetBed.setStatus("OCCUPIED");
-        bedService.updateById(targetBed);
+        if (!bedService.updateById(targetBed)) {
+            throw new IllegalStateException("分配目标床位失败");
+        }
         releaseOtherBedsForStudent(transferRequest.getStudentId(), targetBed.getId());
+        updateStayHistory(transferRequest.getStudentId(), targetBed.getId());
         transferRequest.setCurrentBedId(currentBed != null ? currentBed.getId() : transferRequest.getCurrentBedId());
 
         refreshRoomStatus(currentBed != null ? currentBed.getRoomId() : null);
@@ -185,7 +201,9 @@ public class TransferRequestController {
         updateWrapper.eq("id", bed.getId())
             .set("student_id", null)
             .set("status", "EMPTY");
-        bedService.update(updateWrapper);
+        if (!bedService.update(updateWrapper)) {
+            throw new IllegalStateException("释放原床位失败");
+        }
         bed.setStudentId(null);
         bed.setStatus("EMPTY");
     }
@@ -199,13 +217,36 @@ public class TransferRequestController {
         bedService.update(updateWrapper);
     }
 
+    private void updateStayHistory(Long studentId, Long targetBedId) {
+        StayHistory currentHistory = stayHistoryService.getOne(new QueryWrapper<StayHistory>()
+            .eq("student_id", studentId)
+            .isNull("check_out_date")
+            .orderByDesc("check_in_date")
+            .last("LIMIT 1"));
+        Date now = new Date();
+        if (currentHistory != null) {
+            currentHistory.setCheckOutDate(now);
+            if (!stayHistoryService.updateById(currentHistory)) {
+                throw new IllegalStateException("关闭原住宿记录失败");
+            }
+        }
+
+        StayHistory newHistory = new StayHistory();
+        newHistory.setStudentId(studentId);
+        newHistory.setBedId(targetBedId);
+        newHistory.setCheckInDate(now);
+        if (!stayHistoryService.save(newHistory)) {
+            throw new IllegalStateException("创建住宿记录失败");
+        }
+    }
+
     private void refreshRoomStatus(Long roomId) {
         if (roomId == null) {
             return;
         }
 
         Room room = roomService.getById(roomId);
-        if (room == null || room.getCapacity() == null) {
+        if (room == null || room.getCapacity() == null || "MAINTENANCE".equals(room.getStatus())) {
             return;
         }
 
@@ -214,7 +255,12 @@ public class TransferRequestController {
         long occupied = bedService.list(queryWrapper).stream()
             .filter(bed -> bed.getStudentId() != null || "OCCUPIED".equals(bed.getStatus()))
             .count();
-        room.setStatus(occupied >= room.getCapacity() ? "FULL" : "NORMAL");
-        roomService.updateById(room);
+        String status = occupied >= room.getCapacity() ? "FULL" : "NORMAL";
+        if (!status.equals(room.getStatus())) {
+            room.setStatus(status);
+            if (!roomService.updateById(room)) {
+                throw new IllegalStateException("刷新房间状态失败");
+            }
+        }
     }
 }

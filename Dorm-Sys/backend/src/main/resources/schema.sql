@@ -221,6 +221,7 @@ CREATE TABLE IF NOT EXISTS `business_record` (
   `status` varchar(30) DEFAULT NULL COMMENT '状态',
   `reply` text DEFAULT NULL COMMENT '回复内容',
   `creator_id` bigint DEFAULT NULL COMMENT '创建人ID',
+  `reply` text DEFAULT NULL COMMENT '处理回复',
   `event_time` datetime DEFAULT NULL COMMENT '业务时间',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -330,14 +331,134 @@ CREATE TABLE IF NOT EXISTS `admin_info` (
   UNIQUE KEY `uk_admin_info_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='管理员扩展信息表';
 
+-- ----------------------------
+-- 兼容旧版本表结构（MySQL 不支持 ADD COLUMN IF NOT EXISTS）
+-- ----------------------------
+SET @migration_sql = (
+  SELECT IF(COUNT(*) = 0, 'DO 0',
+    CONCAT('ALTER TABLE `sys_user` ', GROUP_CONCAT(ddl ORDER BY sort_order SEPARATOR ', ')))
+  FROM (
+    SELECT 1 AS sort_order, CAST('ADD COLUMN `gender` varchar(10) DEFAULT NULL COMMENT ''性别''' AS CHAR(1000)) AS ddl
+      WHERE NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_user' AND COLUMN_NAME = 'gender')
+    UNION ALL SELECT 2, 'ADD COLUMN `avatar` varchar(255) DEFAULT NULL COMMENT ''头像链接'''
+      WHERE NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_user' AND COLUMN_NAME = 'avatar')
+    UNION ALL SELECT 3, 'ADD COLUMN `class_name` varchar(50) DEFAULT NULL COMMENT ''班级'''
+      WHERE NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_user' AND COLUMN_NAME = 'class_name')
+    UNION ALL SELECT 4, 'ADD COLUMN `email` varchar(50) DEFAULT NULL COMMENT ''邮箱'''
+      WHERE NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_user' AND COLUMN_NAME = 'email')
+    UNION ALL SELECT 5, 'ADD COLUMN `phone` varchar(20) DEFAULT NULL COMMENT ''电话'''
+      WHERE NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_user' AND COLUMN_NAME = 'phone')
+    UNION ALL SELECT 6, 'ADD COLUMN `enabled` tinyint(1) DEFAULT 1 COMMENT ''是否启用'''
+      WHERE NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_user' AND COLUMN_NAME = 'enabled')
+    UNION ALL SELECT 7, 'ADD COLUMN `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT ''创建时间'''
+      WHERE NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_user' AND COLUMN_NAME = 'create_time')
+    UNION ALL SELECT 8, 'ADD COLUMN `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT ''更新时间'''
+      WHERE NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_user' AND COLUMN_NAME = 'update_time')
+  ) missing_columns
+);
+PREPARE schema_migration FROM @migration_sql;
+EXECUTE schema_migration;
+DEALLOCATE PREPARE schema_migration;
+
+SET @migration_sql = IF(
+  EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'business_record' AND COLUMN_NAME = 'reply'),
+  'DO 0', 'ALTER TABLE `business_record` ADD COLUMN `reply` text DEFAULT NULL COMMENT ''处理回复'''
+);
+PREPARE schema_migration FROM @migration_sql;
+EXECUTE schema_migration;
+DEALLOCATE PREPARE schema_migration;
+
+SET @migration_sql = IF(
+  EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'item_record' AND COLUMN_NAME = 'creator_id'),
+  'DO 0', 'ALTER TABLE `item_record` ADD COLUMN `creator_id` bigint DEFAULT NULL COMMENT ''创建人ID'''
+);
+PREPARE schema_migration FROM @migration_sql;
+EXECUTE schema_migration;
+DEALLOCATE PREPARE schema_migration;
+
+-- 为已有床位分配补齐当前住宿记录；床位更新时间是现有数据中最接近入住时间的依据。
+INSERT INTO `stay_history` (`student_id`, `bed_id`, `check_in_date`)
+SELECT bed.`student_id`, bed.`id`, COALESCE(bed.`update_time`, bed.`create_time`, CURRENT_TIMESTAMP)
+FROM `bed` bed
+WHERE bed.`student_id` IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM `stay_history` history
+    WHERE history.`student_id` = bed.`student_id`
+      AND history.`check_out_date` IS NULL
+  );
+
+-- 以实际分配了学生的床位数刷新房间状态，维修状态由人工维护，不在迁移中覆盖。
+UPDATE `room` room
+LEFT JOIN (
+  SELECT bed.`room_id`, COUNT(bed.`student_id`) AS occupied
+  FROM `bed` bed
+  GROUP BY bed.`room_id`
+) occupancy ON occupancy.`room_id` = room.`id`
+SET room.`status` = CASE
+  WHEN COALESCE(occupancy.`occupied`, 0) >= room.`capacity` THEN 'FULL'
+  ELSE 'NORMAL'
+END
+WHERE (room.`status` IS NULL OR room.`status` <> 'MAINTENANCE')
+  AND room.`capacity` IS NOT NULL
+  AND NOT (room.`status` <=> CASE
+    WHEN COALESCE(occupancy.`occupied`, 0) >= room.`capacity` THEN 'FULL'
+    ELSE 'NORMAL'
+  END);
+
 -- 初始化测试数据（用户名唯一，重复时自动跳过）
 INSERT IGNORE INTO `sys_user` (`username`, `password`, `role`, `name`, `gender`, `avatar`, `class_name`, `email`, `phone`) VALUES
 ('20240001', '$2b$12$fkepBhQatdh.trQqZmPZcuZwJhLFNz1I6DuLntDfPnQiv5YlaTRrC', 'student', '张伟', '男', '/images/avatar.jpg', '计科2201', 'stu001@stu.edu.cn', '13800010001'),
 ('manager1', '$2b$12$fkepBhQatdh.trQqZmPZcuZwJhLFNz1I6DuLntDfPnQiv5YlaTRrC', 'dormmanager', '王叔', '男', NULL, NULL, NULL, NULL),
 ('admin', '$2b$12$fkepBhQatdh.trQqZmPZcuZwJhLFNz1I6DuLntDfPnQiv5YlaTRrC', 'admin', '超级管理员', NULL, NULL, NULL, NULL, NULL);
 
--- 初始化系统公告数据
-INSERT IGNORE INTO `business_record` (`type`, `title`, `description`, `status`, `creator_id`, `event_time`) VALUES
+-- 三条演示公告只声明一次，便于精确去重和幂等插入。
+DROP TEMPORARY TABLE IF EXISTS `_seed_admin_notice`;
+CREATE TEMPORARY TABLE `_seed_admin_notice` LIKE `business_record`;
+INSERT INTO `_seed_admin_notice` (`type`, `title`, `description`, `status`, `creator_id`, `event_time`) VALUES
 ('admin_notice', '宿舍楼消防演练通知', '各位同学：\n兹定于本周六（8月1日）上午10:00进行宿舍楼消防疏散演练，届时将启动消防警报，请各位同学听到警报后有序撤离至楼下空地集合。\n注意事项：\n1. 请勿使用电梯\n2. 请随身携带湿毛巾\n3. 请勿嬉戏打闹\n请各寝室长做好组织工作。', '已发布', 3, '2026-07-28 10:00:00'),
 ('admin_notice', '关于暑假留校安排的通知', '根据学校暑假工作安排，暑假期间留校学生需在宿管处登记，办理留校手续。\n暑假期间宿舍楼开放时间调整为：早6:30-晚22:30。\n请同学们注意用电安全，严禁使用违规电器。', '已发布', 3, '2026-07-25 08:00:00'),
 ('admin_notice', '宿舍水电费缴纳提醒', '2026年7月份水电费已统计完毕，请各位同学及时在系统内查询并缴纳。\n缴费截止日期：2026年8月10日。\n逾期未缴者将影响宿舍用电。', '已发布', 3, '2026-07-20 14:00:00');
+
+-- 只清理与上述种子内容完全相同的历史副本，保留最早的一条。
+DELETE duplicate_notice
+FROM `business_record` duplicate_notice
+INNER JOIN `_seed_admin_notice` seed_notice
+  ON seed_notice.`type` = duplicate_notice.`type`
+  AND seed_notice.`title` = duplicate_notice.`title`
+  AND seed_notice.`owner` <=> duplicate_notice.`owner`
+  AND seed_notice.`description` = duplicate_notice.`description`
+  AND seed_notice.`status` = duplicate_notice.`status`
+  AND seed_notice.`creator_id` <=> duplicate_notice.`creator_id`
+  AND seed_notice.`reply` <=> duplicate_notice.`reply`
+  AND seed_notice.`event_time` <=> duplicate_notice.`event_time`
+INNER JOIN `business_record` kept_notice
+  ON kept_notice.`id` < duplicate_notice.`id`
+  AND kept_notice.`type` = seed_notice.`type`
+  AND kept_notice.`title` = seed_notice.`title`
+  AND kept_notice.`owner` <=> seed_notice.`owner`
+  AND kept_notice.`description` = seed_notice.`description`
+  AND kept_notice.`status` = seed_notice.`status`
+  AND kept_notice.`creator_id` <=> seed_notice.`creator_id`
+  AND kept_notice.`reply` <=> seed_notice.`reply`
+  AND kept_notice.`event_time` <=> seed_notice.`event_time`;
+
+-- 初始化系统公告数据；存在完全相同的公告时不重复插入。
+INSERT INTO `business_record` (`type`, `title`, `owner`, `description`, `status`, `creator_id`, `reply`, `event_time`)
+SELECT seed_notice.`type`, seed_notice.`title`, seed_notice.`owner`, seed_notice.`description`,
+       seed_notice.`status`, seed_notice.`creator_id`, seed_notice.`reply`, seed_notice.`event_time`
+FROM `_seed_admin_notice` seed_notice
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM `business_record` existing_notice
+  WHERE existing_notice.`type` = seed_notice.`type`
+    AND existing_notice.`title` = seed_notice.`title`
+    AND existing_notice.`owner` <=> seed_notice.`owner`
+    AND existing_notice.`description` = seed_notice.`description`
+    AND existing_notice.`status` = seed_notice.`status`
+    AND existing_notice.`creator_id` <=> seed_notice.`creator_id`
+    AND existing_notice.`reply` <=> seed_notice.`reply`
+    AND existing_notice.`event_time` <=> seed_notice.`event_time`
+);
+
+DROP TEMPORARY TABLE `_seed_admin_notice`;

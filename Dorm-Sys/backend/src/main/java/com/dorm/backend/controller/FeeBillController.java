@@ -47,6 +47,9 @@ public class FeeBillController {
             if (feeBill.getId() != null) {
                 FeeBill existing = feeBillService.getById(feeBill.getId());
                 if (existing == null) return Result.error(403, "无权修改该宿舍账单");
+                if (!managerScopeService.canManageRoom(AuthUtils.getCurrentUserId(), existing.getRoomId())) {
+                    return Result.error(403, "无权修改该宿舍账单");
+                }
             }
             if (!managerScopeService.canManageRoom(AuthUtils.getCurrentUserId(), feeBill.getRoomId())) {
                 return Result.error(403, "无权修改该宿舍账单");

@@ -136,6 +136,7 @@ const pageNameMap = {
   '/dormmanager/late-return': '晚归管理',
   '/dormmanager/items': '物品管理',
   '/dormmanager/messages': '消息通知',
+  '/dormmanager/memos': '备忘录',
   '/dormmanager/call': '来电管理',
   '/dormmanager/feedback': '意见反馈',
   '/dormmanager/profile': '个人信息',
@@ -196,6 +197,10 @@ const notificationStorageKey = computed(() => {
 
 const unreadCount = computed(() => notifications.value.filter(item => !isRead(item)).length)
 
+function canFetchNotifications() {
+  return Boolean(userStore.token) && ['student', 'dormmanager'].includes(userStore.role)
+}
+
 function loadSeenNotifications() {
   try {
     const stored = JSON.parse(localStorage.getItem(notificationStorageKey.value) || '[]')
@@ -229,7 +234,7 @@ function markAllRead() {
 }
 
 async function fetchNotifications() {
-  if (!userStore.token) {
+  if (!canFetchNotifications()) {
     notifications.value = []
     return
   }
@@ -429,7 +434,7 @@ function restartNotificationPolling() {
   notificationTimer = null
   loadSeenNotifications()
   notifications.value = []
-  if (userStore.token) {
+  if (canFetchNotifications()) {
     fetchNotifications()
     notificationTimer = setInterval(fetchNotifications, 8000)
   }

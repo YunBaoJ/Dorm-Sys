@@ -57,8 +57,12 @@ service.interceptors.response.use(
             return Promise.reject(error)
           }
           handlingUnauthorized = true
+          const currentRoute = router.currentRoute.value
+          const loginLocation = /^\/(student|dormmanager|admin)(?:\/|$)/.test(currentRoute.path)
+            ? { path: '/login', query: { redirect: currentRoute.fullPath } }
+            : '/login'
           userStore.logout()
-          router.replace('/login')
+          router.replace(loginLocation)
           ElMessage({ message, type: 'error', grouping: true })
           setTimeout(() => {
             handlingUnauthorized = false

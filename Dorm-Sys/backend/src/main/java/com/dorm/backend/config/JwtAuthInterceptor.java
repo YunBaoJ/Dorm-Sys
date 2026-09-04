@@ -74,6 +74,8 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
                 || path.startsWith("/api/building/")
                 || path.startsWith("/api/bed/")
                 || path.startsWith("/api/feeBill/")
+                || path.startsWith("/api/hygieneRecord/")
+                || path.startsWith("/api/lateReturnRecord/")
                 || (path.startsWith("/api/user/") && !"/api/user/save".equals(path));
     }
 
@@ -84,6 +86,8 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
         String path = request.getRequestURI();
         return path.startsWith("/api/user/")
                 || path.startsWith("/api/bed/")
+                || path.startsWith("/api/hygieneRecord/")
+                || path.startsWith("/api/lateReturnRecord/")
                 || path.equals("/api/dashboard/buildings");
     }
 

@@ -116,7 +116,7 @@
 
 <script setup>
 import { nextTick, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
 import { loginApi } from '../api/auth'
 import {
@@ -134,6 +134,7 @@ import {
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const loading = ref(false)
 const showPassword = ref(false)
@@ -147,22 +148,60 @@ const roles = [
   { value: 'admin', label: '管理员', icon: Settings }
 ]
 
-const form = reactive({
-  username: '',
-  password: '',
-  role: 'student',
-  remember: false
-})
-
 const demoAccounts = {
   student: '20240001',
   dormmanager: 'manager1',
   admin: 'admin'
 }
 
+const rememberedAccountStorageKey = 'dorm-remembered-account'
+
+const loadRememberedAccount = () => {
+  try {
+    const stored = JSON.parse(localStorage.getItem(rememberedAccountStorageKey) || 'null')
+    if (stored && roles.some(role => role.value === stored.role) && typeof stored.username === 'string' && stored.username.trim()) {
+      return { role: stored.role, username: stored.username.trim() }
+    }
+  } catch {
+    // 无效的本地记录按未记住账号处理
+  }
+  return null
+}
+
+const rememberedAccount = loadRememberedAccount()
+const form = reactive({
+  username: rememberedAccount?.username || '',
+  password: '',
+  role: rememberedAccount?.role || 'student',
+  remember: Boolean(rememberedAccount)
+})
+
+const homeByRole = {
+  student: '/student/desk',
+  dormmanager: '/dormmanager/workbench',
+  admin: '/admin/overview'
+}
+
+const getPostLoginPath = (role, redirect) => {
+  const home = homeByRole[role] || homeByRole.student
+  if (typeof redirect !== 'string') return home
+
+  try {
+    const target = new URL(redirect, window.location.origin)
+    if (target.origin === window.location.origin && target.pathname.startsWith(`/${role}/`)) {
+      return `${target.pathname}${target.search}${target.hash}`
+    }
+  } catch {
+    // Invalid redirect values fall back to the role home page.
+  }
+  return home
+}
+
 // 切换角色时自动填入演示账号
 watch(() => form.role, (role) => {
-  form.username = demoAccounts[role]
+  form.username = form.remember && rememberedAccount?.role === role
+    ? rememberedAccount.username
+    : demoAccounts[role]
   errors.username = ''
 }, { immediate: true })
 
@@ -196,12 +235,19 @@ const handleLogin = async () => {
     userStore.setRole(res.user.role)
     userStore.setUserInfo(res.user)
 
+    if (form.remember) {
+      localStorage.setItem(rememberedAccountStorageKey, JSON.stringify({
+        role: res.user.role,
+        username: form.username
+      }))
+    } else {
+      localStorage.removeItem(rememberedAccountStorageKey)
+    }
+
     const roleLabel = roles.find((role) => role.value === form.role)?.label || '用户'
     ElMessage.success({ message: `欢迎进入${roleLabel}端系统`, duration: 2000 })
 
-    if (form.role === 'student') router.push('/student/desk')
-    else if (form.role === 'dormmanager') router.push('/dormmanager/workbench')
-    else router.push('/admin/overview')
+    router.push(getPostLoginPath(res.user.role, route.query.redirect))
   } catch (error) {
     console.error(error)
   } finally {

@@ -37,7 +37,8 @@ class ScopeMutationAuthorizationTest {
         when(scopeService.canManageRoom(7L, 99L)).thenReturn(false);
         when(scopeService.canManageRoom(7L, 1L)).thenReturn(true);
 
-        BedController controller = new BedController(bedService, mock(UserService.class), mock(StayHistoryService.class), scopeService);
+        BedController controller = new BedController(bedService, mock(UserService.class), mock(StayHistoryService.class),
+            mock(RoomService.class), scopeService);
         ReflectionTestUtils.setField(controller, "bedService", bedService);
         ReflectionTestUtils.setField(controller, "managerScopeService", scopeService);
 
@@ -59,6 +60,7 @@ class ScopeMutationAuthorizationTest {
         existing.setRoomId(99L);
         when(feeBillService.getById(8L)).thenReturn(existing);
         when(scopeService.canManageRoom(7L, 99L)).thenReturn(false);
+        when(scopeService.canManageRoom(7L, 1L)).thenReturn(true);
 
         FeeBillController controller = new FeeBillController(feeBillService, scopeService);
         ReflectionTestUtils.setField(controller, "feeBillService", feeBillService);
@@ -93,7 +95,7 @@ class ScopeMutationAuthorizationTest {
         when(scopeService.canManageRoom(7L, 99L)).thenReturn(false);
 
         TransferRequestController controller = new TransferRequestController(transferService, mock(UserService.class),
-            bedService, mock(RoomService.class), mock(BuildingService.class), scopeService);
+            bedService, mock(RoomService.class), mock(BuildingService.class), mock(StayHistoryService.class), scopeService);
         ReflectionTestUtils.setField(controller, "transferRequestService", transferService);
         ReflectionTestUtils.setField(controller, "bedService", bedService);
         ReflectionTestUtils.setField(controller, "managerScopeService", scopeService);

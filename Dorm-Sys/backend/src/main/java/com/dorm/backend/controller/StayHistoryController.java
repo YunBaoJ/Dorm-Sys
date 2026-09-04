@@ -1,6 +1,9 @@
 package com.dorm.backend.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dorm.backend.entity.StayHistory;
+import com.dorm.backend.entity.Bed;
+import com.dorm.backend.service.BedService;
+import com.dorm.backend.service.DormManagerScopeService;
 import com.dorm.backend.service.StayHistoryService;
 import com.dorm.backend.common.Result;
 import com.dorm.backend.common.AuthUtils;
@@ -12,9 +15,14 @@ import java.util.List;
 @RequestMapping("/api/stayHistory")
 public class StayHistoryController {
     private final StayHistoryService stayHistoryService;
+    private final BedService bedService;
+    private final DormManagerScopeService managerScopeService;
 
-    public StayHistoryController(StayHistoryService stayHistoryService) {
+    public StayHistoryController(StayHistoryService stayHistoryService, BedService bedService,
+                                 DormManagerScopeService managerScopeService) {
         this.stayHistoryService = stayHistoryService;
+        this.bedService = bedService;
+        this.managerScopeService = managerScopeService;
     }
 
     @GetMapping("/list")
@@ -22,7 +30,18 @@ public class StayHistoryController {
                                           @RequestParam(defaultValue = "100") Integer size) {
         Long userId = AuthUtils.getCurrentUserId();
         QueryWrapper<StayHistory> query = new QueryWrapper<>();
-        if ("student".equals(AuthUtils.getCurrentUserRole())) query.eq("student_id", userId);
+        String role = AuthUtils.getCurrentUserRole();
+        if ("student".equals(role)) {
+            query.eq("student_id", userId);
+        } else if ("dormmanager".equals(role)) {
+            List<Long> roomIds = managerScopeService.managedRoomIds(userId);
+            if (roomIds.isEmpty()) return Result.success(List.of());
+            List<Long> bedIds = bedService.list(new QueryWrapper<Bed>().in("room_id", roomIds)).stream()
+                    .map(Bed::getId)
+                    .toList();
+            if (bedIds.isEmpty()) return Result.success(List.of());
+            query.in("bed_id", bedIds);
+        }
         Page<StayHistory> pageResult = stayHistoryService.page(new Page<>(page, size), query);
         return Result.success(pageResult.getRecords());
     }

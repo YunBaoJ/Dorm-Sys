@@ -54,7 +54,8 @@ class StudentDataOwnershipTest {
         record.setStudentId(8L);
         when(service.getById(1L)).thenReturn(record);
         TransferRequestController controller = new TransferRequestController(service, mock(UserService.class),
-            mock(BedService.class), mock(RoomService.class), mock(BuildingService.class), mock(DormManagerScopeService.class));
+            mock(BedService.class), mock(RoomService.class), mock(BuildingService.class), mock(StayHistoryService.class),
+            mock(DormManagerScopeService.class));
         ReflectionTestUtils.setField(controller, "transferRequestService", service);
 
         Result<TransferRequest> result = controller.getById(1L);

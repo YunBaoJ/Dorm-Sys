@@ -297,7 +297,7 @@ const onBuildingChange = async (val) => {
   }
   try {
     const rooms = await getRooms(val)
-    currentRooms.value = rooms || []
+    currentRooms.value = (rooms || []).filter(room => room.status !== 'MAINTENANCE')
   } catch (e) { console.error(e);
     ElMessage.error('获取房间失败')
   }
@@ -311,7 +311,7 @@ const onRoomChange = async (val) => {
   }
   try {
     const beds = await request({ url: `/bed/list?roomId=${val}`, method: 'get' })
-    currentBeds.value = (beds || []).filter(b => b.status === 'EMPTY' || !b.studentId)
+    currentBeds.value = (beds || []).filter(b => (!b.status || b.status === 'EMPTY') && !b.studentId)
   } catch (e) { console.error(e);
     ElMessage.error('获取床位失败')
   }

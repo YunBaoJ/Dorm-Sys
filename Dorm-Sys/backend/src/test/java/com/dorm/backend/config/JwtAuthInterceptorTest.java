@@ -3,6 +3,7 @@ package com.dorm.backend.config;
 import com.dorm.backend.common.JwtUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -10,6 +11,30 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class JwtAuthInterceptorTest {
+
+    @ParameterizedTest
+    @CsvSource({
+            "GET, /api/hygieneRecord/list",
+            "POST, /api/hygieneRecord/save",
+            "PUT, /api/hygieneRecord/save",
+            "DELETE, /api/hygieneRecord/1",
+            "GET, /api/lateReturnRecord/list",
+            "POST, /api/lateReturnRecord/save",
+            "PUT, /api/lateReturnRecord/save",
+            "DELETE, /api/lateReturnRecord/1"
+    })
+    void studentCannotAccessHygieneOrLateReturnRecords(String method, String path) throws Exception {
+        JwtUtils jwtUtils = new JwtUtils("test-secret-for-jwt-interceptor-test");
+        JwtAuthInterceptor interceptor = new JwtAuthInterceptor(jwtUtils);
+        MockHttpServletRequest request = new MockHttpServletRequest(method, path);
+        request.addHeader("Authorization", "Bearer " + jwtUtils.generateToken(7L, "2022010001", "student"));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        boolean allowed = interceptor.preHandle(request, response, new Object());
+
+        assertThat(allowed).isFalse();
+        assertThat(response.getStatus()).isEqualTo(403);
+    }
 
     @Test
     void studentCannotMutateDormitoryAdministrationResources() throws Exception {
