@@ -45,9 +45,14 @@ public class AuthController {
         }
 
         if (!passwordService.isEncoded(user.getPassword())) {
-            userService.update(new UpdateWrapper<User>()
+            String legacyPassword = user.getPassword();
+            boolean upgraded = userService.update(new UpdateWrapper<User>()
                 .eq("id", user.getId())
+                .eq("password", legacyPassword)
                 .set("password", passwordService.encode(loginDTO.getPassword())));
+            if (!upgraded) {
+                return Result.error(401, "密码已变更，请重新登录");
+            }
         }
 
         // Generate JWT

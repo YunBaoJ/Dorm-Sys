@@ -1,6 +1,7 @@
 package com.dorm.backend.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.dorm.backend.common.JwtUtils;
 import com.dorm.backend.common.Result;
 import com.dorm.backend.dto.LoginDTO;
@@ -74,6 +75,37 @@ class AuthControllerTest {
         Result<Map<String, Object>> result = authController(userService).login(loginDTO());
 
         assertThat(result.getCode()).isEqualTo(200);
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void legacyPlaintextLoginUpgradesPasswordWithCompareAndSet() {
+        UserService userService = mock(UserService.class);
+        User user = loginUser();
+        user.setPassword("123456");
+        when(userService.getOne(any())).thenReturn(user);
+        when(userService.update(any(UpdateWrapper.class))).thenReturn(true);
+
+        Result<Map<String, Object>> result = authController(userService).login(loginDTO());
+
+        ArgumentCaptor<UpdateWrapper<User>> updateCaptor = ArgumentCaptor.forClass((Class) UpdateWrapper.class);
+        verify(userService).update(updateCaptor.capture());
+        assertThat(result.getCode()).isEqualTo(200);
+        assertThat(updateCaptor.getValue().getSqlSegment()).contains("id", "password");
+    }
+
+    @Test
+    void failedLegacyPasswordUpgradeDoesNotIssueToken() {
+        UserService userService = mock(UserService.class);
+        User user = loginUser();
+        user.setPassword("123456");
+        when(userService.getOne(any())).thenReturn(user);
+        when(userService.update(any(UpdateWrapper.class))).thenReturn(false);
+
+        Result<Map<String, Object>> result = authController(userService).login(loginDTO());
+
+        assertThat(result.getCode()).isEqualTo(401);
+        assertThat(result.getData()).isNull();
     }
 
     private AuthController authController(UserService userService) {
