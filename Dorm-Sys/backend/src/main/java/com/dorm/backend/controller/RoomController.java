@@ -7,15 +7,18 @@ import com.dorm.backend.common.AuthUtils;
 import com.dorm.backend.entity.Room;
 import com.dorm.backend.entity.Bed;
 import com.dorm.backend.entity.Building;
+import com.dorm.backend.entity.StayHistory;
 import com.dorm.backend.dto.RoomBatchCreateRequest;
 import com.dorm.backend.service.RoomService;
 import com.dorm.backend.service.BuildingService;
 import com.dorm.backend.service.BedService;
+import com.dorm.backend.service.StayHistoryService;
 import com.dorm.backend.service.DormManagerScopeService;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -26,13 +29,16 @@ public class RoomController {
     private final RoomService roomService;
     private final BuildingService buildingService;
     private final BedService bedService;
+    private final StayHistoryService stayHistoryService;
     private final DormManagerScopeService managerScopeService;
 
     public RoomController(RoomService roomService, BuildingService buildingService,
-                          BedService bedService, DormManagerScopeService managerScopeService) {
+                          BedService bedService, StayHistoryService stayHistoryService,
+                          DormManagerScopeService managerScopeService) {
         this.roomService = roomService;
         this.buildingService = buildingService;
         this.bedService = bedService;
+        this.stayHistoryService = stayHistoryService;
         this.managerScopeService = managerScopeService;
     }
 
@@ -56,21 +62,54 @@ public class RoomController {
     }
 
     @PostMapping("/save")
+    @Transactional
     public Result<Boolean> save(@RequestBody Room room) {
         boolean isNew = room.getId() == null;
-        boolean result = roomService.saveOrUpdate(room);
-        
-        // Auto-generate beds if new room
-        if (isNew && result && room.getCapacity() != null && room.getCapacity() > 0) {
-            for (int i = 1; i <= room.getCapacity(); i++) {
+        Room existingRoom = isNew ? null : roomService.getOne(new QueryWrapper<Room>()
+            .eq("id", room.getId())
+            .last("FOR UPDATE"));
+        if (!isNew && existingRoom == null) {
+            return Result.error(404, "房间不存在");
+        }
+
+        Integer capacity = room.getCapacity();
+        if (capacity == null && existingRoom != null) {
+            capacity = existingRoom.getCapacity();
+            room.setCapacity(capacity);
+        }
+        if (capacity == null || capacity < 1 || capacity > 12) {
+            return Result.error(400, "房间容量必须在 1 至 12 人之间");
+        }
+
+        List<Bed> existingBeds = isNew ? List.of()
+            : bedService.list(new QueryWrapper<Bed>().eq("room_id", room.getId()));
+        if (!isNew && !Objects.equals(existingRoom.getCapacity(), capacity) && !existingBeds.isEmpty()) {
+            return Result.error(400, "房间已有床位，不能直接修改容量");
+        }
+
+        if (!roomService.saveOrUpdate(room)) {
+            throw new IllegalStateException("保存房间失败");
+        }
+
+        if (isNew || existingBeds.isEmpty()) {
+            if (room.getId() == null) {
+                throw new IllegalStateException("创建房间未返回编号");
+            }
+            String roomNumber = room.getRoomNumber() != null
+                ? room.getRoomNumber() : existingRoom.getRoomNumber();
+            List<Bed> beds = new ArrayList<>(capacity);
+            for (int i = 1; i <= capacity; i++) {
                 Bed bed = new Bed();
                 bed.setRoomId(room.getId());
-                bed.setBedNumber(room.getRoomNumber() + "-" + i);
+                bed.setBedNumber(roomNumber + "-" + i);
                 bed.setStatus("EMPTY");
-                bedService.save(bed);
+                beds.add(bed);
+            }
+            if (!bedService.saveBatch(beds)) {
+                throw new IllegalStateException("创建房间床位失败");
             }
         }
-        return Result.success(result);
+        return Result.success(true);
     }
 
     @PostMapping("/batch")
@@ -144,12 +183,32 @@ public class RoomController {
     }
 
     @DeleteMapping("/{id}")
+    @Transactional
     public Result<Boolean> delete(@PathVariable Long id) {
-        // Delete associated beds first
+        Room room = roomService.getOne(new QueryWrapper<Room>().eq("id", id).last("FOR UPDATE"));
+        if (room == null) {
+            return Result.error(404, "房间不存在");
+        }
         QueryWrapper<Bed> bedQuery = new QueryWrapper<>();
-        bedQuery.eq("room_id", id);
-        bedService.remove(bedQuery);
-        
-        return Result.success(roomService.removeById(id));
+        bedQuery.eq("room_id", id).last("FOR UPDATE");
+        List<Bed> beds = bedService.list(bedQuery);
+        boolean occupied = beds.stream()
+            .anyMatch(bed -> bed.getStudentId() != null || "OCCUPIED".equals(bed.getStatus()));
+        if (occupied) {
+            return Result.error(400, "房间仍有学生入住，不能删除");
+        }
+        List<Long> bedIds = beds.stream().map(Bed::getId).filter(Objects::nonNull).toList();
+        if (!bedIds.isEmpty()
+                && !stayHistoryService.list(new QueryWrapper<StayHistory>()
+                    .in("bed_id", bedIds).last("FOR UPDATE")).isEmpty()) {
+            return Result.error(400, "房间存在住宿历史，不能删除");
+        }
+        if (!beds.isEmpty() && !bedService.remove(new QueryWrapper<Bed>().eq("room_id", id))) {
+            throw new IllegalStateException("删除房间床位失败");
+        }
+        if (!roomService.removeById(id)) {
+            throw new IllegalStateException("删除房间失败");
+        }
+        return Result.success(true);
     }
 }

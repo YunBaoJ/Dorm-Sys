@@ -22,9 +22,6 @@ CREATE TABLE IF NOT EXISTS `sys_user` (
   UNIQUE KEY `uk_username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
--- 兼容已有表（Railway 上已建表但缺 gender 列）
-ALTER TABLE `sys_user` ADD COLUMN `gender` varchar(10) DEFAULT NULL COMMENT '性别' AFTER `name`;
-
 -- ----------------------------
 -- 2. 楼栋表
 -- ----------------------------
@@ -72,6 +69,7 @@ CREATE TABLE IF NOT EXISTS `bed` (
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_bed_student_id` (`student_id`),
   KEY `idx_room_id` (`room_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='床位表';
 
@@ -140,6 +138,7 @@ CREATE TABLE IF NOT EXISTS `fee_bill` (
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_fee_bill_room_type_month` (`room_id`, `type`, `month`),
   KEY `idx_room_id` (`room_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='水电费账单表';
 
@@ -219,7 +218,6 @@ CREATE TABLE IF NOT EXISTS `business_record` (
   `owner` varchar(100) DEFAULT NULL COMMENT '对象/联系人/位置',
   `description` text COMMENT '说明',
   `status` varchar(30) DEFAULT NULL COMMENT '状态',
-  `reply` text DEFAULT NULL COMMENT '回复内容',
   `creator_id` bigint DEFAULT NULL COMMENT '创建人ID',
   `reply` text DEFAULT NULL COMMENT '处理回复',
   `event_time` datetime DEFAULT NULL COMMENT '业务时间',
@@ -371,6 +369,40 @@ DEALLOCATE PREPARE schema_migration;
 SET @migration_sql = IF(
   EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'item_record' AND COLUMN_NAME = 'creator_id'),
   'DO 0', 'ALTER TABLE `item_record` ADD COLUMN `creator_id` bigint DEFAULT NULL COMMENT ''创建人ID'''
+);
+PREPARE schema_migration FROM @migration_sql;
+EXECUTE schema_migration;
+DEALLOCATE PREPARE schema_migration;
+
+SET @migration_sql = IF(
+  EXISTS (
+    SELECT 1 FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'fee_bill'
+      AND INDEX_NAME = 'uk_fee_bill_room_type_month'
+    GROUP BY INDEX_NAME
+    HAVING MIN(NON_UNIQUE) = 0
+      AND GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) = 'room_id,type,month'
+  ),
+  'DO 0',
+  'ALTER TABLE `fee_bill` ADD UNIQUE KEY `uk_fee_bill_room_type_month` (`room_id`, `type`, `month`)'
+);
+PREPARE schema_migration FROM @migration_sql;
+EXECUTE schema_migration;
+DEALLOCATE PREPARE schema_migration;
+
+SET @migration_sql = IF(
+  EXISTS (
+    SELECT 1 FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'bed'
+      AND INDEX_NAME = 'uk_bed_student_id'
+    GROUP BY INDEX_NAME
+    HAVING MIN(NON_UNIQUE) = 0
+      AND GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) = 'student_id'
+  ),
+  'DO 0',
+  'ALTER TABLE `bed` ADD UNIQUE KEY `uk_bed_student_id` (`student_id`)'
 );
 PREPARE schema_migration FROM @migration_sql;
 EXECUTE schema_migration;

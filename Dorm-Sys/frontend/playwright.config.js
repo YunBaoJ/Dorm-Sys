@@ -11,6 +11,7 @@ export default defineConfig({
   webServer: [
     {
       command: 'cmd /c "..\\backend\\mvnw.cmd spring-boot:run"',
+      cwd: '../backend',
       url: 'http://127.0.0.1:8088/api/dashboard/stats',
       reuseExistingServer: true,
       timeout: 120000

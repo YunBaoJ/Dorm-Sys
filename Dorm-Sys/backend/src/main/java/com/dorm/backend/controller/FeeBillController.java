@@ -1,5 +1,6 @@
 package com.dorm.backend.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dorm.backend.common.Result;
 import com.dorm.backend.common.AuthUtils;
@@ -54,6 +55,16 @@ public class FeeBillController {
             if (!managerScopeService.canManageRoom(AuthUtils.getCurrentUserId(), feeBill.getRoomId())) {
                 return Result.error(403, "无权修改该宿舍账单");
             }
+        }
+        QueryWrapper<FeeBill> duplicateQuery = new QueryWrapper<FeeBill>()
+            .eq("room_id", feeBill.getRoomId())
+            .eq("type", feeBill.getType())
+            .eq("month", feeBill.getMonth());
+        if (feeBill.getId() != null) {
+            duplicateQuery.ne("id", feeBill.getId());
+        }
+        if (feeBillService.count(duplicateQuery) > 0) {
+            return Result.error(409, "该房间本月同类型账单已存在");
         }
         return Result.success(feeBillService.saveOrUpdate(feeBill));
     }

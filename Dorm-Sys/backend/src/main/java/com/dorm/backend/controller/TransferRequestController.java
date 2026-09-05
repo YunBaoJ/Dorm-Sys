@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.dorm.backend.common.Result;
 import com.dorm.backend.common.AuthUtils;
+import com.dorm.backend.common.BedAllocationConflictException;
 import com.dorm.backend.entity.TransferRequest;
 import com.dorm.backend.entity.User;
 import com.dorm.backend.entity.Bed;
@@ -22,8 +23,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -124,6 +128,9 @@ public class TransferRequestController {
     private boolean canManageTransfer(TransferRequest transferRequest) {
         Bed currentBed = transferRequest.getCurrentBedId() == null
             ? null : bedService.getById(transferRequest.getCurrentBedId());
+        if (currentBed != null && !Objects.equals(transferRequest.getStudentId(), currentBed.getStudentId())) {
+            currentBed = null;
+        }
         if (currentBed == null && transferRequest.getStudentId() != null) {
             currentBed = bedService.list(new QueryWrapper<Bed>()
                 .eq("student_id", transferRequest.getStudentId()).last("LIMIT 1")).stream().findFirst().orElse(null);
@@ -139,12 +146,42 @@ public class TransferRequestController {
         if (transferRequest.getTargetRoomId() == null) {
             return Result.error(400, "批准调宿时必须指定目标房间");
         }
-        Room targetRoom = roomService.getById(transferRequest.getTargetRoomId());
-        if (targetRoom != null && "MAINTENANCE".equals(targetRoom.getStatus())) {
+        Bed currentBed = findCurrentBed(transferRequest);
+        if ("dormmanager".equals(AuthUtils.getCurrentUserRole()) && currentBed != null
+                && !managerScopeService.canManageRoom(AuthUtils.getCurrentUserId(), currentBed.getRoomId())) {
+            return Result.error(403, "无权处理该调宿申请");
+        }
+        Set<Long> affectedRoomIds = new LinkedHashSet<>();
+        affectedRoomIds.add(transferRequest.getTargetRoomId());
+        if (currentBed != null) {
+            affectedRoomIds.add(currentBed.getRoomId());
+        }
+        Map<Long, Room> lockedRooms = lockRooms(affectedRoomIds);
+        Room targetRoom = lockedRooms.get(transferRequest.getTargetRoomId());
+        if (targetRoom == null) {
+            throw new BedAllocationConflictException("目标房间已变化，请刷新后重试");
+        }
+        if (currentBed != null && !lockedRooms.containsKey(currentBed.getRoomId())) {
+            throw new BedAllocationConflictException("原床位所属房间已变化，请刷新后重试");
+        }
+        if ("MAINTENANCE".equals(targetRoom.getStatus())) {
             return Result.error(400, "维修中的房间不能作为调宿目标");
         }
 
-        Bed currentBed = findCurrentBed(transferRequest);
+        Bed lockedCurrentBed = findCurrentBed(transferRequest);
+        if (currentBed != null && (lockedCurrentBed == null
+                || !Objects.equals(currentBed.getId(), lockedCurrentBed.getId())
+                || !Objects.equals(currentBed.getRoomId(), lockedCurrentBed.getRoomId()))) {
+            throw new BedAllocationConflictException("原床位状态已变化，请刷新后重试");
+        }
+        if (lockedCurrentBed != null && !affectedRoomIds.contains(lockedCurrentBed.getRoomId())) {
+            throw new BedAllocationConflictException("原床位所属房间已变化，请刷新后重试");
+        }
+        currentBed = lockedCurrentBed;
+        if ("dormmanager".equals(AuthUtils.getCurrentUserRole()) && currentBed != null
+                && !managerScopeService.canManageRoom(AuthUtils.getCurrentUserId(), currentBed.getRoomId())) {
+            return Result.error(403, "无权处理该调宿申请");
+        }
         if (currentBed != null && transferRequest.getTargetRoomId().equals(currentBed.getRoomId())) {
             return Result.success(true);
         }
@@ -158,18 +195,41 @@ public class TransferRequestController {
             releaseBed(currentBed);
         }
 
+        UpdateWrapper<Bed> claimTarget = new UpdateWrapper<>();
+        claimTarget.eq("id", targetBed.getId())
+            .eq("room_id", targetBed.getRoomId())
+            .isNull("student_id")
+            .and(status -> status.isNull("status").or().eq("status", "EMPTY"))
+            .set("student_id", transferRequest.getStudentId())
+            .set("status", "OCCUPIED");
+        if (!bedService.update(claimTarget)) {
+            throw new BedAllocationConflictException("目标床位已被占用，请刷新后重试");
+        }
         targetBed.setStudentId(transferRequest.getStudentId());
         targetBed.setStatus("OCCUPIED");
-        if (!bedService.updateById(targetBed)) {
-            throw new IllegalStateException("分配目标床位失败");
-        }
-        releaseOtherBedsForStudent(transferRequest.getStudentId(), targetBed.getId());
         updateStayHistory(transferRequest.getStudentId(), targetBed.getId());
         transferRequest.setCurrentBedId(currentBed != null ? currentBed.getId() : transferRequest.getCurrentBedId());
 
-        refreshRoomStatus(currentBed != null ? currentBed.getRoomId() : null);
-        refreshRoomStatus(targetBed.getRoomId());
+        refreshRoomStatus(currentBed != null ? lockedRooms.get(currentBed.getRoomId()) : null);
+        refreshRoomStatus(lockedRooms.get(targetBed.getRoomId()));
         return Result.success(true);
+    }
+
+    private Map<Long, Room> lockRooms(Set<Long> roomIds) {
+        List<Long> sortedRoomIds = roomIds.stream()
+            .filter(Objects::nonNull)
+            .distinct()
+            .sorted()
+            .toList();
+        if (sortedRoomIds.isEmpty()) {
+            return Map.of();
+        }
+        return roomService.list(new QueryWrapper<Room>()
+                .in("id", sortedRoomIds)
+                .orderByAsc("id")
+                .last("FOR UPDATE"))
+            .stream()
+            .collect(Collectors.toMap(Room::getId, room -> room));
     }
 
     private Bed findCurrentBed(TransferRequest transferRequest) {
@@ -199,22 +259,24 @@ public class TransferRequestController {
     private void releaseBed(Bed bed) {
         UpdateWrapper<Bed> updateWrapper = new UpdateWrapper<>();
         updateWrapper.eq("id", bed.getId())
-            .set("student_id", null)
+            .eq("room_id", bed.getRoomId());
+        if (bed.getStudentId() == null) {
+            updateWrapper.isNull("student_id");
+        } else {
+            updateWrapper.eq("student_id", bed.getStudentId());
+        }
+        if (bed.getStatus() == null) {
+            updateWrapper.isNull("status");
+        } else {
+            updateWrapper.eq("status", bed.getStatus());
+        }
+        updateWrapper.set("student_id", null)
             .set("status", "EMPTY");
         if (!bedService.update(updateWrapper)) {
-            throw new IllegalStateException("释放原床位失败");
+            throw new BedAllocationConflictException("原床位状态已变化，请刷新后重试");
         }
         bed.setStudentId(null);
         bed.setStatus("EMPTY");
-    }
-
-    private void releaseOtherBedsForStudent(Long studentId, Long keptBedId) {
-        UpdateWrapper<Bed> updateWrapper = new UpdateWrapper<>();
-        updateWrapper.eq("student_id", studentId)
-            .ne("id", keptBedId)
-            .set("student_id", null)
-            .set("status", "EMPTY");
-        bedService.update(updateWrapper);
     }
 
     private void updateStayHistory(Long studentId, Long targetBedId) {
@@ -240,18 +302,17 @@ public class TransferRequestController {
         }
     }
 
-    private void refreshRoomStatus(Long roomId) {
-        if (roomId == null) {
+    private void refreshRoomStatus(Room room) {
+        if (room == null) {
             return;
         }
 
-        Room room = roomService.getById(roomId);
-        if (room == null || room.getCapacity() == null || "MAINTENANCE".equals(room.getStatus())) {
+        if (room.getCapacity() == null || "MAINTENANCE".equals(room.getStatus())) {
             return;
         }
 
         QueryWrapper<Bed> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("room_id", roomId);
+        queryWrapper.eq("room_id", room.getId()).last("FOR UPDATE");
         long occupied = bedService.list(queryWrapper).stream()
             .filter(bed -> bed.getStudentId() != null || "OCCUPIED".equals(bed.getStatus()))
             .count();

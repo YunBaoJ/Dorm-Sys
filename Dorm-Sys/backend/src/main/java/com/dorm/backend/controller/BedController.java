@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.dorm.backend.common.Result;
 import com.dorm.backend.common.AuthUtils;
+import com.dorm.backend.common.BedAllocationConflictException;
 import com.dorm.backend.entity.Bed;
 import com.dorm.backend.entity.Room;
 import com.dorm.backend.entity.User;
@@ -65,15 +66,20 @@ public class BedController {
     @PostMapping("/save")
     @Transactional
     public Result<Boolean> save(@RequestBody Bed bed) {
-        Bed existingBed = bed.getId() == null ? null : bedService.getById(bed.getId());
-        if (bed.getId() != null && existingBed == null) {
+        if (bed.getId() == null) {
+            if ("dormmanager".equals(AuthUtils.getCurrentUserRole())
+                    && !managerScopeService.canManageRoom(AuthUtils.getCurrentUserId(), bed.getRoomId())) {
+                return Result.error(403, "无权修改该床位");
+            }
+            return Result.error(400, "请通过房间管理创建床位");
+        }
+        Bed existingBed = bedService.getById(bed.getId());
+        if (existingBed == null) {
             return Result.error(404, "床位不存在");
         }
-        Long targetRoomId = bed.getRoomId();
-        if (targetRoomId == null && bed.getId() != null) {
-            targetRoomId = existingBed.getRoomId();
-        }
-        if ("dormmanager".equals(AuthUtils.getCurrentUserRole()) && existingBed != null
+        Long requestedRoomId = bed.getRoomId() != null ? bed.getRoomId() : existingBed.getRoomId();
+        Long targetRoomId = existingBed.getRoomId();
+        if ("dormmanager".equals(AuthUtils.getCurrentUserRole())
                 && !managerScopeService.canManageRoom(AuthUtils.getCurrentUserId(), existingBed.getRoomId())) {
             return Result.error(403, "无权修改该床位");
         }
@@ -86,121 +92,220 @@ public class BedController {
             }
         }
         if ("dormmanager".equals(AuthUtils.getCurrentUserRole())
-                && !managerScopeService.canManageRoom(AuthUtils.getCurrentUserId(), targetRoomId)) {
+                && !managerScopeService.canManageRoom(AuthUtils.getCurrentUserId(), requestedRoomId)) {
             return Result.error(403, "无权修改该床位");
         }
+        if (bed.getRoomId() != null && !Objects.equals(bed.getRoomId(), existingBed.getRoomId())) {
+            return Result.error(400, "不能通过床位管理调整所属房间");
+        }
+
+        Long oldStudentId = existingBed.getStudentId();
+        Long newStudentId = bed.getStudentId();
+        List<Bed> previousBeds = List.of();
+        if (!Objects.equals(oldStudentId, newStudentId) && newStudentId != null) {
+            previousBeds = bedService.list(new QueryWrapper<Bed>()
+                .eq("student_id", newStudentId)
+                .ne("id", bed.getId()));
+        }
+
+        Set<Long> affectedRoomIds = new LinkedHashSet<>();
+        affectedRoomIds.add(existingBed.getRoomId());
+        previousBeds.stream().map(Bed::getRoomId).filter(Objects::nonNull).forEach(affectedRoomIds::add);
+        Map<Long, Room> lockedRooms = lockRooms(affectedRoomIds);
+        if (lockedRooms.size() != affectedRoomIds.stream().filter(Objects::nonNull).count()) {
+            throw new BedAllocationConflictException("床位所属房间已变化，请刷新后重试");
+        }
+
         if (bed.getStudentId() != null) {
-            String currentBedStatus = existingBed == null ? bed.getStatus() : existingBed.getStatus();
-            if ("BROKEN".equals(currentBedStatus)) {
+            if ("BROKEN".equals(existingBed.getStatus())) {
                 return Result.error(400, "损坏的床位不能办理入住");
             }
-            Room targetRoom = roomService.getById(targetRoomId);
+            Room targetRoom = lockedRooms.get(targetRoomId);
             if (targetRoom != null && "MAINTENANCE".equals(targetRoom.getStatus())) {
                 return Result.error(400, "维修中的房间不能办理入住");
             }
         }
-        if (bed.getId() != null) {
-            Set<Long> affectedRoomIds = new LinkedHashSet<>();
-            affectedRoomIds.add(existingBed.getRoomId());
-            affectedRoomIds.add(targetRoomId);
-            if (existingBed != null) {
-                Long oldStudentId = existingBed.getStudentId();
-                Long newStudentId = bed.getStudentId();
-                
-                if (!Objects.equals(oldStudentId, newStudentId)) {
-                    // Someone is moving out
-                    if (oldStudentId != null) {
-                        QueryWrapper<StayHistory> query = new QueryWrapper<>();
-                        query.eq("student_id", oldStudentId)
-                             .eq("bed_id", bed.getId())
-                             .isNull("check_out_date")
-                             .orderByDesc("check_in_date")
-                             .last("LIMIT 1");
-                        StayHistory history = stayHistoryService.getOne(query);
-                        if (history != null) {
-                            history.setCheckOutDate(new Date());
-                            if (!stayHistoryService.updateById(history)) {
-                                throw new IllegalStateException("关闭住宿记录失败");
-                            }
-                        }
-                    }
-                    // Someone is moving in
-                    if (newStudentId != null) {
-                        List<Bed> previousBeds = bedService.list(new QueryWrapper<Bed>()
-                            .eq("student_id", newStudentId)
-                            .ne("id", bed.getId()));
-                        previousBeds.stream().map(Bed::getRoomId).forEach(affectedRoomIds::add);
-                        // Clear the student's previous bed if any
-                        if (!previousBeds.isEmpty() && !bedService.update(
-                                new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Bed>()
-                                    .set("student_id", null)
-                                    .set("status", "EMPTY")
-                                    .eq("student_id", newStudentId)
-                                    .ne("id", bed.getId()))) {
-                            throw new IllegalStateException("清理学生原床位失败");
-                        }
-                            
-                        StayHistory oldHistory = stayHistoryService.getOne(new QueryWrapper<StayHistory>()
-                             .eq("student_id", newStudentId)
-                             .isNull("check_out_date")
-                             .orderByDesc("check_in_date")
-                             .last("LIMIT 1"));
-                        if (oldHistory != null) {
-                            oldHistory.setCheckOutDate(new Date());
-                            if (!stayHistoryService.updateById(oldHistory)) {
-                                throw new IllegalStateException("关闭原住宿记录失败");
-                            }
-                        }
 
-                        StayHistory newHistory = new StayHistory();
-                        newHistory.setStudentId(newStudentId);
-                        newHistory.setBedId(bed.getId());
-                        newHistory.setCheckInDate(new Date());
-                        if (!stayHistoryService.save(newHistory)) {
-                            throw new IllegalStateException("创建住宿记录失败");
-                        }
+        if (!Objects.equals(oldStudentId, newStudentId)) {
+            if (oldStudentId != null) {
+                QueryWrapper<StayHistory> query = new QueryWrapper<>();
+                query.eq("student_id", oldStudentId)
+                    .eq("bed_id", bed.getId())
+                    .isNull("check_out_date")
+                    .orderByDesc("check_in_date")
+                    .last("LIMIT 1");
+                StayHistory history = stayHistoryService.getOne(query);
+                if (history != null) {
+                    history.setCheckOutDate(new Date());
+                    if (!stayHistoryService.updateById(history)) {
+                        throw new IllegalStateException("关闭住宿记录失败");
                     }
-                    bed.setStatus(newStudentId == null ? "EMPTY" : "OCCUPIED");
                 }
             }
-            
-            com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Bed> updateWrapper = new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
-            updateWrapper.eq("id", bed.getId());
-            if (bed.getStudentId() == null) {
-                updateWrapper.set("student_id", null);
-            } else {
-                updateWrapper.set("student_id", bed.getStudentId());
+
+            if (newStudentId != null) {
+                for (Bed previousBed : previousBeds) {
+                    com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Bed> releasePrevious =
+                        new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+                    releasePrevious.eq("id", previousBed.getId())
+                        .eq("room_id", previousBed.getRoomId())
+                        .eq("student_id", newStudentId);
+                    if (previousBed.getStatus() == null) {
+                        releasePrevious.isNull("status");
+                    } else {
+                        releasePrevious.eq("status", previousBed.getStatus());
+                    }
+                    releasePrevious.set("student_id", null).set("status", "EMPTY");
+                    if (!bedService.update(releasePrevious)) {
+                        throw new BedAllocationConflictException("原床位状态已变化，请刷新后重试");
+                    }
+                }
+
+                StayHistory oldHistory = stayHistoryService.getOne(new QueryWrapper<StayHistory>()
+                    .eq("student_id", newStudentId)
+                    .isNull("check_out_date")
+                    .orderByDesc("check_in_date")
+                    .last("LIMIT 1"));
+                if (oldHistory != null) {
+                    oldHistory.setCheckOutDate(new Date());
+                    if (!stayHistoryService.updateById(oldHistory)) {
+                        throw new IllegalStateException("关闭原住宿记录失败");
+                    }
+                }
+
+                StayHistory newHistory = new StayHistory();
+                newHistory.setStudentId(newStudentId);
+                newHistory.setBedId(bed.getId());
+                newHistory.setCheckInDate(new Date());
+                if (!stayHistoryService.save(newHistory)) {
+                    throw new IllegalStateException("创建住宿记录失败");
+                }
             }
-            if (bed.getStatus() != null) updateWrapper.set("status", bed.getStatus());
-            if (bed.getRoomId() != null) updateWrapper.set("room_id", bed.getRoomId());
-            if (bed.getBedNumber() != null) updateWrapper.set("bed_number", bed.getBedNumber());
-            
-            if (!bedService.update(updateWrapper)) {
-                throw new IllegalStateException("更新床位失败");
-            }
-            affectedRoomIds.stream().filter(Objects::nonNull).forEach(this::refreshRoomStatus);
-            return Result.success(true);
+            bed.setStatus(newStudentId == null ? "EMPTY" : "OCCUPIED");
         }
-        return Result.success(bedService.save(bed));
+
+        com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Bed> updateWrapper =
+            new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+        updateWrapper.eq("id", bed.getId())
+            .eq("room_id", existingBed.getRoomId());
+        if (existingBed.getStudentId() == null) {
+            updateWrapper.isNull("student_id");
+        } else {
+            updateWrapper.eq("student_id", existingBed.getStudentId());
+        }
+        if (existingBed.getStatus() == null) {
+            updateWrapper.isNull("status");
+        } else {
+            updateWrapper.eq("status", existingBed.getStatus());
+        }
+        if (bed.getStudentId() == null) {
+            updateWrapper.set("student_id", null);
+        } else {
+            updateWrapper.set("student_id", bed.getStudentId());
+        }
+        if (bed.getStatus() != null) updateWrapper.set("status", bed.getStatus());
+        if (bed.getBedNumber() != null) updateWrapper.set("bed_number", bed.getBedNumber());
+
+        if (!bedService.update(updateWrapper)) {
+            throw new BedAllocationConflictException("床位状态已变化，请刷新后重试");
+        }
+        affectedRoomIds.stream()
+            .map(lockedRooms::get)
+            .filter(Objects::nonNull)
+            .forEach(this::refreshRoomStatus);
+        return Result.success(true);
+    }
+
+    private Map<Long, Room> lockRooms(Set<Long> roomIds) {
+        List<Long> sortedRoomIds = roomIds.stream()
+            .filter(Objects::nonNull)
+            .distinct()
+            .sorted()
+            .toList();
+        if (sortedRoomIds.isEmpty()) {
+            return Map.of();
+        }
+        return roomService.list(new QueryWrapper<Room>()
+                .in("id", sortedRoomIds)
+                .orderByAsc("id")
+                .last("FOR UPDATE"))
+            .stream()
+            .collect(Collectors.toMap(Room::getId, room -> room));
     }
 
     @DeleteMapping("/{id}")
+    @Transactional
     public Result<Boolean> delete(@PathVariable Long id) {
-        Bed bed = bedService.getById(id);
-        if ("dormmanager".equals(AuthUtils.getCurrentUserRole()) && bed != null
-                && !managerScopeService.canManageRoom(AuthUtils.getCurrentUserId(), bed.getRoomId())) {
+        Bed initialBed = bedService.getById(id);
+        if ("dormmanager".equals(AuthUtils.getCurrentUserRole()) && initialBed != null
+                && !managerScopeService.canManageRoom(AuthUtils.getCurrentUserId(), initialBed.getRoomId())) {
             return Result.error(403, "无权删除该床位");
         }
-        return Result.success(bedService.removeById(id));
+        if (initialBed == null) {
+            return Result.success(false);
+        }
+
+        Room room = roomService.getOne(new QueryWrapper<Room>()
+            .eq("id", initialBed.getRoomId()).last("FOR UPDATE"));
+        if (room == null) {
+            return Result.error(409, "床位所属房间不存在");
+        }
+        List<Bed> roomBeds = bedService.list(new QueryWrapper<Bed>()
+            .eq("room_id", room.getId()).last("FOR UPDATE"));
+        Bed bed = roomBeds.stream().filter(item -> id.equals(item.getId())).findFirst().orElse(null);
+        if (bed == null) {
+            throw new BedAllocationConflictException("床位状态已变化，请刷新后重试");
+        }
+        if (bed.getStudentId() != null || "OCCUPIED".equals(bed.getStatus())) {
+            return Result.error(400, "已入住的床位不能删除");
+        }
+        if (!stayHistoryService.list(new QueryWrapper<StayHistory>()
+                .eq("bed_id", id).last("FOR UPDATE")).isEmpty()) {
+            return Result.error(400, "存在住宿历史的床位不能删除");
+        }
+        if (roomBeds.size() <= 1) {
+            return Result.error(400, "房间至少保留一个床位，请删除整个房间");
+        }
+        QueryWrapper<Bed> deleteQuery = new QueryWrapper<Bed>()
+            .eq("id", id)
+            .eq("room_id", room.getId())
+            .isNull("student_id");
+        if (bed.getStatus() == null) {
+            deleteQuery.isNull("status");
+        } else {
+            deleteQuery.eq("status", bed.getStatus());
+        }
+        if (!bedService.remove(deleteQuery)) {
+            throw new IllegalStateException("删除床位失败");
+        }
+        List<Bed> remainingBeds = roomBeds.stream().filter(item -> !id.equals(item.getId())).toList();
+        synchronizeRoomAfterBedDeletion(room, remainingBeds);
+        return Result.success(true);
     }
 
-    private void refreshRoomStatus(Long roomId) {
-        Room room = roomService.getById(roomId);
-        if (room == null || room.getCapacity() == null || "MAINTENANCE".equals(room.getStatus())) {
+    private void synchronizeRoomAfterBedDeletion(Room room, List<Bed> remainingBeds) {
+        int capacity = remainingBeds.size();
+        room.setCapacity(capacity);
+        if (!"MAINTENANCE".equals(room.getStatus())) {
+            long occupied = remainingBeds.stream()
+                .filter(item -> item.getStudentId() != null || "OCCUPIED".equals(item.getStatus()))
+                .count();
+            room.setStatus(capacity > 0 && occupied >= capacity ? "FULL" : "NORMAL");
+        }
+        if (!roomService.updateById(room)) {
+            throw new IllegalStateException("同步房间容量失败");
+        }
+    }
+
+    private void refreshRoomStatus(Room room) {
+        if (room.getCapacity() == null || "MAINTENANCE".equals(room.getStatus())) {
             return;
         }
 
-        long occupied = bedService.list(new QueryWrapper<Bed>().eq("room_id", roomId)).stream()
+        long occupied = bedService.list(new QueryWrapper<Bed>()
+                .eq("room_id", room.getId())
+                .last("FOR UPDATE"))
+            .stream()
             .filter(item -> item.getStudentId() != null || "OCCUPIED".equals(item.getStatus()))
             .count();
         String status = occupied >= room.getCapacity() ? "FULL" : "NORMAL";

@@ -36,6 +36,11 @@ public class GlobalExceptionHandler {
         return Result.error(400, "缺少必要参数: " + e.getParameterName());
     }
 
+    @ExceptionHandler(BedAllocationConflictException.class)
+    public Result<Void> handleBedAllocationConflict(BedAllocationConflictException e) {
+        return Result.error(409, e.getMessage());
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public Result<Void> handleDataIntegrity(DataIntegrityViolationException e) {
         log.warn("数据完整性冲突: {}", e.getMessage());
