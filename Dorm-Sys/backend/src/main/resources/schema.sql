@@ -374,6 +374,8 @@ PREPARE schema_migration FROM @migration_sql;
 EXECUTE schema_migration;
 DEALLOCATE PREPARE schema_migration;
 
+-- 旧库若已有重复业务数据，先保留数据并跳过唯一索引，避免阻断启动。
+-- 应用层会串行化后续写入；人工归并历史数据后，下次启动会自动补建索引。
 SET @migration_sql = IF(
   EXISTS (
     SELECT 1 FROM information_schema.STATISTICS
@@ -385,7 +387,15 @@ SET @migration_sql = IF(
       AND GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) = 'room_id,type,month'
   ),
   'DO 0',
-  'ALTER TABLE `fee_bill` ADD UNIQUE KEY `uk_fee_bill_room_type_month` (`room_id`, `type`, `month`)'
+  IF(
+    EXISTS (
+      SELECT 1 FROM `fee_bill`
+      GROUP BY `room_id`, `type`, `month`
+      HAVING COUNT(*) > 1
+    ),
+    'DO 0',
+    'ALTER TABLE `fee_bill` ADD UNIQUE KEY `uk_fee_bill_room_type_month` (`room_id`, `type`, `month`)'
+  )
 );
 PREPARE schema_migration FROM @migration_sql;
 EXECUTE schema_migration;
@@ -402,17 +412,78 @@ SET @migration_sql = IF(
       AND GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) = 'student_id'
   ),
   'DO 0',
-  'ALTER TABLE `bed` ADD UNIQUE KEY `uk_bed_student_id` (`student_id`)'
+  IF(
+    EXISTS (
+      SELECT 1 FROM `bed`
+      WHERE `student_id` IS NOT NULL
+      GROUP BY `student_id`
+      HAVING COUNT(*) > 1
+    ),
+    'DO 0',
+    'ALTER TABLE `bed` ADD UNIQUE KEY `uk_bed_student_id` (`student_id`)'
+  )
 );
 PREPARE schema_migration FROM @migration_sql;
 EXECUTE schema_migration;
 DEALLOCATE PREPARE schema_migration;
 
--- 为已有床位分配补齐当前住宿记录；床位更新时间是现有数据中最接近入住时间的依据。
+-- 重复历史数据会暂时阻止唯一索引；此时保留普通索引，避免按学生加锁时扫描整张床位表。
+SET @migration_sql = IF(
+  EXISTS (
+    SELECT 1 FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'bed'
+      AND INDEX_NAME = 'uk_bed_student_id'
+    GROUP BY INDEX_NAME
+    HAVING MIN(NON_UNIQUE) = 0
+      AND GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) = 'student_id'
+  ) AND EXISTS (
+    SELECT 1 FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'bed'
+      AND INDEX_NAME = 'idx_bed_student_lookup'
+    GROUP BY INDEX_NAME
+    HAVING MIN(NON_UNIQUE) = 1
+      AND GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) = 'student_id'
+  ),
+  'ALTER TABLE `bed` DROP INDEX `idx_bed_student_lookup`',
+  IF(
+    EXISTS (
+      SELECT 1 FROM information_schema.STATISTICS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'bed'
+        AND COLUMN_NAME = 'student_id'
+        AND SEQ_IN_INDEX = 1
+    ),
+    'DO 0',
+    IF(
+      EXISTS (
+        SELECT 1 FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'bed'
+          AND INDEX_NAME = 'idx_bed_student_lookup'
+      ),
+      'DO 0',
+      'ALTER TABLE `bed` ADD KEY `idx_bed_student_lookup` (`student_id`)'
+    )
+  )
+);
+PREPARE schema_migration FROM @migration_sql;
+EXECUTE schema_migration;
+DEALLOCATE PREPARE schema_migration;
+
+-- 仅为唯一床位分配补齐当前住宿记录；重复分配需先人工确认实际床位。
+-- 床位更新时间是现有数据中最接近入住时间的依据。
 INSERT INTO `stay_history` (`student_id`, `bed_id`, `check_in_date`)
 SELECT bed.`student_id`, bed.`id`, COALESCE(bed.`update_time`, bed.`create_time`, CURRENT_TIMESTAMP)
 FROM `bed` bed
 WHERE bed.`student_id` IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM `bed` duplicate_bed
+    WHERE duplicate_bed.`student_id` = bed.`student_id`
+      AND duplicate_bed.`id` <> bed.`id`
+  )
   AND NOT EXISTS (
     SELECT 1
     FROM `stay_history` history

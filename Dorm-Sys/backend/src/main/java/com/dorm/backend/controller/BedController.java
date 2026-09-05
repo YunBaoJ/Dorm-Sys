@@ -73,6 +73,9 @@ public class BedController {
             }
             return Result.error(400, "请通过房间管理创建床位");
         }
+        if (bed.getStudentId() != null && !lockStudent(bed.getStudentId())) {
+            return Result.error(400, "入住学生不存在");
+        }
         Bed existingBed = bedService.getById(bed.getId());
         if (existingBed == null) {
             return Result.error(404, "床位不存在");
@@ -214,6 +217,12 @@ public class BedController {
             .filter(Objects::nonNull)
             .forEach(this::refreshRoomStatus);
         return Result.success(true);
+    }
+
+    private boolean lockStudent(Long studentId) {
+        return userService.getOne(new QueryWrapper<User>()
+            .eq("id", studentId)
+            .last("FOR UPDATE")) != null;
     }
 
     private Map<Long, Room> lockRooms(Set<Long> roomIds) {

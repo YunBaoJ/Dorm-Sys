@@ -82,7 +82,7 @@ class StudentDataOwnershipTest {
         FeeBillService feeService = mock(FeeBillService.class);
 
         DormManagerScopeService scopeService = mock(DormManagerScopeService.class);
-        FeeBillController controller = new FeeBillController(feeService, scopeService);
+        FeeBillController controller = new FeeBillController(feeService, mock(RoomService.class), scopeService);
 
         controller.list(99L, null, 1, 100);
 

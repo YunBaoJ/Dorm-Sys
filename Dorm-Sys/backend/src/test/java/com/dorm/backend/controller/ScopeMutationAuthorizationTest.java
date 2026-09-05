@@ -103,8 +103,12 @@ class ScopeMutationAuthorizationTest {
         when(feeBillService.getById(8L)).thenReturn(existing);
         when(scopeService.canManageRoom(7L, 99L)).thenReturn(false);
         when(scopeService.canManageRoom(7L, 1L)).thenReturn(true);
+        RoomService roomService = mock(RoomService.class);
+        Room targetRoom = new Room();
+        targetRoom.setId(1L);
+        when(roomService.getOne(any(Wrapper.class))).thenReturn(targetRoom);
 
-        FeeBillController controller = new FeeBillController(feeBillService, scopeService);
+        FeeBillController controller = new FeeBillController(feeBillService, roomService, scopeService);
         ReflectionTestUtils.setField(controller, "feeBillService", feeBillService);
         ReflectionTestUtils.setField(controller, "managerScopeService", scopeService);
 
@@ -132,12 +136,12 @@ class ScopeMutationAuthorizationTest {
         currentBed.setId(4L);
         currentBed.setRoomId(1L);
         currentBed.setStudentId(3L);
-        when(transferService.getById(10L)).thenReturn(existing);
+        when(transferService.getOne(any(Wrapper.class))).thenReturn(existing);
         when(bedService.getById(4L)).thenReturn(currentBed);
         when(scopeService.canManageRoom(7L, 1L)).thenReturn(true);
         when(scopeService.canManageRoom(7L, 99L)).thenReturn(false);
 
-        TransferRequestController controller = new TransferRequestController(transferService, mock(UserService.class),
+        TransferRequestController controller = new TransferRequestController(transferService, validUserService(),
             bedService, mock(RoomService.class), mock(BuildingService.class), mock(StayHistoryService.class), scopeService);
         ReflectionTestUtils.setField(controller, "transferRequestService", transferService);
         ReflectionTestUtils.setField(controller, "bedService", bedService);
@@ -191,7 +195,7 @@ class ScopeMutationAuthorizationTest {
         actualRoom.setCapacity(1);
         actualRoom.setStatus("FULL");
 
-        when(transferService.getById(10L)).thenReturn(existing);
+        when(transferService.getOne(any(Wrapper.class))).thenReturn(existing);
         when(transferService.saveOrUpdate(any())).thenReturn(true);
         when(bedService.getById(4L)).thenReturn(staleRequestBed);
         when(bedService.list(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any()))
@@ -206,7 +210,7 @@ class ScopeMutationAuthorizationTest {
         when(scopeService.canManageRoom(7L, 2L)).thenReturn(true);
         when(scopeService.canManageRoom(7L, 99L)).thenReturn(false);
 
-        TransferRequestController controller = new TransferRequestController(transferService, mock(UserService.class),
+        TransferRequestController controller = new TransferRequestController(transferService, validUserService(),
             bedService, roomService, mock(BuildingService.class), historyService, scopeService);
         TransferRequest submitted = new TransferRequest();
         submitted.setId(10L);
@@ -223,5 +227,11 @@ class ScopeMutationAuthorizationTest {
         request.setAttribute("currentUserId", userId);
         request.setAttribute("currentUserRole", "dormmanager");
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+    }
+
+    private UserService validUserService() {
+        UserService userService = mock(UserService.class);
+        when(userService.getOne(any(Wrapper.class))).thenReturn(new com.dorm.backend.entity.User());
+        return userService;
     }
 }

@@ -82,26 +82,46 @@ public class RoomController {
         }
 
         List<Bed> existingBeds = isNew ? List.of()
-            : bedService.list(new QueryWrapper<Bed>().eq("room_id", room.getId()));
-        if (!isNew && !Objects.equals(existingRoom.getCapacity(), capacity) && !existingBeds.isEmpty()) {
-            return Result.error(400, "房间已有床位，不能直接修改容量");
+            : bedService.list(new QueryWrapper<Bed>()
+                .eq("room_id", room.getId())
+                .last("FOR UPDATE"));
+        if (!isNew && capacity < existingBeds.size()) {
+            return Result.error(400, "房间容量不能小于现有床位数");
+        }
+
+        String requestedStatus = room.getStatus() != null
+            ? room.getStatus() : existingRoom != null ? existingRoom.getStatus() : null;
+        if ("MAINTENANCE".equals(requestedStatus)) {
+            room.setStatus("MAINTENANCE");
+        } else {
+            long occupied = existingBeds.stream()
+                .filter(bed -> bed.getStudentId() != null || "OCCUPIED".equals(bed.getStatus()))
+                .count();
+            room.setStatus(occupied >= capacity ? "FULL" : "NORMAL");
         }
 
         if (!roomService.saveOrUpdate(room)) {
             throw new IllegalStateException("保存房间失败");
         }
 
-        if (isNew || existingBeds.isEmpty()) {
+        int bedsToCreate = capacity - existingBeds.size();
+        if (bedsToCreate > 0) {
             if (room.getId() == null) {
                 throw new IllegalStateException("创建房间未返回编号");
             }
             String roomNumber = room.getRoomNumber() != null
                 ? room.getRoomNumber() : existingRoom.getRoomNumber();
-            List<Bed> beds = new ArrayList<>(capacity);
-            for (int i = 1; i <= capacity; i++) {
+            Set<String> existingBedNumbers = existingBeds.stream()
+                .map(Bed::getBedNumber)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+            List<Bed> beds = new ArrayList<>(bedsToCreate);
+            for (int index = 1; beds.size() < bedsToCreate; index++) {
+                String bedNumber = roomNumber + "-" + index;
+                if (!existingBedNumbers.add(bedNumber)) continue;
                 Bed bed = new Bed();
                 bed.setRoomId(room.getId());
-                bed.setBedNumber(roomNumber + "-" + i);
+                bed.setBedNumber(bedNumber);
                 bed.setStatus("EMPTY");
                 beds.add(bed);
             }

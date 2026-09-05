@@ -81,14 +81,28 @@ public class TransferRequestController {
     @PostMapping("/save")
     @Transactional
     public Result<Boolean> save(@RequestBody TransferRequest transferRequest) {
-        if (AuthUtils.isStudent()) {
+        boolean isStudent = AuthUtils.isStudent();
+        TransferRequest existing = !isStudent && transferRequest.getId() != null
+            ? transferRequestService.getOne(new QueryWrapper<TransferRequest>()
+                .eq("id", transferRequest.getId())
+                .last("FOR UPDATE"))
+            : null;
+        boolean studentLocked = false;
+        if (isStudent) {
             if (transferRequest.getId() != null) return Result.error(403, "学生不能审批或修改调宿申请");
             transferRequest.setStudentId(AuthUtils.getCurrentUserId());
             transferRequest.setStatus("PENDING");
         } else if ("dormmanager".equals(AuthUtils.getCurrentUserRole())) {
-            TransferRequest existing = transferRequest.getId() == null
-                ? null : transferRequestService.getById(transferRequest.getId());
-            if (existing == null || !canManageTransfer(existing)) {
+            if (existing == null) {
+                return Result.error(403, "无权处理该调宿申请");
+            }
+            if ("APPROVED".equals(transferRequest.getStatus())) {
+                if (existing.getStudentId() == null || !lockStudent(existing.getStudentId())) {
+                    return Result.error(400, "申请学生不存在");
+                }
+                studentLocked = true;
+            }
+            if (!canManageTransfer(existing)) {
                 return Result.error(403, "无权处理该调宿申请");
             }
             Long targetRoomId = transferRequest.getTargetRoomId() != null
@@ -104,6 +118,10 @@ public class TransferRequestController {
             transferRequest.setTargetRoomId(targetRoomId);
         }
         if ("APPROVED".equals(transferRequest.getStatus())) {
+            if (!studentLocked && (transferRequest.getStudentId() == null
+                    || !lockStudent(transferRequest.getStudentId()))) {
+                return Result.error(400, "申请学生不存在");
+            }
             Result<Boolean> transferResult = applyApprovedTransfer(transferRequest);
             if (transferResult.getCode() != 200) {
                 return transferResult;
@@ -146,7 +164,10 @@ public class TransferRequestController {
         if (transferRequest.getTargetRoomId() == null) {
             return Result.error(400, "批准调宿时必须指定目标房间");
         }
-        Bed currentBed = findCurrentBed(transferRequest);
+        if (hasMultipleBedAssignments(transferRequest.getStudentId(), false)) {
+            return Result.error(409, "该学生存在多个床位分配，请先清理异常数据");
+        }
+        Bed currentBed = findCurrentBed(transferRequest, false);
         if ("dormmanager".equals(AuthUtils.getCurrentUserRole()) && currentBed != null
                 && !managerScopeService.canManageRoom(AuthUtils.getCurrentUserId(), currentBed.getRoomId())) {
             return Result.error(403, "无权处理该调宿申请");
@@ -168,7 +189,10 @@ public class TransferRequestController {
             return Result.error(400, "维修中的房间不能作为调宿目标");
         }
 
-        Bed lockedCurrentBed = findCurrentBed(transferRequest);
+        if (hasMultipleBedAssignments(transferRequest.getStudentId(), true)) {
+            return Result.error(409, "该学生存在多个床位分配，请先清理异常数据");
+        }
+        Bed lockedCurrentBed = findCurrentBed(transferRequest, true);
         if (currentBed != null && (lockedCurrentBed == null
                 || !Objects.equals(currentBed.getId(), lockedCurrentBed.getId())
                 || !Objects.equals(currentBed.getRoomId(), lockedCurrentBed.getRoomId()))) {
@@ -215,6 +239,12 @@ public class TransferRequestController {
         return Result.success(true);
     }
 
+    private boolean lockStudent(Long studentId) {
+        return userService.getOne(new QueryWrapper<User>()
+            .eq("id", studentId)
+            .last("FOR UPDATE")) != null;
+    }
+
     private Map<Long, Room> lockRooms(Set<Long> roomIds) {
         List<Long> sortedRoomIds = roomIds.stream()
             .filter(Objects::nonNull)
@@ -232,9 +262,21 @@ public class TransferRequestController {
             .collect(Collectors.toMap(Room::getId, room -> room));
     }
 
-    private Bed findCurrentBed(TransferRequest transferRequest) {
+    private boolean hasMultipleBedAssignments(Long studentId, boolean forUpdate) {
+        QueryWrapper<Bed> queryWrapper = new QueryWrapper<Bed>()
+            .eq("student_id", studentId)
+            .orderByAsc("id");
+        if (forUpdate) queryWrapper.last("FOR UPDATE");
+        return bedService.list(queryWrapper).size() > 1;
+    }
+
+    private Bed findCurrentBed(TransferRequest transferRequest, boolean forUpdate) {
         if (transferRequest.getCurrentBedId() != null) {
-            Bed bed = bedService.getById(transferRequest.getCurrentBedId());
+            Bed bed = forUpdate
+                ? bedService.getOne(new QueryWrapper<Bed>()
+                    .eq("id", transferRequest.getCurrentBedId())
+                    .last("FOR UPDATE"))
+                : bedService.getById(transferRequest.getCurrentBedId());
             if (bed != null && transferRequest.getStudentId().equals(bed.getStudentId())) {
                 return bed;
             }
@@ -242,13 +284,14 @@ public class TransferRequestController {
 
         QueryWrapper<Bed> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("student_id", transferRequest.getStudentId());
+        if (forUpdate) queryWrapper.last("FOR UPDATE");
         List<Bed> beds = bedService.list(queryWrapper);
         return beds.isEmpty() ? null : beds.get(0);
     }
 
     private Bed findAvailableTargetBed(Long targetRoomId) {
         QueryWrapper<Bed> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("room_id", targetRoomId);
+        queryWrapper.eq("room_id", targetRoomId).last("FOR UPDATE");
         return bedService.list(queryWrapper).stream()
             .filter(bed -> bed.getStudentId() == null)
             .filter(bed -> bed.getStatus() == null || "EMPTY".equals(bed.getStatus()))

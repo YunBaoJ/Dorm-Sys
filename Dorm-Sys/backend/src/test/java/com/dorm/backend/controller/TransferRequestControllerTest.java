@@ -9,9 +9,13 @@ import com.dorm.backend.entity.Room;
 import com.dorm.backend.entity.StayHistory;
 import com.dorm.backend.entity.TransferRequest;
 import com.dorm.backend.service.*;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.List;
 
@@ -26,6 +30,11 @@ import static org.mockito.Mockito.when;
 
 class TransferRequestControllerTest {
 
+    @AfterEach
+    void clearRequestContext() {
+        RequestContextHolder.resetRequestAttributes();
+    }
+
     @Test
     void approveRejectsMaintenanceTargetRoom() {
         TransferRequestService transferRequestService = mock(TransferRequestService.class);
@@ -37,13 +46,14 @@ class TransferRequestControllerTest {
         Bed targetBed = bed(2L, 2L, null, "EMPTY");
         Room maintenanceRoom = room(2L, 1, "MAINTENANCE");
         when(bedService.getById(1L)).thenReturn(currentBed);
+        when(bedService.getOne(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any())).thenReturn(currentBed);
         when(bedService.list(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any()))
             .thenAnswer(invocation -> bedsForRoom(invocation.getArgument(0), currentBed, targetBed));
         stubLockedRooms(roomService, room(1L, 1, "NORMAL"), maintenanceRoom);
         when(roomService.getById(org.mockito.ArgumentMatchers.anyLong())).thenReturn(maintenanceRoom);
         when(transferRequestService.saveOrUpdate(any())).thenReturn(true);
 
-        TransferRequestController controller = new TransferRequestController(transferRequestService, mock(UserService.class),
+        TransferRequestController controller = new TransferRequestController(transferRequestService, validUserService(),
             bedService, roomService, mock(BuildingService.class), historyService, mock(DormManagerScopeService.class));
 
         Result<Boolean> result = controller.save(approvedRequest(7L, 1L, 2L));
@@ -64,6 +74,7 @@ class TransferRequestControllerTest {
         Room currentRoom = room(1L, 1, "MAINTENANCE");
         Room targetRoom = room(2L, 1, "NORMAL");
         when(bedService.getById(1L)).thenReturn(currentBed);
+        when(bedService.getOne(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any())).thenReturn(currentBed);
         when(bedService.list(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any()))
             .thenAnswer(invocation -> bedsForRoom(invocation.getArgument(0), currentBed, targetBed));
         when(roomService.getById(1L)).thenReturn(currentRoom);
@@ -74,7 +85,7 @@ class TransferRequestControllerTest {
         when(roomService.updateById(any(Room.class))).thenReturn(true);
         when(transferRequestService.saveOrUpdate(any())).thenReturn(true);
 
-        TransferRequestController controller = new TransferRequestController(transferRequestService, mock(UserService.class),
+        TransferRequestController controller = new TransferRequestController(transferRequestService, validUserService(),
             bedService, roomService, mock(BuildingService.class), historyService, mock(DormManagerScopeService.class));
 
         Result<Boolean> result = controller.save(approvedRequest(7L, 1L, 2L));
@@ -111,6 +122,7 @@ class TransferRequestControllerTest {
         currentHistory.setBedId(1L);
 
         when(bedService.getById(1L)).thenReturn(currentBed);
+        when(bedService.getOne(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any())).thenReturn(currentBed);
         when(bedService.list(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any()))
             .thenAnswer(invocation -> bedsForRoom(invocation.getArgument(0), currentBed, targetBed));
         when(bedService.update(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any())).thenReturn(true);
@@ -123,7 +135,7 @@ class TransferRequestControllerTest {
         when(historyService.save(any(StayHistory.class))).thenReturn(true);
         when(transferRequestService.saveOrUpdate(any())).thenReturn(true);
 
-        TransferRequestController controller = new TransferRequestController(transferRequestService, mock(UserService.class),
+        TransferRequestController controller = new TransferRequestController(transferRequestService, validUserService(),
             bedService, roomService, mock(BuildingService.class), historyService, mock(DormManagerScopeService.class));
 
         TransferRequest request = new TransferRequest();
@@ -176,6 +188,7 @@ class TransferRequestControllerTest {
         Room currentRoom = room(20L, 1, "FULL");
 
         when(bedService.getById(1L)).thenReturn(currentBed);
+        when(bedService.getOne(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any())).thenReturn(currentBed);
         when(bedService.list(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any()))
             .thenAnswer(invocation -> bedsForRoom(invocation.getArgument(0), currentBed, targetBed));
         when(roomService.list(org.mockito.ArgumentMatchers.<Wrapper<Room>>any()))
@@ -188,7 +201,7 @@ class TransferRequestControllerTest {
         when(transferRequestService.saveOrUpdate(any())).thenReturn(true);
 
         TransferRequestController controller = new TransferRequestController(transferRequestService,
-            mock(UserService.class), bedService, roomService, mock(BuildingService.class), historyService,
+            validUserService(), bedService, roomService, mock(BuildingService.class), historyService,
             mock(DormManagerScopeService.class));
 
         Result<Boolean> result = controller.save(approvedRequest(7L, 1L, 10L));
@@ -216,6 +229,134 @@ class TransferRequestControllerTest {
     }
 
     @Test
+    void approveLocksStudentBeforeReadingCurrentAssignment() {
+        MockHttpServletRequest requestContext = new MockHttpServletRequest();
+        requestContext.setAttribute("currentUserId", 99L);
+        requestContext.setAttribute("currentUserRole", "dormmanager");
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(requestContext));
+        TransferRequestService transferRequestService = mock(TransferRequestService.class);
+        UserService userService = mock(UserService.class);
+        BedService bedService = mock(BedService.class);
+        RoomService roomService = mock(RoomService.class);
+        StayHistoryService historyService = mock(StayHistoryService.class);
+        Bed currentBed = bed(1L, 20L, 7L, "OCCUPIED");
+        Bed targetBed = bed(2L, 10L, null, "EMPTY");
+        Room targetRoom = room(10L, 1, "NORMAL");
+        Room currentRoom = room(20L, 1, "FULL");
+        when(userService.getOne(any(Wrapper.class))).thenReturn(new com.dorm.backend.entity.User());
+        TransferRequest existingRequest = approvedRequest(7L, 1L, 10L);
+        existingRequest.setStatus("PENDING");
+        when(transferRequestService.getOne(any(Wrapper.class))).thenReturn(existingRequest);
+        when(bedService.getById(1L)).thenReturn(currentBed);
+        when(bedService.getOne(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any())).thenReturn(currentBed);
+        when(bedService.list(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any()))
+            .thenAnswer(invocation -> bedsForRoom(invocation.getArgument(0), currentBed, targetBed));
+        stubLockedRooms(roomService, targetRoom, currentRoom);
+        when(bedService.update(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any())).thenReturn(true);
+        when(historyService.save(any(StayHistory.class))).thenReturn(true);
+        when(roomService.updateById(any(Room.class))).thenReturn(true);
+        when(transferRequestService.saveOrUpdate(any())).thenReturn(true);
+        DormManagerScopeService scopeService = mock(DormManagerScopeService.class);
+        when(scopeService.canManageRoom(99L, 20L)).thenReturn(true);
+        when(scopeService.canManageRoom(99L, 10L)).thenReturn(true);
+
+        TransferRequestController controller = new TransferRequestController(transferRequestService,
+            userService, bedService, roomService, mock(BuildingService.class), historyService,
+            scopeService);
+        controller.save(approvedRequest(7L, 1L, 10L));
+
+        ArgumentCaptor<Wrapper<com.dorm.backend.entity.User>> userLockCaptor =
+            ArgumentCaptor.forClass(Wrapper.class);
+        verify(userService).getOne(userLockCaptor.capture());
+        org.assertj.core.api.Assertions.assertThat(userLockCaptor.getValue().getSqlSegment())
+            .contains("FOR UPDATE");
+        org.assertj.core.api.Assertions.assertThat(
+            ((com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.dorm.backend.entity.User>)
+                userLockCaptor.getValue()).getParamNameValuePairs().values()).contains(7L);
+        ArgumentCaptor<Wrapper<TransferRequest>> requestLockCaptor = ArgumentCaptor.forClass(Wrapper.class);
+        verify(transferRequestService).getOne(requestLockCaptor.capture());
+        org.assertj.core.api.Assertions.assertThat(requestLockCaptor.getValue().getSqlSegment())
+            .contains("FOR UPDATE");
+        InOrder order = inOrder(transferRequestService, userService, bedService, roomService);
+        order.verify(transferRequestService).getOne(any(Wrapper.class));
+        order.verify(userService).getOne(any(Wrapper.class));
+        order.verify(bedService, times(2)).getById(1L);
+        order.verify(roomService).list(any(Wrapper.class));
+        order.verify(bedService, atLeastOnce()).getOne(any(Wrapper.class));
+        ArgumentCaptor<Wrapper<Bed>> currentBedCaptor = ArgumentCaptor.forClass(Wrapper.class);
+        verify(bedService, atLeastOnce()).getOne(currentBedCaptor.capture());
+        org.assertj.core.api.Assertions.assertThat(currentBedCaptor.getAllValues())
+            .allSatisfy(query -> org.assertj.core.api.Assertions.assertThat(query.getSqlSegment())
+                .contains("FOR UPDATE"));
+    }
+
+    @Test
+    void adminApprovalLocksExistingRequestBeforeStudent() {
+        MockHttpServletRequest requestContext = new MockHttpServletRequest();
+        requestContext.setAttribute("currentUserId", 1L);
+        requestContext.setAttribute("currentUserRole", "admin");
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(requestContext));
+        TransferRequestService transferRequestService = mock(TransferRequestService.class);
+        UserService userService = mock(UserService.class);
+        TransferRequest existingRequest = approvedRequest(7L, 1L, 10L);
+        existingRequest.setStatus("PENDING");
+        when(transferRequestService.getOne(any(Wrapper.class))).thenReturn(existingRequest);
+
+        TransferRequestController controller = new TransferRequestController(transferRequestService,
+            userService, mock(BedService.class), mock(RoomService.class), mock(BuildingService.class),
+            mock(StayHistoryService.class), mock(DormManagerScopeService.class));
+
+        controller.save(approvedRequest(7L, 1L, 10L));
+
+        InOrder order = inOrder(transferRequestService, userService);
+        order.verify(transferRequestService).getOne(any(Wrapper.class));
+        order.verify(userService).getOne(any(Wrapper.class));
+    }
+
+    @Test
+    void approveRejectsLegacyMultipleBedAssignments() {
+        TransferRequestService transferRequestService = mock(TransferRequestService.class);
+        BedService bedService = mock(BedService.class);
+        RoomService roomService = mock(RoomService.class);
+        Bed firstBed = bed(1L, 20L, 7L, "OCCUPIED");
+        Bed duplicateBed = bed(2L, 30L, 7L, "OCCUPIED");
+        when(bedService.getById(1L)).thenReturn(firstBed);
+        when(bedService.getOne(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any())).thenReturn(firstBed);
+        when(bedService.list(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any()))
+            .thenReturn(List.of(firstBed, duplicateBed));
+        stubLockedRooms(roomService, room(10L, 1, "NORMAL"), room(20L, 1, "FULL"));
+
+        TransferRequestController controller = new TransferRequestController(transferRequestService,
+            validUserService(), bedService, roomService, mock(BuildingService.class),
+            mock(StayHistoryService.class), mock(DormManagerScopeService.class));
+
+        Result<Boolean> result = controller.save(approvedRequest(7L, 1L, 10L));
+
+        org.assertj.core.api.Assertions.assertThat(result.getCode()).isEqualTo(409);
+        org.assertj.core.api.Assertions.assertThat(result.getMessage())
+            .isEqualTo("该学生存在多个床位分配，请先清理异常数据");
+        verify(bedService, never()).update(any(Wrapper.class));
+        verify(transferRequestService, never()).saveOrUpdate(any(TransferRequest.class));
+    }
+
+    @Test
+    void approveRejectsMissingStudentBeforeReadingBedState() {
+        TransferRequestService transferRequestService = mock(TransferRequestService.class);
+        UserService userService = mock(UserService.class);
+        BedService bedService = mock(BedService.class);
+        TransferRequestController controller = new TransferRequestController(transferRequestService,
+            userService, bedService, mock(RoomService.class), mock(BuildingService.class),
+            mock(StayHistoryService.class), mock(DormManagerScopeService.class));
+
+        Result<Boolean> result = controller.save(approvedRequest(7L, 1L, 10L));
+
+        org.assertj.core.api.Assertions.assertThat(result.getCode()).isEqualTo(400);
+        org.assertj.core.api.Assertions.assertThat(result.getMessage()).isEqualTo("申请学生不存在");
+        verify(bedService, never()).getOne(any(Wrapper.class));
+        verify(bedService, never()).list(any(Wrapper.class));
+    }
+
+    @Test
     void approveThrowsConflictWhenTargetBedWasClaimedConcurrently() {
         TransferRequestService transferRequestService = mock(TransferRequestService.class);
         BedService bedService = mock(BedService.class);
@@ -224,6 +365,7 @@ class TransferRequestControllerTest {
         Bed currentBed = bed(1L, 1L, 7L, "OCCUPIED");
         Bed targetBed = bed(2L, 2L, null, "EMPTY");
         when(bedService.getById(1L)).thenReturn(currentBed);
+        when(bedService.getOne(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any())).thenReturn(currentBed);
         when(bedService.list(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any()))
             .thenAnswer(invocation -> bedsForRoom(invocation.getArgument(0), currentBed, targetBed));
         when(roomService.getById(2L)).thenReturn(room(2L, 1, "NORMAL"));
@@ -232,7 +374,7 @@ class TransferRequestControllerTest {
             .thenReturn(true, false);
 
         TransferRequestController controller = new TransferRequestController(transferRequestService,
-            mock(UserService.class), bedService, roomService, mock(BuildingService.class), historyService,
+            validUserService(), bedService, roomService, mock(BuildingService.class), historyService,
             mock(DormManagerScopeService.class));
 
         org.assertj.core.api.Assertions.assertThatThrownBy(
@@ -273,6 +415,12 @@ class TransferRequestControllerTest {
     private void stubLockedRooms(RoomService roomService, Room... rooms) {
         when(roomService.list(org.mockito.ArgumentMatchers.<Wrapper<Room>>any()))
             .thenReturn(List.of(rooms));
+    }
+
+    private UserService validUserService() {
+        UserService userService = mock(UserService.class);
+        when(userService.getOne(any(Wrapper.class))).thenReturn(new com.dorm.backend.entity.User());
+        return userService;
     }
 
     private List<Bed> bedsForRoom(Wrapper<Bed> wrapper, Bed currentBed, Bed targetBed) {

@@ -208,6 +208,52 @@ class BedControllerTest {
     }
 
     @Test
+    void checkInLocksStudentBeforeReadingExistingAssignments() {
+        BedService bedService = mock(BedService.class);
+        UserService userService = mock(UserService.class);
+        StayHistoryService historyService = mock(StayHistoryService.class);
+        RoomService roomService = mock(RoomService.class);
+        Bed existing = bed(1L, 10L, null, "EMPTY");
+        Bed submitted = bed(1L, 10L, 7L, null);
+        when(bedService.getById(1L)).thenReturn(existing);
+        when(userService.getOne(any(Wrapper.class))).thenReturn(new com.dorm.backend.entity.User());
+        when(bedService.list(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any())).thenReturn(List.of());
+        when(bedService.update(org.mockito.ArgumentMatchers.<Wrapper<Bed>>any())).thenReturn(true);
+        when(historyService.save(any(StayHistory.class))).thenReturn(true);
+        stubLockedRooms(roomService, room(10L, 1, "NORMAL"));
+
+        BedController controller = new BedController(bedService, userService, historyService,
+            roomService, mock(DormManagerScopeService.class));
+        controller.save(submitted);
+
+        ArgumentCaptor<Wrapper<com.dorm.backend.entity.User>> userLockCaptor =
+            ArgumentCaptor.forClass(Wrapper.class);
+        verify(userService).getOne(userLockCaptor.capture());
+        assertThat(userLockCaptor.getValue().getSqlSegment()).contains("FOR UPDATE");
+        assertThat(((com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.dorm.backend.entity.User>)
+            userLockCaptor.getValue()).getParamNameValuePairs().values()).contains(7L);
+        InOrder order = inOrder(userService, bedService);
+        order.verify(userService).getOne(any(Wrapper.class));
+        order.verify(bedService).getById(1L);
+    }
+
+    @Test
+    void checkInRejectsMissingStudentBeforeReadingBedState() {
+        BedService bedService = mock(BedService.class);
+        UserService userService = mock(UserService.class);
+        Bed submitted = bed(1L, 10L, 7L, null);
+        BedController controller = new BedController(bedService, userService,
+            mock(StayHistoryService.class), mock(RoomService.class),
+            mock(DormManagerScopeService.class));
+
+        Result<Boolean> result = controller.save(submitted);
+
+        assertThat(result.getCode()).isEqualTo(400);
+        assertThat(result.getMessage()).isEqualTo("入住学生不存在");
+        verify(bedService, never()).getById(any());
+    }
+
+    @Test
     void checkInThrowsConflictWhenBedChangedAfterItWasRead() {
         BedService bedService = mock(BedService.class);
         StayHistoryService historyService = mock(StayHistoryService.class);
@@ -479,7 +525,9 @@ class BedControllerTest {
 
     private BedController controller(BedService bedService, StayHistoryService historyService,
                                      RoomService roomService) {
-        return new BedController(bedService, mock(UserService.class), historyService,
+        UserService userService = mock(UserService.class);
+        when(userService.getOne(any(Wrapper.class))).thenReturn(new com.dorm.backend.entity.User());
+        return new BedController(bedService, userService, historyService,
             roomService, mock(DormManagerScopeService.class));
     }
 

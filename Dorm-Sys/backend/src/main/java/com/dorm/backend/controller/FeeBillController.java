@@ -5,8 +5,11 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dorm.backend.common.Result;
 import com.dorm.backend.common.AuthUtils;
 import com.dorm.backend.entity.FeeBill;
+import com.dorm.backend.entity.Room;
 import com.dorm.backend.service.DormManagerScopeService;
 import com.dorm.backend.service.FeeBillService;
+import com.dorm.backend.service.RoomService;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,10 +19,13 @@ import java.util.List;
 public class FeeBillController {
 
     private final FeeBillService feeBillService;
+    private final RoomService roomService;
     private final DormManagerScopeService managerScopeService;
 
-    public FeeBillController(FeeBillService feeBillService, DormManagerScopeService managerScopeService) {
+    public FeeBillController(FeeBillService feeBillService, RoomService roomService,
+                             DormManagerScopeService managerScopeService) {
         this.feeBillService = feeBillService;
+        this.roomService = roomService;
         this.managerScopeService = managerScopeService;
     }
 
@@ -42,7 +48,14 @@ public class FeeBillController {
     }
 
     @PostMapping("/save")
+    @Transactional
     public Result<Boolean> save(@RequestBody FeeBill feeBill) {
+        Room room = roomService.getOne(new QueryWrapper<Room>()
+            .eq("id", feeBill.getRoomId())
+            .last("FOR UPDATE"));
+        if (room == null) {
+            return Result.error(400, "账单所属房间不存在");
+        }
         // Check dormmanager permissions
         if ("dormmanager".equals(AuthUtils.getCurrentUserRole())) {
             if (feeBill.getId() != null) {

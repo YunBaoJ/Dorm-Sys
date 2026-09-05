@@ -105,17 +105,90 @@ class RoomControllerTest {
     }
 
     @Test
-    void updateRejectsCapacityChangeWhenRoomAlreadyHasBeds() {
-        Room existing = room(10L, 1L, "101", 4);
-        Room submitted = room(10L, 1L, "101", 6);
+    void updateExpandsExistingRoomByAddingOnlyMissingEmptyBeds() {
+        Room existing = room(10L, 1L, "101", 2);
+        Room submitted = room(10L, 1L, "101", 4);
+        Bed first = new Bed();
+        first.setId(1L);
+        first.setRoomId(10L);
+        first.setBedNumber("101-1");
+        first.setStatus("EMPTY");
+        Bed second = new Bed();
+        second.setId(2L);
+        second.setRoomId(10L);
+        second.setBedNumber("101-2");
+        second.setStatus("OCCUPIED");
         when(roomService.getOne(any(Wrapper.class))).thenReturn(existing);
-        when(bedService.list(any(Wrapper.class))).thenReturn(List.of(new Bed()));
+        when(bedService.list(any(Wrapper.class))).thenReturn(List.of(first, second));
+        when(roomService.saveOrUpdate(submitted)).thenReturn(true);
+        AtomicReference<Collection<Bed>> savedBeds = new AtomicReference<>();
+        when(bedService.saveBatch(any())).thenAnswer(invocation -> {
+            savedBeds.set(invocation.getArgument(0));
+            return true;
+        });
+
+        RoomController controller = new RoomController(roomService, buildingService, bedService,
+            stayHistoryService, mock(DormManagerScopeService.class));
+        com.dorm.backend.common.Result<Boolean> result = controller.save(submitted);
+
+        assertThat(result.getCode()).isEqualTo(200);
+        assertThat(savedBeds.get()).extracting(Bed::getRoomId).containsOnly(10L);
+        assertThat(savedBeds.get()).extracting(Bed::getBedNumber)
+            .containsExactly("101-3", "101-4");
+        assertThat(savedBeds.get()).extracting(Bed::getStatus).containsOnly("EMPTY");
+    }
+
+    @Test
+    void updateExpansionChangesFullRoomBackToNormal() {
+        Room existing = room(10L, 1L, "101", 2);
+        existing.setStatus("FULL");
+        Room submitted = room(10L, 1L, "101", 4);
+        submitted.setStatus("FULL");
+        Bed first = occupiedBed(1L, 10L, 7L);
+        Bed second = occupiedBed(2L, 10L, 8L);
+        when(roomService.getOne(any(Wrapper.class))).thenReturn(existing);
+        when(bedService.list(any(Wrapper.class))).thenReturn(List.of(first, second));
+        when(roomService.saveOrUpdate(submitted)).thenReturn(true);
+        when(bedService.saveBatch(any())).thenReturn(true);
+
+        RoomController controller = new RoomController(roomService, buildingService, bedService,
+            stayHistoryService, mock(DormManagerScopeService.class));
+
+        assertThat(controller.save(submitted).getCode()).isEqualTo(200);
+        assertThat(submitted.getStatus()).isEqualTo("NORMAL");
+    }
+
+    @Test
+    void updateCapacityChangesNormalRoomToFullWhenAllBedsAreOccupied() {
+        Room existing = room(10L, 1L, "101", 4);
+        Room submitted = room(10L, 1L, "101", 2);
+        Bed first = occupiedBed(1L, 10L, 7L);
+        Bed second = occupiedBed(2L, 10L, 8L);
+        when(roomService.getOne(any(Wrapper.class))).thenReturn(existing);
+        when(bedService.list(any(Wrapper.class))).thenReturn(List.of(first, second));
+        when(roomService.saveOrUpdate(submitted)).thenReturn(true);
+
+        RoomController controller = new RoomController(roomService, buildingService, bedService,
+            stayHistoryService, mock(DormManagerScopeService.class));
+
+        assertThat(controller.save(submitted).getCode()).isEqualTo(200);
+        assertThat(submitted.getStatus()).isEqualTo("FULL");
+    }
+
+    @Test
+    void updateRejectsCapacityBelowExistingBedCount() {
+        Room existing = room(10L, 1L, "101", 4);
+        Room submitted = room(10L, 1L, "101", 2);
+        when(roomService.getOne(any(Wrapper.class))).thenReturn(existing);
+        when(bedService.list(any(Wrapper.class)))
+            .thenReturn(List.of(new Bed(), new Bed(), new Bed(), new Bed()));
 
         RoomController controller = new RoomController(roomService, buildingService, bedService,
             stayHistoryService, mock(DormManagerScopeService.class));
         com.dorm.backend.common.Result<Boolean> result = controller.save(submitted);
 
         assertThat(result.getCode()).isEqualTo(400);
+        assertThat(result.getMessage()).isEqualTo("房间容量不能小于现有床位数");
         verify(roomService, never()).saveOrUpdate(any(Room.class));
     }
 
@@ -136,7 +209,7 @@ class RoomControllerTest {
         Room submitted = room(10L, 1L, "101", 2);
         when(roomService.getById(10L)).thenReturn(existing);
         when(roomService.getOne(any(Wrapper.class))).thenReturn(existing);
-        when(bedService.list(any(Wrapper.class))).thenReturn(List.of(new Bed()));
+        when(bedService.list(any(Wrapper.class))).thenReturn(List.of(new Bed(), new Bed()));
         when(roomService.saveOrUpdate(submitted)).thenReturn(true);
 
         RoomController controller = new RoomController(roomService, buildingService, bedService,
@@ -358,4 +431,14 @@ class RoomControllerTest {
         room.setStatus("NORMAL");
         return room;
     }
+
+    private Bed occupiedBed(Long id, Long roomId, Long studentId) {
+        Bed bed = new Bed();
+        bed.setId(id);
+        bed.setRoomId(roomId);
+        bed.setStudentId(studentId);
+        bed.setStatus("OCCUPIED");
+        return bed;
+    }
+
 }
