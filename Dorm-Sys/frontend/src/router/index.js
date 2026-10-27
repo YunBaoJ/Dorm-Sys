@@ -34,6 +34,7 @@ const routes = [
   { path: '/dormmanager/memos', component: () => import('../views/manager/Memos.vue') },
   { path: '/dormmanager/call', component: () => import('../views/manager/Call.vue') },
   { path: '/dormmanager/feedback', component: () => import('../views/manager/Feedback.vue') },
+  { path: '/dormmanager/ai', component: () => import('../views/student/AI.vue') },
   { path: '/dormmanager/profile', component: () => import('../views/manager/Profile.vue') },
 
   // Admin Routes
@@ -46,6 +47,8 @@ const routes = [
   { path: '/admin/notices', component: () => import('../views/admin/Notices.vue') },
   { path: '/admin/operation-logs', component: () => import('../views/admin/OperationLogs.vue') },
   { path: '/admin/reports', component: () => import('../views/admin/Reports.vue') },
+  { path: '/admin/ai', component: () => import('../views/student/AI.vue') },
+  { path: '/admin/ai-settings', component: () => import('../views/admin/AiSettings.vue') },
 
   // 404 兜底
   { path: '/:pathMatch(.*)*', redirect: '/' },

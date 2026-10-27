@@ -1,17 +1,28 @@
-# === ÂÛÎÄÎÄµµ£¨Ìå»ı´ó£¬·ÇÏîÄ¿Ô´Âë£© ===
+# === æ–‡æ¡£ç±»ï¼ˆéé¡¹ç›®æºç ï¼‰ ===
 Document/
 task.txt
 
-# === ½ØÍ¼/Ô­ĞÍ£¨Ìå»ı´óÇÒ·Ç±ØĞè£© ===
+# === è“å›¾/åŸå‹ï¼ˆéå¿…éœ€ï¼‰ ===
 muban/
 dorm-prototype/
 
-# === ¸öÈË¹¤¾ßÅäÖÃ ===
+# === AI å·¥å…· ===
 .agents/
 .superpowers/
 docs/superpowers/
 codex_guidelines.md
 skills-lock.json
 
-# === ÔËĞĞÊ±ÈÕÖ¾ ===
+# === è¿è¡Œæ—¥å¿—ä¸ä¸´æ—¶å½’æ¡£ ===
 Dorm-Sys/backend-run.*.log
+Antigravity-archive/
+Dorm-Sys-Minimal/
+Dorm-Sys-misc/
+Dorm-Sys.zip
+docs-temp/
+k8s-gitops-handbook/
+Dorm-Sys/*.sql
+!Dorm-Sys/backend/src/main/resources/*.sql
+Dorm-Sys/frontend/capture*
+Dorm-Sys/frontend/convert-svg*
+Dorm-Sys/frontend/screenshot*

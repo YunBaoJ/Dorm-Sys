@@ -565,3 +565,22 @@ WHERE NOT EXISTS (
 );
 
 DROP TEMPORARY TABLE `_seed_admin_notice`;
+
+
+-- ----------------------------
+-- 21. AI 助手动态配置表
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS `ai_config` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `bot_name` varchar(50) DEFAULT '小寝管家' COMMENT 'AI助手名称',
+  `persona_type` varchar(50) DEFAULT 'vibrant' COMMENT '风格类型(vibrant:灵动/gentle:温柔/humorous:幽默/formal:严谨/custom:自定义)',
+  `custom_prompt` text COMMENT '自定义设定或补充提示词',
+  `temperature` double DEFAULT 0.85 COMMENT '创造力/灵动度(0.1-1.0)',
+  `model` varchar(100) DEFAULT 'Qwen/Qwen2.5-7B-Instruct' COMMENT '大模型名称',
+  `api_key` varchar(255) DEFAULT NULL COMMENT 'SiliconFlow API密钥',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI助手配置表';
+
+INSERT IGNORE INTO `ai_config` (`id`, `bot_name`, `persona_type`, `temperature`, `model`)
+VALUES (1, '小寝管家', 'vibrant', 0.85, 'Qwen/Qwen2.5-7B-Instruct');

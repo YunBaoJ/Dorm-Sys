@@ -195,6 +195,10 @@
               <el-icon :size="24" color="var(--el-color-primary)"><component :is="Clock" /></el-icon>
               <span>晚归登记</span>
             </button>
+            <button type="button" class="tool-btn" @click="router.push('/dormmanager/ai')" aria-label="AI宿管助手">
+              <el-icon :size="24" color="var(--el-color-primary)"><component :is="Bot" /></el-icon>
+              <span>AI宿管助手</span>
+            </button>
           </div>
         </el-card>
 
@@ -275,7 +279,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { RefreshCw as Refresh, User, Settings, UserCheck, Clock, ChevronRight, UserPlus, Medal, Info, AlertCircle } from '@lucide/vue'
+import { RefreshCw as Refresh, User, Settings, UserCheck, Clock, ChevronRight, UserPlus, Medal, Info, AlertCircle, Bot } from '@lucide/vue'
 import { getRooms } from '../../api/room'
 import { getBuildings } from '../../api/building'
 import { getRepairs } from '../../api/repair'

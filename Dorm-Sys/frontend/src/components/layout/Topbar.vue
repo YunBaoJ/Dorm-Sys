@@ -149,6 +149,7 @@ const pageNameMap = {
   '/admin/notices': '通知管理',
   '/admin/operation-logs': '操作日志',
   '/admin/reports': '数据报表',
+  '/admin/ai-settings': 'AI助手配置',
 }
 
 const currentPageName = computed(() => {

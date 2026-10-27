@@ -7,7 +7,7 @@
           <el-icon :size="28" color="var(--el-color-primary)"><component :is="Settings" /></el-icon>
           <div>
             <h2>报修申请</h2>
-            <p>提交故障 · 跟踪进度</p>
+            <p>提交故障 · 跟踪进度 · 现场照片凭证</p>
           </div>
         </div>
       </div>
@@ -31,6 +31,22 @@
             </el-form-item>
             <el-form-item label="问题描述" required>
               <el-input v-model="form.description" type="textarea" :rows="4" placeholder="请描述具体的故障情况" />
+            </el-form-item>
+            <el-form-item label="现场照片">
+              <el-upload
+                action="/api/upload"
+                :headers="{ Authorization: 'Bearer ' + userStore.token }"
+                :show-file-list="false"
+                :on-success="handleUploadSuccess"
+                :before-upload="beforeUpload"
+                accept="image/*"
+              >
+                <div v-if="form.images" class="uploaded-box">
+                  <img :src="form.images" class="uploaded-img" alt="现场照片" />
+                  <span class="change-tip">点击更换</span>
+                </div>
+                <el-button v-else size="small" type="info" plain>📷 上传现场照片</el-button>
+              </el-upload>
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="handleSubmit" :loading="submitting">提交报修</el-button>
@@ -58,6 +74,9 @@
                   <el-tag size="small" :type="statusTypeMap[r.status]" effect="plain" round>{{ statusMap[r.status] }}</el-tag>
                 </div>
                 <div class="repair-desc">{{ r.description }}</div>
+                <div v-if="r.images" class="repair-photo">
+                  <el-image :src="r.images" :preview-src-list="[r.images]" preview-teleported class="thumb" fit="cover" />
+                </div>
                 <div class="repair-time">{{ r.createTime ? r.createTime.replace('T', ' ').substring(0, 16) : '' }}</div>
               </div>
             </div>
@@ -77,7 +96,7 @@ import { ElMessage } from 'element-plus'
 import request from '../../utils/request'
 
 const userStore = useUserStore()
-const form = ref({ type: '', description: '' })
+const form = ref({ type: '', description: '', images: '' })
 const myRepairs = ref([])
 const currentRoomId = ref(null)
 const loading = ref(false)
@@ -87,12 +106,36 @@ const statusMap = { 'PENDING': '待处理', 'PROCESSING': '处理中', 'COMPLETE
 const statusTypeMap = { 'PENDING': 'warning', 'PROCESSING': 'primary', 'COMPLETED': 'success' }
 const iconMap = { '水管': '水', '电器': '电', '门窗': '门', '网络': '网' }
 
+const beforeUpload = (file) => {
+  const isImage = file.type.startsWith('image/')
+  const isLt5M = file.size / 1024 / 1024 < 5
+  if (!isImage) {
+    ElMessage.error('仅支持上传图片格式文件')
+    return false
+  }
+  if (!isLt5M) {
+    ElMessage.error('上传图片大小不能超过 5MB')
+    return false
+  }
+  return true
+}
+
+const handleUploadSuccess = (res) => {
+  if (res.code === 200 && res.data) {
+    form.value.images = res.data
+    ElMessage.success('现场照片上传成功')
+  } else {
+    ElMessage.error(res.message || '上传失败')
+  }
+}
+
 const fetchMyRepairs = async () => {
   loading.value = true
   try {
     const res = await getRepairs(userStore.userInfo?.id)
     myRepairs.value = res || []
-  } catch (e) { console.error(e);
+  } catch (e) {
+    console.error(e)
     ElMessage.error('获取报修记录失败')
   } finally {
     loading.value = false
@@ -103,7 +146,8 @@ const fetchCurrentRoom = async () => {
   try {
     const summary = await request({ url: '/dashboard/dorm', method: 'get' })
     currentRoomId.value = summary?.myBed?.roomId || null
-  } catch (error) { console.error(error);
+  } catch (error) {
+    console.error(error)
     currentRoomId.value = null
     ElMessage.warning('当前房间信息加载失败，提交时将由系统重新匹配')
   }
@@ -126,12 +170,14 @@ const handleSubmit = async () => {
       roomId: currentRoomId.value,
       type: form.value.type,
       description: form.value.description,
+      images: form.value.images || null,
       status: 'PENDING'
     })
     ElMessage.success('报修提交成功！')
-    form.value = { type: '', description: '' }
+    form.value = { type: '', description: '', images: '' }
     fetchMyRepairs()
-  } catch (e) { console.error(e);
+  } catch (e) {
+    console.error(e)
     ElMessage.error('提交失败')
   } finally {
     submitting.value = false
@@ -163,6 +209,14 @@ const handleSubmit = async () => {
 .repair-info { flex: 1; }
 .repair-main { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
 .repair-type { font-weight: 600; color: var(--text); }
-.repair-desc { font-size: 14px; color: var(--sub); margin-bottom: 4px; }
+.repair-desc { font-size: 14px; color: var(--sub); margin-bottom: 6px; }
+.repair-photo { margin-bottom: 6px; }
+.repair-photo .thumb { width: 72px; height: 72px; border-radius: 6px; border: 1px solid var(--line); cursor: pointer; }
 .repair-time { font-size: 12px; color: var(--sub); }
+.uploaded-box { position: relative; display: inline-block; cursor: pointer; }
+.uploaded-img { width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 1px solid var(--line); }
+.change-tip {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: rgba(0,0,0,0.5); color: #fff; font-size: 11px; text-align: center; border-radius: 0 0 8px 8px;
+}
 </style>

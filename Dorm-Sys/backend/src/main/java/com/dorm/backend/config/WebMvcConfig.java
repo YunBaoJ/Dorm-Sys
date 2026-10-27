@@ -2,7 +2,10 @@ package com.dorm.backend.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import java.io.File;
 
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
@@ -21,5 +24,16 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addPathPatterns("/api/**")
                 .excludePathPatterns("/api/auth/login", "/error");
         registry.addInterceptor(operationAuditInterceptor).addPathPatterns("/api/**");
+    }
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // 映射本地上传目录为静态资源 URL: /uploads/**
+        File uploadDir = new File("uploads");
+        if (!uploadDir.exists()) {
+            uploadDir.mkdirs();
+        }
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations(uploadDir.toURI().toString());
     }
 }

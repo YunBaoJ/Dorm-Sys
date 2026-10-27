@@ -47,6 +47,9 @@
                   <el-tag size="small" :type="t.statusType" effect="plain" round>{{ t.statusLabel }}</el-tag>
                 </div>
                 <div class="ticket-desc">{{ t.description }}</div>
+                <div v-if="t.images" class="ticket-photo">
+                  <el-image :src="t.images" :preview-src-list="[t.images]" preview-teleported class="thumb" fit="cover" />
+                </div>
                 <div class="ticket-meta">
                   <span class="meta-item"><el-icon><component :is="User" /></el-icon> {{ t.reporter }}</span>
                   <span class="meta-item"><el-icon><component :is="Clock" /></el-icon> {{ t.time }}</span>
@@ -333,6 +336,8 @@ const completedCount = computed(() => tickets.value.filter(t => t.status === 'CO
   color: var(--sub);
 }
 
+.ticket-photo { margin: 6px 0; }
+.ticket-photo .thumb { width: 64px; height: 64px; border-radius: 6px; border: 1px solid var(--line); cursor: pointer; }
 .ticket-desc {
   font-size: 14px;
   color: var(--text-secondary);

@@ -10,7 +10,7 @@ let handlingUnauthorized = false
 // 开发环境使用 Vite proxy 转发 /api → 后端
 const service = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-  timeout: 5000 // 请求超时时间 (5秒)
+  timeout: 30000 // 请求超时时间 (30秒)
 })
 
 // 2. 请求拦截器 (给每次请求贴上 Token 邮票)

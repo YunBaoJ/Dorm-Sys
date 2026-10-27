@@ -64,7 +64,8 @@ import {
   WalletCards,
   Newspaper,
   FileText,
-  ChartNoAxesCombined
+  ChartNoAxesCombined,
+  Bot
 } from '@lucide/vue'
 
 const route = useRoute()
@@ -86,7 +87,9 @@ const navMap = {
     { path: '/admin/repairs/list', label: '报修监控', icon: Settings },
     { path: '/admin/notices', label: '公告管理', icon: Newspaper },
     { path: '/admin/operation-logs', label: '操作日志', icon: FileText },
-    { path: '/admin/reports', label: '数据报表', icon: ChartNoAxesCombined }
+    { path: '/admin/reports', label: '数据报表', icon: ChartNoAxesCombined },
+    { path: '/admin/ai', label: 'AI超级助理', icon: Bot },
+    { path: '/admin/ai-settings', label: 'AI助手配置', icon: Settings }
   ],
   dormmanager: [
     { path: '/dormmanager/workbench', label: '工作台', icon: ClipboardList },
@@ -101,6 +104,7 @@ const navMap = {
     { path: '/dormmanager/fee', label: '水电计费', icon: WalletCards },
     { path: '/dormmanager/messages', label: '消息通知', icon: Mail },
     { path: '/dormmanager/feedback', label: '意见反馈', icon: MessageCircle },
+    { path: '/dormmanager/ai', label: 'AI宿管助手', icon: Bot },
     { path: '/dormmanager/call', label: '智能通话', icon: Video },
     { path: '/dormmanager/profile', label: '个人中心', icon: User }
   ],
@@ -112,7 +116,7 @@ const navMap = {
     { path: '/student/notice', label: '校园公告', icon: Newspaper },
     { path: '/student/visitor', label: '访客预约', icon: UserRoundCheck },
     { path: '/student/transfer', label: '调宿申请', icon: Repeat2 },
-    { path: '/student/ai', label: 'AI助手', icon: MessageCircle },
+    { path: '/student/ai', label: 'AI智能助手', icon: Bot },
     { path: '/student/call', label: '智能通话', icon: Video },
     { path: '/student/feedback', label: '意见反馈', icon: Pencil },
     { path: '/student/settings', label: '账户设置', icon: Settings }
